@@ -1,7 +1,12 @@
 pypsa
-pypsatopo
-pyarrow
 highspy
+linopy
 pandas
 numpy
+pyarrow
+openpyxl
+plotly
 matplotlib
+scipy
+streamlit>=1.36
+pypsatopo
