@@ -88,6 +88,29 @@ def render_scenario_form(initial: Scenario) -> Scenario:
         project_life_yrs = st.number_input("Project life (years)", 5, 40,
                                             int(initial.project_life_yrs), 1, key="sf_project_life")
 
+    with st.expander("Counterfactual sourcing"):
+        enable_counterfactual = st.toggle(
+            "Compare to counterfactual strategies",
+            value=initial.enable_counterfactual,
+            key="sf_enable_counterfactual",
+            help="Compute spot-only and CAL Y+1 forward costs for the offtaker after each run.",
+        )
+        col1, col2 = st.columns(2)
+        cal_forward_price = col1.number_input(
+            "CAL Y+1 forward price ($/MWh)",
+            min_value=0.0, max_value=500.0,
+            value=float(initial.cal_forward_price), step=5.0,
+            disabled=not enable_counterfactual, key="sf_cal_forward_price",
+            help="Flat baseload forward price for the next calendar year (e.g. ASX Cal 26 Base NSW).",
+        )
+        cal_hedge_fraction = col2.slider(
+            "Hedge fraction (%)", 0, 100,
+            int(initial.cal_hedge_fraction * 100),
+            step=5, format="%d%%",
+            disabled=not enable_counterfactual, key="sf_cal_hedge_fraction",
+            help="Share of load hedged at CAL Y+1; remainder sourced at spot.",
+        ) / 100.0
+
     # Chosen day selector (use available days from loaded timeseries)
     ts = state.get_timeseries()
     if ts is not None:
@@ -108,6 +131,9 @@ def render_scenario_form(initial: Scenario) -> Scenario:
         enable_shortfall=enable_shortfall,
         enable_penalty=enable_penalty,
         run_financial_analysis=run_financial_analysis,
+        enable_counterfactual=enable_counterfactual,
+        cal_forward_price=float(cal_forward_price),
+        cal_hedge_fraction=float(cal_hedge_fraction),
         onsw_mw=float(onsw_mw),
         pv_mw=float(pv_mw),
         bess_mw=float(bess_mw) if include_bess else 0.0,

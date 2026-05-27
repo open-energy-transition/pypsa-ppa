@@ -3,6 +3,7 @@ from __future__ import annotations
 import pandas as pd
 import plotly.graph_objects as go
 
+from ppa.counterfactuals import CounterfactualResult
 from ppa.results import RevenueBreakdown
 from ppa.scenario import Scenario
 
@@ -343,6 +344,88 @@ def make_ppa_obligation_chart(
         showlegend=True,
         legend=dict(orientation="h", yanchor="bottom", y=1.1, xanchor="left", x=0),
         margin=dict(l=20, r=20, t=60, b=40),
+    )
+    return fig
+
+
+def make_counterfactual_bar_chart(cf: CounterfactualResult, scenario: Scenario) -> go.Figure:
+    """Horizontal bar chart comparing effective $/MWh across procurement strategies."""
+    strategies = ["Spot-only", f"Blended\n({scenario.cal_hedge_fraction:.0%} CAL)", "CAL Y+1", "PPA\n(offtaker)"]
+    prices = [cf.spot_avg_price, cf.blended_avg_price, cf.cal_avg_price, cf.ppa_effective_price]
+    colors = ["#FF6F00", "#FFA726", "#546E7A", "#1565C0"]
+
+    fig = go.Figure()
+    fig.add_trace(
+        go.Bar(
+            x=prices,
+            y=strategies,
+            orientation="h",
+            marker_color=colors,
+            text=[f"${p:.2f}/MWh" for p in prices],
+            textposition="outside",
+            textfont=dict(size=11),
+            cliponaxis=False,
+        )
+    )
+    fig.add_vline(
+        x=scenario.ppa_price,
+        line_dash="dash",
+        line_color="#1565C0",
+        line_width=1.5,
+        annotation_text=f"PPA tariff (${scenario.ppa_price:.0f}/MWh)",
+        annotation_position="top",
+        annotation_font_color="#1565C0",
+        annotation_font_size=10,
+    )
+    x_max = max(prices) * 1.25
+    fig.update_layout(
+        title="Effective procurement cost by strategy",
+        xaxis=dict(title="Effective $/MWh", range=[0, x_max]),
+        yaxis=dict(autorange="reversed"),
+        height=280,
+        showlegend=False,
+        margin=dict(l=140, r=60, t=50, b=40),
+        plot_bgcolor="white",
+    )
+    return fig
+
+
+def make_cumulative_cost_chart(cf: CounterfactualResult) -> go.Figure:
+    """Cumulative procurement cost over the period for each strategy."""
+    fig = go.Figure()
+    fig.add_trace(
+        go.Scatter(
+            x=cf.cumulative_spot.index,
+            y=cf.cumulative_spot.values / 1e6,
+            mode="lines",
+            name="Spot-only",
+            line=dict(color="#FF6F00", width=1.5),
+        )
+    )
+    fig.add_trace(
+        go.Scatter(
+            x=cf.cumulative_cal.index,
+            y=cf.cumulative_cal.values / 1e6,
+            mode="lines",
+            name="CAL Y+1",
+            line=dict(color="#546E7A", width=1.5, dash="dot"),
+        )
+    )
+    fig.add_trace(
+        go.Scatter(
+            x=cf.cumulative_ppa.index,
+            y=cf.cumulative_ppa.values / 1e6,
+            mode="lines",
+            name="PPA (offtaker)",
+            line=dict(color="#1565C0", width=2),
+        )
+    )
+    fig.update_layout(
+        title="Cumulative procurement cost over the modelled period",
+        xaxis_title="",
+        yaxis_title="Cumulative cost ($M)",
+        height=320,
+        legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1),
     )
     return fig
 

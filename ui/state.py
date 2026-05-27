@@ -9,10 +9,12 @@ if TYPE_CHECKING:
     from ppa.scenario import Scenario
     from ppa.results import OptimizationResult
     from ppa.financials import FinancialResult
+    from ppa.counterfactuals import CounterfactualResult
 
 SCENARIO_KEY = "scenario"
 RESULT_KEY = "optimization_result"
 FINANCIAL_KEY = "financial_result"
+COUNTERFACTUAL_KEY = "counterfactual_result"
 TIMESERIES_KEY = "timeseries"
 ACTIVE_CASE_STUDY_KEY = "active_case_study_id"
 
@@ -36,6 +38,7 @@ def get_result() -> "OptimizationResult | None":
 def set_result(r: "OptimizationResult") -> None:
     st.session_state[RESULT_KEY] = r
     st.session_state.pop(FINANCIAL_KEY, None)
+    st.session_state.pop(COUNTERFACTUAL_KEY, None)
 
 
 def has_result() -> bool:
@@ -45,6 +48,7 @@ def has_result() -> bool:
 def clear_result() -> None:
     st.session_state.pop(RESULT_KEY, None)
     st.session_state.pop(FINANCIAL_KEY, None)
+    st.session_state.pop(COUNTERFACTUAL_KEY, None)
 
 
 def get_financial() -> "FinancialResult | None":
@@ -57,6 +61,18 @@ def set_financial(f: "FinancialResult") -> None:
 
 def has_financial() -> bool:
     return FINANCIAL_KEY in st.session_state
+
+
+def get_counterfactual() -> "CounterfactualResult | None":
+    return st.session_state.get(COUNTERFACTUAL_KEY)
+
+
+def set_counterfactual(cf: "CounterfactualResult") -> None:
+    st.session_state[COUNTERFACTUAL_KEY] = cf
+
+
+def has_counterfactual() -> bool:
+    return COUNTERFACTUAL_KEY in st.session_state
 
 
 def get_timeseries() -> "pd.DataFrame | None":

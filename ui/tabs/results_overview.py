@@ -62,6 +62,43 @@ def render() -> None:
     else:
         col5.metric("LCOE", "—", help="Run with financial analysis enabled")
 
+    # ── Offtaker procurement comparison ───────────────────────────────────────
+    if state.has_counterfactual():
+        cf = state.get_counterfactual()
+        st.markdown("---")
+        st.subheader("Offtaker procurement comparison")
+        st.caption(
+            "How much would the offtaker have paid under alternative sourcing strategies? "
+            "Effective $/MWh for the modelled period — covers shortfall hours at spot for the PPA column."
+        )
+        oc1, oc2, oc3, oc4 = st.columns(4)
+        oc1.metric(
+            "PPA (offtaker)",
+            f"${cf.ppa_effective_price:.2f}/MWh",
+            help="PPA tariff for delivered MWh + spot price for any undelivered load.",
+        )
+        oc2.metric(
+            "Spot-only",
+            f"${cf.spot_avg_price:.2f}/MWh",
+            delta=f"${cf.spot_avg_price - cf.ppa_effective_price:+.2f}/MWh vs PPA",
+            delta_color="normal",
+            help="100% of load sourced at real-time spot each hour.",
+        )
+        oc3.metric(
+            f"CAL Y+1 (${s.cal_forward_price:.0f}/MWh)",
+            f"${cf.cal_avg_price:.2f}/MWh",
+            delta=f"${cf.cal_avg_price - cf.ppa_effective_price:+.2f}/MWh vs PPA",
+            delta_color="normal",
+            help="Flat baseload forward contract; zero spot exposure.",
+        )
+        oc4.metric(
+            f"Blended ({s.cal_hedge_fraction:.0%} CAL)",
+            f"${cf.blended_avg_price:.2f}/MWh",
+            delta=f"${cf.blended_avg_price - cf.ppa_effective_price:+.2f}/MWh vs PPA",
+            delta_color="normal",
+            help=f"{s.cal_hedge_fraction:.0%} of load at CAL Y+1 forward + remainder at spot.",
+        )
+
     st.markdown("---")
 
     # ── Dispatch summary table ─────────────────────────────────────────────────

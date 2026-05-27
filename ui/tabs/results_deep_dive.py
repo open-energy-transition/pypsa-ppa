@@ -6,7 +6,13 @@ import streamlit as st
 
 from ppa.results import build_supply_mix_df, build_ops_day_df
 from ui import state
-from ui.charts import make_supply_mix_day_chart, make_soc_chart, make_price_series_chart
+from ui.charts import (
+    make_supply_mix_day_chart,
+    make_soc_chart,
+    make_price_series_chart,
+    make_counterfactual_bar_chart,
+    make_cumulative_cost_chart,
+)
 
 
 def _no_results_message() -> None:
@@ -146,3 +152,45 @@ def render() -> None:
         columns=["Metric", "Value", "Detail"],
     )
     st.dataframe(stats_df, hide_index=True, use_container_width=True)
+
+    # ── Counterfactual procurement comparison ──────────────────────────────────
+    if state.has_counterfactual():
+        cf = state.get_counterfactual()
+        s_cf = result.scenario
+        st.markdown("---")
+        st.subheader("Counterfactual procurement comparison")
+        st.markdown(
+            "How does the PPA cost compare to what the offtaker would have paid "
+            "under alternative sourcing strategies? All figures are for the modelled period."
+        )
+
+        col_bar, col_cum = st.columns([1, 2])
+        with col_bar:
+            fig_cf = make_counterfactual_bar_chart(cf, s_cf)
+            st.plotly_chart(fig_cf, use_container_width=True)
+
+        with col_cum:
+            fig_cum = make_cumulative_cost_chart(cf)
+            st.plotly_chart(fig_cum, use_container_width=True)
+
+        cf_table = pd.DataFrame(
+            [
+                ("Spot-only", f"${cf.spot_avg_price:.2f}", f"${cf.spot_cost / 1e6:.3f}M",
+                 f"${cf.spot_cost - cf.ppa_offtaker_cost:+,.0f}"),
+                (f"CAL Y+1 (${s_cf.cal_forward_price:.0f}/MWh)", f"${cf.cal_avg_price:.2f}",
+                 f"${cf.cal_cost / 1e6:.3f}M",
+                 f"${cf.cal_cost - cf.ppa_offtaker_cost:+,.0f}"),
+                (f"Blended ({s_cf.cal_hedge_fraction:.0%} CAL)", f"${cf.blended_avg_price:.2f}",
+                 f"${cf.blended_cost / 1e6:.3f}M",
+                 f"${cf.blended_cost - cf.ppa_offtaker_cost:+,.0f}"),
+                ("PPA (offtaker)", f"${cf.ppa_effective_price:.2f}",
+                 f"${cf.ppa_offtaker_cost / 1e6:.3f}M", "—"),
+            ],
+            columns=["Strategy", "Effective $/MWh", "Period total", "vs PPA ($, + = more expensive)"],
+        )
+        st.dataframe(cf_table, hide_index=True, use_container_width=True)
+        st.caption(
+            f"PPA offtaker cost = ${s_cf.ppa_price:.0f}/MWh × delivered MWh "
+            f"+ spot price × undelivered MWh. "
+            f"Total load: {cf.total_load_mwh:,.0f} MWh over {result.n_period_hours} hours."
+        )

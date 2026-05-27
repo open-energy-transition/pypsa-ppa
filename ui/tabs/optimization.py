@@ -3,6 +3,7 @@ from __future__ import annotations
 import streamlit as st
 
 from ppa.data_loader import find_default_csv, load_timeseries, prepare_timeseries
+from ppa.counterfactuals import compute_counterfactuals
 from ppa.financials import run_financial_analysis
 from ppa.network import build_network
 from ppa.results import extract_results
@@ -120,6 +121,10 @@ def render() -> None:
                     )
                     state.set_financial(fin)
 
+                if s.enable_counterfactual:
+                    cf = compute_counterfactuals(ts_prepared, s, result)
+                    state.set_counterfactual(cf)
+
             except Exception as exc:
                 st.error(f"Optimization failed: {exc}")
                 return
@@ -128,4 +133,3 @@ def render() -> None:
             f"Optimization complete — solver: **{status}**, condition: **{condition}**. "
             "Navigate to the Results tabs."
         )
-        st.balloons()
