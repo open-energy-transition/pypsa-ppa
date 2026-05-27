@@ -1,0 +1,22 @@
+# pixi environment (installed packages — not committed)
+.pixi/
+
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+dist/
+build/
+.eggs/
+
+# Jupyter
+.ipynb_checkpoints/
+notebooks/outputs/
+
+# Data lock files (LibreOffice etc.)
+data/.~lock.*
+
+# Editor
+.idea/
+.vscode/
+*.swp
