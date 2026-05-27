@@ -57,7 +57,7 @@ def render_scenario_form(initial: Scenario) -> Scenario:
     with st.expander("Market interaction"):
         col1, col2 = st.columns(2)
         market_buy_share = col1.slider(
-            "Market buy cap (% of delivery)", 0, 50,
+            "Market buy cap (% of delivery)", 0, 100,
             int(initial.market_buy_share * 100), step=1, format="%d%%",
             disabled=not enable_market_buy, key="sf_market_buy_share",
         ) / 100.0
