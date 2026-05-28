@@ -80,21 +80,21 @@ def render() -> None:
         oc2.metric(
             "Spot-only",
             f"${cf.spot_avg_price:.2f}/MWh",
-            delta=f"${cf.spot_avg_price - cf.ppa_effective_price:+.2f}/MWh vs PPA",
+            delta=f"{cf.spot_avg_price - cf.ppa_effective_price:+.2f} $/MWh vs PPA",
             delta_color="normal",
             help="100% of load sourced at real-time spot each hour.",
         )
         oc3.metric(
             f"CAL Y+1 (${s.cal_forward_price:.0f}/MWh)",
             f"${cf.cal_avg_price:.2f}/MWh",
-            delta=f"${cf.cal_avg_price - cf.ppa_effective_price:+.2f}/MWh vs PPA",
+            delta=f"{cf.cal_avg_price - cf.ppa_effective_price:+.2f} $/MWh vs PPA",
             delta_color="normal",
             help="Flat baseload forward contract; zero spot exposure.",
         )
         oc4.metric(
             f"Blended ({s.cal_hedge_fraction:.0%} CAL)",
             f"${cf.blended_avg_price:.2f}/MWh",
-            delta=f"${cf.blended_avg_price - cf.ppa_effective_price:+.2f}/MWh vs PPA",
+            delta=f"{cf.blended_avg_price - cf.ppa_effective_price:+.2f} $/MWh vs PPA",
             delta_color="normal",
             help=f"{s.cal_hedge_fraction:.0%} of load at CAL Y+1 forward + remainder at spot.",
         )
@@ -130,18 +130,28 @@ def render() -> None:
 
     with cols[1]:
         st.markdown("**Revenue breakdown**")
+        mkt_buy_label = (
+            "Market buy cost"
+            if revenue.market_purchase_cost >= 0
+            else "Market buy (negative-price benefit)"
+        )
+        mkt_buy_display = (
+            f"−${revenue.market_purchase_cost:,.0f}"
+            if revenue.market_purchase_cost >= 0
+            else f"+${-revenue.market_purchase_cost:,.0f}"
+        )
         rev_data = {
             "Item": [
                 "PPA revenue",
                 "Merchant revenue",
-                "Market purchase cost",
+                mkt_buy_label,
                 "Penalty cost",
                 "Net revenue",
             ],
             "$": [
                 f"${revenue.ppa_revenue:,.0f}",
                 f"${revenue.excess_revenue:,.0f}",
-                f"−${revenue.market_purchase_cost:,.0f}",
+                mkt_buy_display,
                 f"−${revenue.penalty_cost:,.0f}",
                 f"${revenue.net_revenue:,.0f}",
             ],
