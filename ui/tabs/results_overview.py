@@ -126,7 +126,7 @@ def render() -> None:
             ],
         }
         import pandas as pd
-        st.dataframe(pd.DataFrame(gen_data), hide_index=True, use_container_width=True)
+        st.dataframe(pd.DataFrame(gen_data), hide_index=True, width="stretch")
 
     with cols[1]:
         st.markdown("**Revenue breakdown**")
@@ -156,7 +156,7 @@ def render() -> None:
                 f"${revenue.net_revenue:,.0f}",
             ],
         }
-        st.dataframe(pd.DataFrame(rev_data), hide_index=True, use_container_width=True)
+        st.dataframe(pd.DataFrame(rev_data), hide_index=True, width="stretch")
 
     st.markdown("---")
 
@@ -172,12 +172,12 @@ def render() -> None:
             supply_mix = build_supply_mix_df(result.dispatch, ts_prep)
             avg_24h = build_24h_avg(supply_mix)
             fig = make_supply_mix_24h_chart(avg_24h, s.ppaload_mw)
-            st.plotly_chart(fig, use_container_width=True)
+            st.plotly_chart(fig, width="stretch", height=500)
 
         with col_b:
             st.subheader("Revenue waterfall")
             fig_rev = make_revenue_breakdown_chart(revenue)
-            st.plotly_chart(fig_rev, use_container_width=True)
+            st.plotly_chart(fig_rev, width="stretch", height=500)
 
     # ── Constraint compliance ──────────────────────────────────────────────────
     st.markdown("---")
@@ -195,4 +195,4 @@ def render() -> None:
         ],
     }
     import pandas as pd
-    st.dataframe(pd.DataFrame(compliance), hide_index=True, use_container_width=True)
+    st.dataframe(pd.DataFrame(compliance), hide_index=True, width="stretch")

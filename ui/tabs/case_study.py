@@ -29,7 +29,7 @@ def _render_case_study_card(cs, is_active: bool) -> bool:
     return st.button(
         "Load this scenario" if not is_active else "Reload",
         key=f"load_cs_{cs.id}",
-        use_container_width=True,
+        width="stretch",
         type="primary" if is_active else "secondary",
     )
 
@@ -74,12 +74,12 @@ def render() -> None:
 
     col1, col2 = st.columns([1, 4])
     with col1:
-        if st.button("Apply changes", type="primary", use_container_width=True):
+        if st.button("Apply changes", type="primary", width="stretch"):
             state.set_scenario(updated)
             state.clear_result()
             st.success("Scenario updated. Run the optimisation to see new results.")
     with col2:
-        if st.button("Reset to base defaults", use_container_width=True):
+        if st.button("Reset to base defaults", width="stretch"):
             state.set_scenario(BASE_SCENARIO)
             state.set_active_case_study_id("")
             state.clear_result()

@@ -62,7 +62,7 @@ def render() -> None:
                 ],
                 columns=["Component", "Value", "Basis"],
             )
-            st.dataframe(capex_df, hide_index=True, use_container_width=True)
+            st.dataframe(capex_df, hide_index=True, width="stretch")
 
         with col2:
             st.markdown("**Project economics**")
@@ -88,7 +88,7 @@ def render() -> None:
                 ],
                 columns=["Metric", "Value", "Note"],
             )
-            st.dataframe(econ_df, hide_index=True, use_container_width=True)
+            st.dataframe(econ_df, hide_index=True, width="stretch", height=500)
 
     # ── Dispatch detail ────────────────────────────────────────────────────────
     st.markdown("---")
@@ -103,29 +103,23 @@ def render() -> None:
             "Select a day to inspect", available_days, index=default_idx, key="dd_chosen_day"
         )
 
-        col_a, col_b = st.columns([3, 2])
-        with col_a:
-            supply_mix = build_supply_mix_df(result.dispatch, ts_prep)
-            day_mix = supply_mix.loc[chosen_day] if chosen_day in supply_mix.index.strftime("%Y-%m-%d") else supply_mix
-            # Filter supply mix to chosen day
-            day_mix = supply_mix[supply_mix.index.strftime("%Y-%m-%d") == chosen_day]
-            fig = make_supply_mix_day_chart(day_mix, s.ppaload_mw, chosen_day)
-            st.plotly_chart(fig, use_container_width=True)
-
-        with col_b:
-            ops_df = build_ops_day_df(result.dispatch, chosen_day)
-            st.dataframe(ops_df, use_container_width=True)
+        supply_mix = build_supply_mix_df(result.dispatch, ts_prep)
+        day_mix = supply_mix.loc[chosen_day] if chosen_day in supply_mix.index.strftime("%Y-%m-%d") else supply_mix
+        # Filter supply mix to chosen day
+        day_mix = supply_mix[supply_mix.index.strftime("%Y-%m-%d") == chosen_day]
+        fig = make_supply_mix_day_chart(day_mix, s.ppaload_mw, chosen_day)
+        st.plotly_chart(fig, width="stretch", height=500)
 
         # BESS state of charge
         if s.include_bess and s.effective_bess_mwh > 0:
             st.subheader("BESS state of charge")
             fig_soc = make_soc_chart(result.dispatch.soc, s.effective_bess_mwh)
-            st.plotly_chart(fig_soc, use_container_width=True)
+            st.plotly_chart(fig_soc, width="stretch", height=400)
 
         # Market price
         st.subheader("Market spot price")
         fig_price = make_price_series_chart(ts_prep)
-        st.plotly_chart(fig_price, use_container_width=True)
+        st.plotly_chart(fig_price, width="stretch", height=400)
 
     # ── Generation statistics ──────────────────────────────────────────────────
     st.markdown("---")
@@ -151,7 +145,7 @@ def render() -> None:
         ],
         columns=["Metric", "Value", "Detail"],
     )
-    st.dataframe(stats_df, hide_index=True, use_container_width=True)
+    st.dataframe(stats_df, hide_index=True, width="stretch")
 
     # ── Counterfactual procurement comparison ──────────────────────────────────
     if state.has_counterfactual():
@@ -167,11 +161,11 @@ def render() -> None:
         col_bar, col_cum = st.columns([1, 2])
         with col_bar:
             fig_cf = make_counterfactual_bar_chart(cf, s_cf)
-            st.plotly_chart(fig_cf, use_container_width=True)
+            st.plotly_chart(fig_cf, width="stretch", height=400)
 
         with col_cum:
             fig_cum = make_cumulative_cost_chart(cf)
-            st.plotly_chart(fig_cum, use_container_width=True)
+            st.plotly_chart(fig_cum, width="stretch", height=400)
 
         cf_table = pd.DataFrame(
             [
@@ -188,7 +182,7 @@ def render() -> None:
             ],
             columns=["Strategy", "Effective $/MWh", "Period total", "vs PPA ($, + = more expensive)"],
         )
-        st.dataframe(cf_table, hide_index=True, use_container_width=True)
+        st.dataframe(cf_table, hide_index=True, width="stretch")
         st.caption(
             f"PPA offtaker cost = ${s_cf.ppa_price:.0f}/MWh × delivered MWh "
             f"+ spot price × undelivered MWh. "
