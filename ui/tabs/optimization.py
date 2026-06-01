@@ -104,7 +104,11 @@ def render() -> None:
 
     cols = st.columns(4)
     with cols[0]:
-        run_clicked = st.button("▶ Run Optimization", type="primary", use_container_width=True)
+        run_clicked = st.button(
+            "▶ Run Optimization", 
+            type="primary", 
+            width="stretch"
+        )
     with cols[1]:
         if state.has_result():
             r = state.get_result()
