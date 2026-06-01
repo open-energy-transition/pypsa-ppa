@@ -27,7 +27,6 @@ def render_scenario_form(initial: Scenario) -> Scenario:
         cols = st.columns(4)
         onsw_mw = cols[0].slider("Onshore wind (MW)", 0, max_cap_per_technology, int(initial.onsw_mw), step=10, key="sf_onsw_mw")
         pv_mw = cols[1].slider("Solar PV (MWac)", 0, max_cap_per_technology, int(initial.pv_mw), step=10, key="sf_pv_mw")
-        # col3, col4 = st.columns(2)
         bess_mw = cols[2].slider(
             "BESS power (MW)", 0, max_cap_per_technology, int(initial.bess_mw), step=10,
             disabled=not include_bess, key="sf_bess_mw"
@@ -43,7 +42,6 @@ def render_scenario_form(initial: Scenario) -> Scenario:
                                            value=float(initial.ppaload_mw), step=10.0, key="sf_ppaload_mw")
         ppa_price = cols[1].number_input("PPA tariff ($/MWh)", min_value=1.0, max_value=500.0,
                                           value=float(initial.ppa_price), step=5.0, key="sf_ppa_price")
-        # col3, col4 = st.columns(2)
         required_delivery_share = cols[2].slider(
             "Required delivery share (%)", 50, 100, int(initial.required_delivery_share * 100),
             step=5, format="%d%%",

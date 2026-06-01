@@ -114,7 +114,7 @@ def render() -> None:
             )
 
     if run_clicked:
-        with st.spinner("Building network and solving with HiGHS… (typically 5–15 seconds)"):
+        with st.spinner("Building network and solving with HiGHS… (typically 5–15 seconds/year of simulation)"):
             try:
                 ts_prepared = prepare_timeseries(ts, s)
                 n = build_network(ts_prepared, s)

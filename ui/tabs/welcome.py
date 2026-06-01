@@ -4,18 +4,12 @@ import streamlit as st
 
 
 def render() -> None:
-    st.title("⚡ PyPSA PPA Explorer")
-    st.markdown(
-        "**An interactive toolkit for modelling renewable portfolios under Power Purchase Agreements.**"
-    )
-    st.markdown("---")
-
     cols = st.columns([2, 1])
 
     with cols[0]:
         st.markdown(
             """
-## What this tool does
+## What this toolkit does
 
 This app uses **PyPSA** — an open-source energy system optimisation framework — to model
 how a renewable portfolio (wind, solar, battery storage) should be dispatched when bound
@@ -26,9 +20,7 @@ of real Australian NEM market data, honouring contractual delivery obligations, 
 allowances, penalty regimes, and market interaction caps.
 
 ---
-
-## Capabilities
-
+## Planned capabilities of this toolkit
 | Capability | Description |
 |---|---|
 | **Portfolio modelling** | Wind + solar + battery storage co-located at a single aggregation point |
@@ -39,46 +31,45 @@ allowances, penalty regimes, and market interaction caps.
 | **Scenario comparison** | Four predefined case studies plus full custom parameter control |
 
 ---
+## How to use this toolkit
+1. **Introduction to PPAs** — read the key concepts and terminology if you're new to 
+   PPAs.
 
-## How to use this app
+2. **Case Study Definition** — pick one of the four predefined case studies to load a
+   starting scenario, then customise any parameters using the sliders and inputs below
+   the cards.
 
-1. **Introduction to PPAs** — read the key concepts and terminology if you're new to PPAs.
+3. **Optimization** — review the scenario summary and click **Run Optimization** to solve
+   the model. This typically takes 5–15 seconds.
 
-2. **Case Study Definition** — pick one of the four predefined case studies to load a starting
-   scenario, then customise any parameters using the sliders and inputs below the cards.
+4. **Results Overview** — explore key KPIs: PPA fulfilment rate, LCOE, net revenue, and
+   the hourly supply mix chart.
 
-3. **Optimization** — review the scenario summary and click **Run Optimization** to solve the model.
-   This typically takes 5–15 seconds.
-
-4. **Results Overview** — explore key KPIs: PPA fulfilment rate, LCOE, net revenue, and the
-   hourly supply mix chart.
-
-5. **Results Deep Dive** — examine the full financial model (CAPEX, IRR, NPV, breakeven PPA price)
-   and a detailed daily dispatch chart.
-
+5. **Results Deep Dive** — examine the full financial model (CAPEX, IRR, NPV, breakeven
+   PPA price) and a detailed daily dispatch chart.
             """
+        )
+        st.info(
+            "**Tip:** Optimization results are preserved as you switch between tabs.",
+            icon="💡",
         )
 
     with cols[1]:
-        st.markdown("### Built with")
         st.markdown(
             """
+### Built with
+
 - [PyPSA](https://pypsa.readthedocs.io) — energy system modelling
 - [HiGHS](https://highs.dev) — LP solver
 - [Streamlit](https://streamlit.io) — web UI
 - [Plotly](https://plotly.com) — interactive charts
 
 ### Data
-Real hourly NEM data for **March 2025** (NSW dispatch region), sourced via NEMOSIS.
+Initially, real hourly NEM data for **March 2025** (NSW dispatch region) are considered (sourced via UNSW-CEEM's *NEMOSIS*).
 
 Includes:
 - Wind capacity factors
 - Solar PV capacity factors
 - NSW spot electricity prices
             """
-        )
-        st.info(
-            "💡 **Tip:** Optimization results are preserved as you switch between tabs. "
-            "Navigate freely after clicking *Run Optimization*.",
-            icon="💡",
         )
