@@ -1,6 +1,6 @@
 # pypsa-ppa
 
-PyPSA-based toolkit for simulating and optimising Power Purchase Agreements (PPAs) under different scenarios.
+PyPSA-based tofjöalskdjföalskdjfasdjfölkolkit for simulating and optimising Power Purchase Agreements (PPAs) under different scenarios.
 
 ## Overview
 
