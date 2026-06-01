@@ -56,7 +56,7 @@ PPAs have become a central instrument in the global energy transition:
     if ts is not None:
         st.plotly_chart(
             make_price_vs_ppa_chart(ts, ppa_price=BASE_SCENARIO.ppa_price),
-            use_container_width=True,
+            use_container_width=True, height=400,
         )
         st.caption(
             "Real NSW wholesale spot prices for March 2025 can swing from deeply negative "
@@ -152,7 +152,7 @@ to sell power under an offtake agreement. PyPSA modelling can be used to:
         st.subheader("The dispatch challenge: renewable availability vs flat demand")
         st.plotly_chart(
             make_availability_profile_chart(ts),
-            use_container_width=True,
+            use_container_width=True, height=400,
         )
         st.caption(
             "Solar peaks sharply around midday and is zero overnight. Wind is more distributed "
@@ -204,8 +204,8 @@ delivery link makes the model treat delivery as commercially valuable — the co
         use_container_width=True,
     )
 
-    col1, col2 = st.columns([1, 1])
-    with col1:
+    cols = st.columns([1, 1])
+    with cols[0]:
         st.markdown(
             """
 **Physical assets (left)**
@@ -221,7 +221,7 @@ delivery link makes the model treat delivery as commercially valuable — the co
 - `Bus_SellToMarket` — excess generation sold at spot
             """
         )
-    with col2:
+    with cols[1]:
         st.markdown(
             """
 **Key link: `IPPGen_to_PPAOfftake`**

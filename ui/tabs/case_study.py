@@ -58,29 +58,29 @@ def render() -> None:
                 st.rerun()
 
     # ── Custom parameter form ─────────────────────────────────────────────────
-    st.markdown("---")
-    st.subheader("Customise parameters")
-    st.markdown(
-        "The controls below are pre-filled with the active case study. "
-        "Adjust any value, then head to the **Optimization** tab to run the model."
-    )
+    #st.markdown("---")
+    with st.expander("Customise parameters", expanded=False):
+        st.markdown(
+            "The controls below are pre-filled with the active case study. "
+            "Adjust any value, then head to the **Optimization** tab to run the model."
+        )
 
-    # Initialise with base scenario if nothing loaded yet
-    if not state.has_scenario():
-        state.set_scenario(BASE_SCENARIO)
-
-    current = state.get_scenario()
-    updated = render_scenario_form(current)
-
-    col1, col2 = st.columns([1, 4])
-    with col1:
-        if st.button("Apply changes", type="primary", width="stretch"):
-            state.set_scenario(updated)
-            state.clear_result()
-            st.success("Scenario updated. Run the optimisation to see new results.")
-    with col2:
-        if st.button("Reset to base defaults", width="stretch"):
+        # Initialise with base scenario if nothing loaded yet
+        if not state.has_scenario():
             state.set_scenario(BASE_SCENARIO)
-            state.set_active_case_study_id("")
-            state.clear_result()
-            st.rerun()
+
+        current = state.get_scenario()
+        updated = render_scenario_form(current)
+
+        cols = st.columns([2,2])
+        with cols[0]:
+            if st.button("Apply changes", type="primary", width="stretch"):
+                state.set_scenario(updated)
+                state.clear_result()
+                st.success("Scenario updated. Run the optimisation to see new results.")
+        with cols[1]:
+            if st.button("Reset to base defaults", width="stretch", type="secondary"):
+                state.set_scenario(BASE_SCENARIO)
+                state.set_active_case_study_id("")
+                state.clear_result()
+                st.rerun()

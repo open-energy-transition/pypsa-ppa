@@ -31,10 +31,18 @@ def _ensure_timeseries() -> bool:
 
 def _render_scenario_summary(s) -> None:
     st.subheader("Scenario summary")
-    col1, col2, col3 = st.columns(3)
-
-    with col1:
+    cols = st.columns(4)
+    with cols[0]:
         st.markdown("**Portfolio**")
+
+    with cols[1]:
+        st.markdown("**PPA contract**")
+
+    with cols[3]:
+        st.markdown("**Market interaction**")
+
+    cols = st.columns(4)
+    with cols[0]:
         st.markdown(f"- Wind: **{s.onsw_mw:.0f} MW**")
         st.markdown(f"- Solar: **{s.pv_mw:.0f} MWac**")
         if s.include_bess:
@@ -42,18 +50,18 @@ def _render_scenario_summary(s) -> None:
         else:
             st.markdown("- BESS: *disabled*")
 
-    with col2:
-        st.markdown("**PPA contract**")
+    with cols[1]:
         st.markdown(f"- Offtake load: **{s.ppaload_mw:.0f} MW** (flat)")
         st.markdown(f"- Tariff: **${s.ppa_price:.0f}/MWh**")
+
+    with cols[2]:
         st.markdown(f"- Required delivery: **{s.required_delivery_share:.0%}** of total load")
         if s.enable_penalty:
             st.markdown(f"- Penalty: **{s.pen_mult:.1f}× tariff** = ${s.penalty_price:.0f}/MWh")
         else:
             st.markdown("- Penalty regime: *disabled*")
 
-    with col3:
-        st.markdown("**Market interaction**")
+    with cols[3]:
         if s.enable_market_buy:
             st.markdown(f"- Market buy cap: **{s.market_buy_share:.0%}** of delivery")
         else:
@@ -94,16 +102,15 @@ def render() -> None:
         st.warning("Fix the above issues in the **Case Study Definition** tab before running.")
         return
 
-    col1, col2 = st.columns([1, 3])
-    with col1:
+    cols = st.columns(4)
+    with cols[0]:
         run_clicked = st.button("▶ Run Optimization", type="primary", use_container_width=True)
-    with col2:
+    with cols[1]:
         if state.has_result():
             r = state.get_result()
             st.success(
-                f"Last run: solver status **{r.solver_status}** — "
+                f"Last run: status **{r.solver_status}** — "
                 f"condition **{r.solver_condition}**. "
-                "Navigate to Results tabs to explore."
             )
 
     if run_clicked:
@@ -131,5 +138,7 @@ def render() -> None:
 
         st.success(
             f"Optimization complete — solver: **{status}**, condition: **{condition}**. "
+        )
+        st.write(
             "Navigate to the Results tabs."
         )

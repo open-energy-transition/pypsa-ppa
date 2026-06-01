@@ -48,9 +48,9 @@ def render() -> None:
             icon="💰",
         )
     else:
-        col1, col2 = st.columns(2)
+        cols = st.columns(2)
 
-        with col1:
+        with cols[0]:
             st.markdown("**CAPEX & OPEX**")
             capex_df = pd.DataFrame(
                 [
@@ -64,7 +64,7 @@ def render() -> None:
             )
             st.dataframe(capex_df, hide_index=True, width="stretch")
 
-        with col2:
+        with cols[1]:
             st.markdown("**Project economics**")
             irr_str = f"{fin.project_irr:.1%}" if not np.isnan(fin.project_irr) else "n/a"
             lcoe_str = f"${fin.lcoe:.2f}/MWh" if not np.isnan(fin.lcoe) else "n/a"

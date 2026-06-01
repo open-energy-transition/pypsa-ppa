@@ -10,9 +10,9 @@ def render() -> None:
     )
     st.markdown("---")
 
-    col1, col2 = st.columns([2, 1])
+    cols = st.columns([2, 1])
 
-    with col1:
+    with cols[0]:
         st.markdown(
             """
 ## What this tool does
@@ -59,7 +59,7 @@ allowances, penalty regimes, and market interaction caps.
             """
         )
 
-    with col2:
+    with cols[1]:
         st.markdown("### Built with")
         st.markdown(
             """

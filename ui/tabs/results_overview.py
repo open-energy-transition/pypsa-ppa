@@ -29,38 +29,39 @@ def render() -> None:
 
     # ── KPI row ───────────────────────────────────────────────────────────────
     st.subheader("Key performance indicators")
-    col1, col2, col3, col4, col5 = st.columns(5)
-
-    col1.metric(
+    cols = st.columns(4)
+    cols[0].metric(
         "PPA Fulfilment",
         f"{summary.fulfilled_share:.1%}",
         delta=f"{summary.fulfilled_share - s.required_delivery_share:+.1%} vs target",
         delta_color="normal",
     )
-    col2.metric(
-        "Penalty Volume",
-        f"{summary.penalty_mwh:,.0f} MWh",
-        delta=f"{summary.penalty_share_of_load:.1%} of load",
-        delta_color="inverse",
-    )
-    col3.metric(
+    cols[1].metric(
         "Net Revenue",
         f"${revenue.net_revenue / 1e6:,.2f}M",
         help="PPA revenue + merchant revenue − market purchases − penalty costs (period total)",
     )
-    col4.metric(
+    cols[2].metric(
         "Effective Capture Price",
         f"${revenue.effective_capture_price:.2f}/MWh",
         help="Net revenue ÷ total generation (MWh)",
     )
     if fin is not None:
-        col5.metric(
+        cols[3].metric(
             "LCOE",
             f"${fin.lcoe:.2f}/MWh",
             help=f"Levelised Cost of Energy at {s.discount_rate:.0%} WACC",
         )
     else:
-        col5.metric("LCOE", "—", help="Run with financial analysis enabled")
+        cols[3].metric("LCOE", "—", help="Run with financial analysis enabled")
+
+    cols = st.columns(4)
+    cols[0].metric(
+        "Penalty Volume",
+        f"{summary.penalty_mwh:,.0f} MWh",
+        delta=f"{summary.penalty_share_of_load:.1%} of load",
+        delta_color="inverse",
+    )
 
     # ── Offtaker procurement comparison ───────────────────────────────────────
     if state.has_counterfactual():
@@ -71,27 +72,27 @@ def render() -> None:
             "How much would the offtaker have paid under alternative sourcing strategies? "
             "Effective $/MWh for the modelled period — covers shortfall hours at spot for the PPA column."
         )
-        oc1, oc2, oc3, oc4 = st.columns(4)
-        oc1.metric(
+        cols = st.columns(4)
+        cols[0].metric(
             "PPA (offtaker)",
             f"${cf.ppa_effective_price:.2f}/MWh",
             help="PPA tariff for delivered MWh + spot price for any undelivered load.",
         )
-        oc2.metric(
+        cols[1].metric(
             "Spot-only",
             f"${cf.spot_avg_price:.2f}/MWh",
             delta=f"{cf.spot_avg_price - cf.ppa_effective_price:+.2f} $/MWh vs PPA",
             delta_color="normal",
             help="100% of load sourced at real-time spot each hour.",
         )
-        oc3.metric(
+        cols[2].metric(
             f"CAL Y+1 (${s.cal_forward_price:.0f}/MWh)",
             f"${cf.cal_avg_price:.2f}/MWh",
             delta=f"{cf.cal_avg_price - cf.ppa_effective_price:+.2f} $/MWh vs PPA",
             delta_color="normal",
             help="Flat baseload forward contract; zero spot exposure.",
         )
-        oc4.metric(
+        cols[3].metric(
             f"Blended ({s.cal_hedge_fraction:.0%} CAL)",
             f"${cf.blended_avg_price:.2f}/MWh",
             delta=f"{cf.blended_avg_price - cf.ppa_effective_price:+.2f} $/MWh vs PPA",
@@ -166,15 +167,15 @@ def render() -> None:
         from ppa.data_loader import prepare_timeseries
         ts_prep = prepare_timeseries(ts, s)
 
-        col_a, col_b = st.columns([3, 2])
-        with col_a:
+        cols = st.columns([3, 2])
+        with cols[0]:
             st.subheader("Average hourly supply mix")
             supply_mix = build_supply_mix_df(result.dispatch, ts_prep)
             avg_24h = build_24h_avg(supply_mix)
             fig = make_supply_mix_24h_chart(avg_24h, s.ppaload_mw)
             st.plotly_chart(fig, width="stretch", height=500)
 
-        with col_b:
+        with cols[1]:
             st.subheader("Revenue waterfall")
             fig_rev = make_revenue_breakdown_chart(revenue)
             st.plotly_chart(fig_rev, width="stretch", height=500)
