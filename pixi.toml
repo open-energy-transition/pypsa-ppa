@@ -1,0 +1,31 @@
+[workspace]
+name = "pypsa-ppa"
+version = "0.1.0"
+description = "PyPSA-based toolkit for simulating and optimising PPAs under different scenarios."
+channels = ["conda-forge"]
+platforms = ["linux-64", "osx-64", "osx-arm64", "win-64"]
+
+[dependencies]
+python = ">=3.11,<3.13"
+pypsa = ">=0.31"
+highspy = ">=1.7"
+linopy = ">=0.3"
+pandas = ">=2.0,<3.0"
+numpy = ">=1.26"
+pyarrow = ">=15"
+openpyxl = ">=3.1"
+plotly = ">=5.18"
+matplotlib = ">=3.8"
+scipy = ">=1.12"
+streamlit = ">=1.36"
+# Notebook support
+jupyter = ">=1.0"
+ipykernel = ">=6.0"
+nbformat = ">=5.9"
+
+[pypi-dependencies]
+pypsatopo = ">=0.2"
+
+[tasks]
+app = "streamlit run streamlit_app.py"
+notebook = { cmd = "jupyter notebook notebooks/", description = "Launch Jupyter for the worked example notebook" }
