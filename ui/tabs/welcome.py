@@ -9,37 +9,33 @@ def render() -> None:
     with cols[0]:
         st.markdown(
             """
-## What this toolkit does
+# 🏠 Welcome to the PyPSA PPA Toolkit!
 
 This app uses **PyPSA** — an open-source energy system optimisation framework — to model
 how a renewable portfolio (wind, solar, battery storage) should be dispatched when bound
 by the commercial terms of a Power Purchase Agreement.
 
-The underlying optimisation finds the **least-cost hourly dispatch** across a full month
-of real Australian NEM market data, honouring contractual delivery obligations, shortfall
-allowances, penalty regimes, and market interaction caps.
+The underlying optimisation finds the **least-cost hourly dispatch** across the provided
+set of market data, honouring contractual delivery obligations, shortfall allowances, 
+penalty regimes, market interaction caps, and installation of wind, solar, and/or battery
+storage.
 
----
-## Planned capabilities of this toolkit
-| Capability | Description |
-|---|---|
-| **Portfolio modelling** | Wind + solar + battery storage co-located at a single aggregation point |
-| **PPA contract encoding** | Flat offtake loads, delivery obligations, shortfall caps, penalty multipliers |
-| **Market interaction** | Spot market buy/sell with configurable caps and bid-offer spreads |
-| **Linear optimisation** | HiGHS solver via PyPSA / Linopy for each 744-hour month |
-| **Financial analysis** | CAPEX, LCOE, IRR, NPV, and breakeven PPA price discovery |
-| **Scenario comparison** | Four predefined case studies plus full custom parameter control |
-
----
 ## How to use this toolkit
-1. **Introduction to PPAs** — read the key concepts and terminology if you're new to 
-   PPAs.
+1. **Introduction to PPAs** — introduce key concepts and terminology for newbies in the 
+   world of PPA.
 
 2. **Case Study Definition** — pick one of the four predefined case studies to load a
    starting scenario, then customise any parameters using the sliders and inputs below
-   the cards.
+   the cards to reflect your personal assumptions.
+    * *Portfolio modelling*: Wind + solar + battery storage co-located at a single aggregation point.
+    * *PPA contract encoding*: Flat offtake loads, delivery obligations, shortfall caps, penalty multipliers.
+    * *Market interaction*: Spot market buy/sell with configurable caps and bid-offer spreads.
+    * *Linear optimisation*: HiGHS solver via PyPSA / Linopy for each 744-hour month.
+    * *Financial analysis*: CAPEX, LCOE, IRR, NPV, and breakeven PPA price discovery.
+    * *Scenario comparison:* Four predefined case studies plus full custom parameter control.
 
-3. **Optimization** — review the scenario summary and click **Run Optimization** to solve
+
+3. **Optimization** — review the scenario summary and run the optimization to solve
    the model. This typically takes 5–15 seconds.
 
 4. **Results Overview** — explore key KPIs: PPA fulfilment rate, LCOE, net revenue, and

@@ -102,6 +102,24 @@ def render() -> None:
 
     st.markdown("---")
 
+    # ── Constraint compliance ──────────────────────────────────────────────────
+    st.markdown("---")
+    st.subheader("Constraint compliance")
+    allowed_limit = s.allowed_shortfall_share * summary.total_load_mwh
+    buy_limit = s.market_buy_share * summary.ppa_delivered_mwh
+
+    compliance = {
+        "Constraint": ["Allowed shortfall cap", "Market buy cap"],
+        "Actual (MWh)": [f"{summary.allowed_shortfall_mwh:,.0f}", f"{summary.market_buy_to_ppa_mwh:,.0f}"],
+        "Limit (MWh)": [f"{allowed_limit:,.0f}", f"{buy_limit:,.0f}"],
+        "Status": [
+            "✅ Satisfied" if summary.allowed_shortfall_mwh <= allowed_limit + 1 else "❌ Violated",
+            "✅ Satisfied" if summary.market_buy_to_ppa_mwh <= buy_limit + 1 else "❌ Violated",
+        ],
+    }
+    import pandas as pd
+    st.dataframe(pd.DataFrame(compliance), hide_index=True, width="stretch")
+
     # ── Dispatch summary table ─────────────────────────────────────────────────
     st.subheader("Dispatch summary")
 
@@ -179,21 +197,3 @@ def render() -> None:
             st.subheader("Revenue waterfall")
             fig_rev = make_revenue_breakdown_chart(revenue)
             st.plotly_chart(fig_rev, width="stretch", height=500)
-
-    # ── Constraint compliance ──────────────────────────────────────────────────
-    st.markdown("---")
-    st.subheader("Constraint compliance")
-    allowed_limit = s.allowed_shortfall_share * summary.total_load_mwh
-    buy_limit = s.market_buy_share * summary.ppa_delivered_mwh
-
-    compliance = {
-        "Constraint": ["Allowed shortfall cap", "Market buy cap"],
-        "Actual (MWh)": [f"{summary.allowed_shortfall_mwh:,.0f}", f"{summary.market_buy_to_ppa_mwh:,.0f}"],
-        "Limit (MWh)": [f"{allowed_limit:,.0f}", f"{buy_limit:,.0f}"],
-        "Status": [
-            "✅ Satisfied" if summary.allowed_shortfall_mwh <= allowed_limit + 1 else "❌ Violated",
-            "✅ Satisfied" if summary.market_buy_to_ppa_mwh <= buy_limit + 1 else "❌ Violated",
-        ],
-    }
-    import pandas as pd
-    st.dataframe(pd.DataFrame(compliance), hide_index=True, width="stretch")

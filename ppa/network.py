@@ -12,6 +12,9 @@ def build_network(ts: pd.DataFrame, scenario: Scenario) -> pypsa.Network:
     n = pypsa.Network()
     n.set_snapshots(ts.index)
 
+    # ── Carriers ─────────────────────────────────────────────────────────────────
+    n.add("Carrier", "AC")
+
     # ── Buses ─────────────────────────────────────────────────────────────────
     for bus_name in [
         "Bus_OnshoreWind",
@@ -21,7 +24,11 @@ def build_network(ts: pd.DataFrame, scenario: Scenario) -> pypsa.Network:
         "Bus_SellToMarket",
         "Bus_PPAOfftake",
     ]:
-        n.add("Bus", bus_name)
+        n.add(
+            "Bus", 
+            bus_name, 
+            carrier="AC"
+        )
 
     # ── Load ──────────────────────────────────────────────────────────────────
     n.add(

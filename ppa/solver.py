@@ -16,7 +16,9 @@ def solve(
     s = scenario
 
     # Two-step workflow: create_model() → inject constraints → solve_model()
-    m = n.optimize.create_model()
+    m = n.optimize.create_model(
+        include_objective_constant=True,
+    )
 
     gen_p = m.variables["Generator-p"]
     link_p = m.variables["Link-p"]
@@ -39,5 +41,8 @@ def solve(
             name="BuyFromMarket_Limit",
         )
 
-    status, condition = n.optimize.solve_model(solver_name=solver_name)
+    status, condition = n.optimize.solve_model(
+        solver_name=solver_name,
+        assign_all_duals=True,
+    )
     return status, condition
