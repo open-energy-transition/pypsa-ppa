@@ -4,7 +4,7 @@ import streamlit as st
 
 
 def render() -> None:
-    cols = st.columns([2, 1])
+    cols = st.columns([3, 1])
 
     with cols[0]:
         st.markdown(
