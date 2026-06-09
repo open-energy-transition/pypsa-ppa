@@ -126,7 +126,7 @@ def _render_data_section(lat: float, lon: float) -> None:
 
 # ── simulation config ─────────────────────────────────────────────────────────
 
-def _render_sim_config() -> tuple[int, float, float, int]:
+def _render_sim_config() -> tuple[int, float, float, float, float, float, int]:
     st.subheader("2. Simulation Configuration")
 
     col1, col2, col3, col4 = st.columns(4)
@@ -169,12 +169,65 @@ def _render_sim_config() -> tuple[int, float, float, int]:
             help="Number of years solved simultaneously (threads).",
         )
 
-    return int(sim_years), float(first_year), float(escalation) / 100.0, int(max_workers)
+    st.markdown("**Technology degradation** (compound annual rate applied from year 1)")
+    dcol1, dcol2, dcol3 = st.columns(3)
+    with dcol1:
+        pv_deg = st.number_input(
+            "Solar PV degradation (%/yr)",
+            min_value=0.0,
+            max_value=5.0,
+            value=st.session_state.get("my_pv_deg", 0.5),
+            step=0.05,
+            format="%.2f",
+            key="my_pv_deg",
+            help="Annual reduction in PV output. Industry standard: 0.5 %/yr.",
+        )
+    with dcol2:
+        wind_deg = st.number_input(
+            "Wind degradation (%/yr)",
+            min_value=0.0,
+            max_value=5.0,
+            value=st.session_state.get("my_wind_deg", 0.5),
+            step=0.05,
+            format="%.2f",
+            key="my_wind_deg",
+            help="Annual reduction in wind output. Industry standard: 0.5 %/yr.",
+        )
+    with dcol3:
+        bess_deg = st.number_input(
+            "BESS capacity degradation (%/yr)",
+            min_value=0.0,
+            max_value=10.0,
+            value=st.session_state.get("my_bess_deg", 2.0),
+            step=0.1,
+            format="%.1f",
+            key="my_bess_deg",
+            help="Annual reduction in usable BESS energy capacity. Industry standard: 2.0 %/yr.",
+        )
+
+    return (
+        int(sim_years),
+        float(first_year),
+        float(escalation) / 100.0,
+        float(pv_deg) / 100.0,
+        float(wind_deg) / 100.0,
+        float(bess_deg) / 100.0,
+        int(max_workers),
+    )
 
 
 # ── run + progress ────────────────────────────────────────────────────────────
 
-def _run_simulation(scenario, sim_years: int, first_year: int, escalation: float, max_workers: int) -> None:
+def _run_simulation(
+    scenario,
+    sim_years: int,
+    first_year: int,
+    escalation: float,
+    pv_deg: float,
+    wind_deg: float,
+    bess_deg: float,
+    max_workers: int,
+) -> None:
     lat, lon = scenario.lat, scenario.lon
 
     # Load cached data
@@ -192,6 +245,9 @@ def _run_simulation(scenario, sim_years: int, first_year: int, escalation: float
         scenario,
         simulation_years=sim_years,
         price_escalation_rate=escalation,
+        pv_degradation_rate=pv_deg,
+        wind_degradation_rate=wind_deg,
+        bess_degradation_rate=bess_deg,
     )
 
     from ppa.data import renewables_ninja as rn
@@ -378,7 +434,7 @@ def render() -> None:
     _render_data_section(scenario.lat, scenario.lon)
 
     st.markdown("---")
-    sim_years, first_year, escalation, max_workers = _render_sim_config()
+    sim_years, first_year, escalation, pv_deg, wind_deg, bess_deg, max_workers = _render_sim_config()
 
     st.markdown("---")
     st.subheader("3. Run Simulation")
@@ -397,7 +453,7 @@ def render() -> None:
             st.success(f"Last run: **{len(results)} years** solved.")
 
     if run_clicked:
-        _run_simulation(scenario, sim_years, first_year, escalation, max_workers)
+        _run_simulation(scenario, sim_years, first_year, escalation, pv_deg, wind_deg, bess_deg, max_workers)
         st.rerun()
 
     if state.has_multi_year_financial():

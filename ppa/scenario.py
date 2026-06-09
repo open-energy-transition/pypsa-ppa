@@ -48,6 +48,11 @@ class Scenario:
     simulation_years: int = 25
     price_escalation_rate: float = 0.02  # annual escalation applied to base market prices
 
+    # Technology degradation (compound per year, applied from year 1 onward)
+    pv_degradation_rate: float = 0.005    # 0.5%/yr — industry standard for crystalline Si
+    wind_degradation_rate: float = 0.005  # 0.5%/yr
+    bess_degradation_rate: float = 0.020  # 2.0%/yr usable capacity fade
+
     # European location (lat/lon for renewables.ninja CF downloads)
     lat: float = 51.5
     lon: float = 10.0
