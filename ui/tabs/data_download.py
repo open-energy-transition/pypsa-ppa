@@ -44,7 +44,7 @@ def render() -> None:
         st.markdown(f"**{lat:.2f}°N, {lon:.2f}°E**")
         st.caption(
             "Change the location in the *Project Location* section of the scenario form "
-            "(**Case Study & Simulation** → Customise parameters → Project Location)."
+            "(**Case Study Definition** → Customise parameters → Project Location)."
         )
     with col_map:
         st.map(pd.DataFrame({"lat": [lat], "lon": [lon]}), zoom=4)

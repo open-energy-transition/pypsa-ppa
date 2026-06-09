@@ -17,7 +17,9 @@ from ui.charts import (
 
 def _no_results_message() -> None:
     st.info(
-        "No optimization results yet. Go to the **Optimization** tab and click **Run Optimization**.",
+        "No single-day results yet. This tab shows hourly dispatch detail from the "
+        "**Single-day reference optimization** in the Optimization tab — expand that section "
+        "and click **▶ Run Single-Day** to populate it.",
         icon="⚙️",
     )
 
