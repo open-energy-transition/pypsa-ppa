@@ -7,6 +7,8 @@ from typing import Any
 
 import pandas as pd
 
+from ppa.industrial_profiles import PROFILE_KEYS
+
 
 @dataclass
 class Scenario:
@@ -35,6 +37,7 @@ class Scenario:
 
     # PPA contract terms
     ppaload_mw: float = 100.0
+    load_profile: str = "flat"  # key into ppa.industrial_profiles.PROFILE_INFO
     ppa_price: float = 100.0
     pen_mult: float = 1.5
     required_delivery_share: float = 0.75
@@ -120,13 +123,14 @@ CASE_STUDIES: list[CaseStudy] = [
     CaseStudy(
         id="foundation_deal",
         name="The Foundation Deal",
-        subtitle="Wind-dominant portfolio, no storage",
+        subtitle="Cement plant offtaker, wind-dominant, no storage",
         icon="⚓",
         storyline=(
-            "A first-mover IPP signs a 10-year PPA with an industrial offtaker at €90/MWh. "
+            "A first-mover IPP signs a 10-year PPA with a cement plant at €90/MWh. "
             "The portfolio is wind-dominant with no storage and no market flexibility — a pure baseline "
-            "to understand penalty exposure when obligations are hard to meet without smoothing. "
-            "Can onshore wind alone deliver 70% of a flat 100 MW load across a full year in central Europe?"
+            "to understand penalty exposure. The cement load runs near-continuous but drops sharply "
+            "during its Sunday maintenance window. Can onshore wind alone hit a 70% delivery obligation "
+            "against this near-baseload industrial demand in central Europe?"
         ),
         overrides={
             "name": "The Foundation Deal",
@@ -141,18 +145,20 @@ CASE_STUDIES: list[CaseStudy] = [
             "required_delivery_share": 0.70,
             "market_buy_share": 0.0,
             "pen_mult": 1.5,
+            "load_profile": "cement_plant",
         },
     ),
     CaseStudy(
         id="solar_bess",
         name="Solar + Storage Play",
-        subtitle="PV-heavy with large 4h BESS, no market buy",
+        subtitle="Green H₂ electrolyser offtaker, PV-heavy with 4h BESS",
         icon="☀️",
         storyline=(
-            "A developer pairs a large PV array with a 4-hour BESS to shift afternoon generation into "
-            "the evening PPA demand window. Market purchases are disabled to maintain renewable additionality. "
-            "At central-European solar CFs (~12%), nighttime delivery is a structural challenge — this scenario "
-            "illustrates where BESS alone falls short and highlights the value of a southern-European location."
+            "A developer pairs a large PV array with a 4-hour BESS serving a green hydrogen electrolyser. "
+            "The electrolyser's flexible demand naturally aligns with solar generation — ramping up at midday "
+            "and backing off during evening grid peaks — making it an ideal PPA offtaker for a solar-heavy portfolio. "
+            "Market purchases are disabled to maintain renewable additionality. "
+            "Does the demand flexibility of the electrolyser help or hinder delivery obligations compared to flat load?"
         ),
         overrides={
             "name": "Solar + Storage Play",
@@ -166,19 +172,20 @@ CASE_STUDIES: list[CaseStudy] = [
             "ppa_price": 90.0,
             "required_delivery_share": 0.75,
             "market_buy_share": 0.0,
+            "load_profile": "green_hydrogen",
         },
     ),
     CaseStudy(
         id="merchant_hybrid",
         name="Merchant Hybrid",
-        subtitle="High obligation, 2× penalty, generous market buy",
+        subtitle="Steel EAF offtaker, high obligation, 2× penalty",
         icon="📈",
         storyline=(
-            "An aggressive IPP structure maximises merchant upside with a 90% delivery obligation "
-            "and a generous 15% market buy allowance to always fulfil. "
+            "An aggressive IPP structure serves a steel Electric Arc Furnace (EAF) with a 90% delivery obligation "
+            "and a generous 15% market buy allowance. The EAF's batch melting cycles create highly variable demand — "
+            "spiking at ~95% during each heat then dropping to ~15% between charges. "
             "The penalty regime is strict at 2× the tariff. "
-            "This scenario tests the optimizer under European spot price volatility: "
-            "is the revenue uplift from market sales worth the risk?"
+            "Does the optimizer exploit the EAF's idle periods for market sales, and can BESS bridge the delivery gaps?"
         ),
         overrides={
             "name": "Merchant Hybrid",
@@ -194,6 +201,7 @@ CASE_STUDIES: list[CaseStudy] = [
             "market_buy_share": 0.15,
             "pen_mult": 2.0,
             "market_spread": 0.50,
+            "load_profile": "steel_eaf",
         },
     ),
     CaseStudy(
@@ -203,9 +211,10 @@ CASE_STUDIES: list[CaseStudy] = [
         icon="🏢",
         storyline=(
             "A European corporation signs a 15-year virtual PPA for its data-centre fleet at €105/MWh. "
-            "The offtaker demands 90% delivery and limits market supplementation to just 1% "
-            "to preserve RE additionality claims. "
-            "Can a balanced wind + solar + BESS portfolio hit a 90% SLA with almost no market flexibility?"
+            "The data-centre load is near-flat with a modest business-hours peak — a demanding obligation "
+            "for an RE portfolio. Market supplementation is capped at 1% to preserve additionality claims. "
+            "Can a balanced wind + solar + BESS portfolio hit a 90% SLA against a near-constant high load "
+            "with almost no market flexibility?"
         ),
         overrides={
             "name": "Corporate PPA",
@@ -220,6 +229,7 @@ CASE_STUDIES: list[CaseStudy] = [
             "required_delivery_share": 0.90,
             "market_buy_share": 0.01,
             "pen_mult": 1.2,
+            "load_profile": "data_center",
         },
     ),
 ]
@@ -249,6 +259,8 @@ def validate_scenario(s: Scenario, available_days: list[str] | None = None) -> l
         errors.append("Required delivery share must be between 0 and 1.")
     if s.onsw_mw == 0 and s.pv_mw == 0:
         errors.append("At least one generation asset (wind or solar) must have capacity > 0.")
+    if s.load_profile not in PROFILE_KEYS:
+        errors.append(f"Unknown load profile '{s.load_profile}'. Valid options: {PROFILE_KEYS}")
     if available_days and s.chosen_day not in available_days:
         errors.append(f"chosen_day '{s.chosen_day}' is not present in the timeseries data.")
     return errors

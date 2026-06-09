@@ -92,6 +92,7 @@ def run_multi_year(
             base_prices=base_prices,
             base_price_year=base_price_year,
             price_escalation_rate=scenario.price_escalation_rate,
+            load_profile=scenario.load_profile,
         )
         timeseries_by_idx[idx] = ts
         scenario_by_idx[idx] = degraded

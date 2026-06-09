@@ -5,6 +5,7 @@ import pandas as pd
 
 from ppa.data.entsoe_client import get_prices_for_sim_year
 from ppa.data.renewables_ninja import AVAILABLE_YEARS
+from ppa.industrial_profiles import get_load_series
 
 
 def build_year_timeseries(
@@ -16,6 +17,7 @@ def build_year_timeseries(
     base_prices: pd.Series,
     base_price_year: int,
     price_escalation_rate: float,
+    load_profile: str = "flat",
 ) -> pd.DataFrame:
     """
     Build a full-year hourly timeseries ready for build_network / solve.
@@ -43,12 +45,14 @@ def build_year_timeseries(
     # PyPSA requires timezone-naive snapshots; strip UTC tz while keeping UTC semantics
     naive_index = year_index.tz_localize(None)
 
+    profile = get_load_series(load_profile, naive_index)
+
     ts = pd.DataFrame(
         {
             "ts_PVGen": pv_series.values,
             "ts_WindGen": wind_series.values,
             "ts_MktPrice": price_series.values,
-            "ppaload_mw": ppa_load_mw,
+            "ppaload_mw": (profile * ppa_load_mw).values,
         },
         index=naive_index,
     )

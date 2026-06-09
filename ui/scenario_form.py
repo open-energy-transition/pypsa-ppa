@@ -6,6 +6,7 @@ import pandas as pd
 import streamlit as st
 
 from ppa.data_loader import get_available_days
+from ppa.industrial_profiles import PROFILE_INFO, PROFILE_KEYS
 from ppa.scenario import Scenario
 from ui import state
 
@@ -40,9 +41,28 @@ def render_scenario_form(initial: Scenario) -> Scenario:
     with st.expander("PPA contract terms", expanded=True):
         cols = st.columns(4)
         ppaload_mw = cols[0].number_input("PPA offtake load (MW)", min_value=1.0, max_value=1000.0,
-                                           value=float(initial.ppaload_mw), step=10.0, key="sf_ppaload_mw")
+                                           value=float(initial.ppaload_mw), step=10.0, key="sf_ppaload_mw",
+                                           help="Peak rated MW. The load profile shapes how much of this is demanded each hour.")
         ppa_price = cols[1].number_input("PPA tariff ($/MWh)", min_value=1.0, max_value=500.0,
                                           value=float(initial.ppa_price), step=5.0, key="sf_ppa_price")
+
+        # ── Load profile selector ─────────────────────────────────────────────
+        st.markdown("**Offtaker load profile**")
+        _profile_labels = [f"{PROFILE_INFO[k]['icon']} {PROFILE_INFO[k]['label']}" for k in PROFILE_KEYS]
+        _current_idx = PROFILE_KEYS.index(initial.load_profile) if initial.load_profile in PROFILE_KEYS else 0
+        profile_cols = st.columns([2, 3])
+        _selected_label = profile_cols[0].selectbox(
+            "Profile type",
+            options=_profile_labels,
+            index=_current_idx,
+            key="sf_load_profile",
+            label_visibility="collapsed",
+        )
+        load_profile = PROFILE_KEYS[_profile_labels.index(_selected_label)]
+        _info = PROFILE_INFO[load_profile]
+        profile_cols[1].caption(
+            f"**Typical load factor: {_info['typical_lf']}** — {_info['description']}"
+        )
         required_delivery_share = cols[2].slider(
             "Required delivery share (%)", 50, 100, int(initial.required_delivery_share * 100),
             step=5, format="%d%%",
@@ -187,6 +207,7 @@ def render_scenario_form(initial: Scenario) -> Scenario:
         bess_mw=float(bess_mw) if include_bess else 0.0,
         bess_mwh=float(bess_mwh) if include_bess else 0.0,
         ppaload_mw=float(ppaload_mw),
+        load_profile=load_profile,
         ppa_price=float(ppa_price),
         required_delivery_share=float(required_delivery_share),
         pen_mult=float(pen_mult),
