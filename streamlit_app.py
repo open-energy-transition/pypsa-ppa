@@ -30,7 +30,7 @@ st.markdown(
 tabs = st.tabs([
     "🏠 Welcome",
     "📖 Introduction to PPAs",
-    "🔬 Case Study & Simulation",
+    "🔬 Case Study Definition",
     "📡 Download Data",
     "⚙️ Optimization",
     "📊 Results Overview",

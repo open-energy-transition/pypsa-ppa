@@ -1,48 +1,42 @@
+"""Optimization tab — run European simulation or single-day reference optimization."""
 from __future__ import annotations
 
+import pandas as pd
+import plotly.graph_objects as go
 import streamlit as st
 
-from ppa.data_loader import find_default_csv, load_timeseries, prepare_timeseries
-from ppa.counterfactuals import compute_counterfactuals
-from ppa.financials import run_financial_analysis
-from ppa.network import build_network
-from ppa.results import extract_results
 from ppa.scenario import BASE_SCENARIO, validate_scenario
-from ppa.solver import solve
 from ui import state
 
 
+# ── timeseries loader (single-day CSV path) ───────────────────────────────────
+
 @st.cache_data
 def _cached_load_timeseries(csv_path: str):
+    from ppa.data_loader import load_timeseries
     return load_timeseries(csv_path)
 
 
-def _ensure_timeseries() -> bool:
+def _get_timeseries():
     if state.has_timeseries():
-        return True
+        return state.get_timeseries()
+    from ppa.data_loader import find_default_csv
     csv_path = find_default_csv()
     if csv_path is None:
-        st.error("Could not find `data/march_2025_pypsa_timeseries.csv`. Check the `data/` folder.")
-        return False
+        return None
     ts = _cached_load_timeseries(str(csv_path))
     state.set_timeseries(ts)
-    return True
+    return ts
 
+
+# ── scenario summary ──────────────────────────────────────────────────────────
 
 def _render_scenario_summary(s) -> None:
     st.subheader("Scenario summary")
-    cols = st.columns(4)
-    with cols[0]:
+
+    c1, c2, c3, c4 = st.columns(4)
+    with c1:
         st.markdown("**Portfolio**")
-
-    with cols[1]:
-        st.markdown("**PPA contract**")
-
-    with cols[3]:
-        st.markdown("**Market interaction**")
-
-    cols = st.columns(4)
-    with cols[0]:
         st.markdown(f"- Wind: **{s.onsw_mw:.0f} MW**")
         st.markdown(f"- Solar: **{s.pv_mw:.0f} MWac**")
         if s.include_bess:
@@ -50,99 +44,322 @@ def _render_scenario_summary(s) -> None:
         else:
             st.markdown("- BESS: *disabled*")
 
-    with cols[1]:
-        st.markdown(f"- Offtake load: **{s.ppaload_mw:.0f} MW** (flat)")
-        st.markdown(f"- Tariff: **${s.ppa_price:.0f}/MWh**")
-
-    with cols[2]:
-        st.markdown(f"- Required delivery: **{s.required_delivery_share:.0%}** of total load")
+    with c2:
+        st.markdown("**PPA contract**")
+        st.markdown(f"- Offtake: **{s.ppaload_mw:.0f} MW** flat")
+        st.markdown(f"- Tariff: **€{s.ppa_price:.0f}/MWh**")
+        st.markdown(f"- Required delivery: **{s.required_delivery_share:.0%}**")
         if s.enable_penalty:
-            st.markdown(f"- Penalty: **{s.pen_mult:.1f}× tariff** = ${s.penalty_price:.0f}/MWh")
+            st.markdown(f"- Penalty: **{s.pen_mult:.1f}×** = €{s.penalty_price:.0f}/MWh")
         else:
-            st.markdown("- Penalty regime: *disabled*")
+            st.markdown("- Penalty: *disabled*")
 
-    with cols[3]:
+    with c3:
+        st.markdown("**Market interaction**")
         if s.enable_market_buy:
-            st.markdown(f"- Market buy cap: **{s.market_buy_share:.0%}** of delivery")
+            st.markdown(f"- Buy cap: **{s.market_buy_share:.0%}** of delivery")
         else:
             st.markdown("- Market buy: *disabled*")
         if s.enable_market_sell:
-            st.markdown(f"- Market sell: enabled (max {s.maxsell_mw:.0f} MW)")
+            st.markdown(f"- Sell: enabled (max {s.maxsell_mw:.0f} MW)")
         else:
             st.markdown("- Market sell: *disabled*")
         if s.enable_shortfall:
-            st.markdown(f"- Shortfall allowance: **{s.allowed_shortfall_share:.0%}** of total load")
+            st.markdown(f"- Shortfall: **{s.allowed_shortfall_share:.0%}** of load")
         else:
-            st.markdown("- Shortfall allowance: *disabled*")
+            st.markdown("- Shortfall: *disabled*")
 
+    with c4:
+        st.markdown("**Simulation**")
+        st.markdown(f"- Location: **{s.lat:.2f}°N, {s.lon:.2f}°E**")
+        if s.simulation_years == 1:
+            st.markdown(f"- Mode: **1-year** ({s.first_sim_year})")
+        else:
+            st.markdown(
+                f"- Mode: **{s.simulation_years}-year** "
+                f"({s.first_sim_year}–{s.first_sim_year + s.simulation_years - 1})"
+            )
+        st.markdown(f"- Price escalation: **{s.price_escalation_rate:.1%}/yr**")
+        st.markdown(
+            f"- Degradation: PV {s.pv_degradation_rate:.1%} | "
+            f"Wind {s.wind_degradation_rate:.1%} | "
+            f"BESS {s.bess_degradation_rate:.1%}"
+        )
+
+
+# ── data status (compact) ─────────────────────────────────────────────────────
+
+def _render_data_status(lat: float, lon: float) -> tuple[bool, bool]:
+    from ppa.data.entsoe_client import is_cached
+    from ppa.data.renewables_ninja import list_cached_years, AVAILABLE_YEARS
+
+    prices_ok = is_cached(2024)
+    cached_years = list_cached_years(lat=lat, lon=lon)
+    cf_ok = len(cached_years) > 0
+
+    c1, c2 = st.columns(2)
+    with c1:
+        if prices_ok:
+            st.success("ENTSO-E 2024 prices: cached ✓")
+        else:
+            st.warning("ENTSO-E 2024 prices: not downloaded — go to **Download Data** tab")
+    with c2:
+        if cf_ok:
+            missing = [y for y in AVAILABLE_YEARS if y not in cached_years]
+            label = f"CF profiles: {len(cached_years)}/{len(AVAILABLE_YEARS)} years cached"
+            if missing:
+                st.warning(f"{label} (missing: {missing})")
+            else:
+                st.success(f"{label} ✓")
+        else:
+            st.warning(f"No CF profiles cached for ({lat:.2f}, {lon:.2f}) — go to **Download Data** tab")
+    return prices_ok, cf_ok
+
+
+# ── European simulation runner ────────────────────────────────────────────────
+
+def _run_eu_simulation(scenario, max_workers: int) -> None:
+    from ppa.data import renewables_ninja as rn
+    from ppa.data.entsoe_client import fetch_day_ahead_prices
+    from ppa.multi_year import run_multi_year
+    from ppa.financials import run_multi_year_financial_analysis
+
+    lat, lon = scenario.lat, scenario.lon
+    cached_years = rn.list_cached_years(lat=lat, lon=lon)
+    pv_by_year: dict[int, pd.Series] = {}
+    wind_by_year: dict[int, pd.Series] = {}
+    for year in cached_years:
+        pv_by_year[year] = rn.download_pv_cf(year, "", lat=lat, lon=lon)
+        wind_by_year[year] = rn.download_wind_cf(year, "", lat=lat, lon=lon)
+    base_prices = fetch_day_ahead_prices(2024, "")
+
+    progress_bar = st.progress(0, text="Starting simulation…")
+    status_text = st.empty()
+
+    def _on_progress(done: int, total: int, sim_year: int) -> None:
+        progress_bar.progress(done / total, text=f"Year {sim_year} ({done}/{total})")
+        status_text.text(f"Solved {done} of {total} year(s)…")
+
+    results = run_multi_year(
+        scenario=scenario,
+        pv_cf_by_year=pv_by_year,
+        wind_cf_by_year=wind_by_year,
+        base_prices=base_prices,
+        base_price_year=2024,
+        first_sim_year=scenario.first_sim_year,
+        max_workers=max_workers,
+        progress_callback=_on_progress,
+    )
+    state.set_multi_year_results(results)
+
+    fin = run_multi_year_financial_analysis(
+        scenario, results, first_sim_year=scenario.first_sim_year
+    )
+    state.set_multi_year_financial(fin)
+
+    progress_bar.progress(1.0, text="Simulation complete!")
+    status_text.success(f"Completed {scenario.simulation_years} year(s) successfully.")
+
+
+# ── multi-year results display ────────────────────────────────────────────────
+
+def _render_eu_results(fin, n_years: int) -> None:
+    st.subheader("Simulation results")
+
+    c1, c2, c3, c4, c5 = st.columns(5)
+    irr_str = f"{fin.irr:.1%}" if fin.irr == fin.irr else "N/A"
+    lcoe_str = f"€{fin.lcoe:.1f}/MWh" if fin.lcoe == fin.lcoe else "N/A"
+    payback_str = f"{fin.simple_payback:.1f} yrs" if fin.simple_payback < 1e8 else "N/A"
+    c1.metric("NPV", f"€{fin.npv/1e6:.1f}M")
+    c2.metric("Project IRR", irr_str)
+    c3.metric("LCOE", lcoe_str)
+    c4.metric("Simple Payback", payback_str)
+    c5.metric("Lifetime Net Revenue", f"€{fin.total_lifetime_revenue/1e6:.1f}M")
+
+    if n_years == 1:
+        y = fin.yearly[0]
+        st.caption(
+            f"Year {y.year} — PPA revenue €{y.ppa_revenue/1e6:.2f}M | "
+            f"Merchant €{y.merch_revenue/1e6:.2f}M | "
+            f"Delivery {y.fulfilled_share:.1%} | "
+            f"Net CF €{y.net_cashflow/1e6:.2f}M"
+        )
+        return
+
+    tab_charts, tab_table = st.tabs(["Charts", "Year-by-Year Table"])
+    with tab_charts:
+        _render_npv_chart(fin)
+        _render_revenue_chart(fin)
+        _render_delivery_chart(fin)
+    with tab_table:
+        _render_yearly_table(fin)
+
+
+def _render_npv_chart(fin) -> None:
+    years = [y.year for y in fin.yearly]
+    fig = go.Figure()
+    fig.add_trace(go.Scatter(
+        x=years, y=[v / 1e6 for v in fin.cumulative_npv],
+        mode="lines+markers", name="Cumulative NPV",
+        line=dict(color="#2196F3", width=2),
+    ))
+    fig.add_hline(y=0, line_dash="dash", line_color="gray")
+    fig.update_layout(
+        title="Cumulative NPV over Project Life",
+        xaxis_title="Year", yaxis_title="NPV (€M)", height=350,
+    )
+    st.plotly_chart(fig, use_container_width=True)
+
+
+def _render_revenue_chart(fin) -> None:
+    years = [y.year for y in fin.yearly]
+    fig = go.Figure()
+    fig.add_trace(go.Bar(x=years, y=[y.ppa_revenue / 1e6 for y in fin.yearly], name="PPA revenue"))
+    fig.add_trace(go.Bar(x=years, y=[y.merch_revenue / 1e6 for y in fin.yearly], name="Merchant revenue"))
+    fig.add_trace(go.Bar(x=years, y=[-y.market_buy_cost / 1e6 for y in fin.yearly], name="Market buy cost"))
+    fig.add_trace(go.Bar(x=years, y=[-y.penalty_cost / 1e6 for y in fin.yearly], name="Penalty cost"))
+    fig.add_trace(go.Bar(x=years, y=[-y.opex / 1e6 for y in fin.yearly], name="OPEX"))
+    fig.update_layout(
+        barmode="relative", title="Annual Revenue Breakdown",
+        xaxis_title="Year", yaxis_title="€M", height=400,
+    )
+    st.plotly_chart(fig, use_container_width=True)
+
+
+def _render_delivery_chart(fin) -> None:
+    years = [y.year for y in fin.yearly]
+    fig = go.Figure()
+    fig.add_trace(go.Scatter(
+        x=years, y=[y.fulfilled_share * 100 for y in fin.yearly],
+        mode="lines+markers", name="PPA Delivery Rate",
+        line=dict(color="#4CAF50", width=2),
+    ))
+    fig.update_layout(
+        title="PPA Delivery Rate by Year",
+        xaxis_title="Year", yaxis_title="Delivery Rate (%)",
+        yaxis=dict(range=[0, 105]), height=300,
+    )
+    st.plotly_chart(fig, use_container_width=True)
+
+
+def _render_yearly_table(fin) -> None:
+    rows = [
+        {
+            "Year": y.year,
+            "PPA Revenue (€M)": round(y.ppa_revenue / 1e6, 2),
+            "Merchant Revenue (€M)": round(y.merch_revenue / 1e6, 2),
+            "Market Buy Cost (€M)": round(y.market_buy_cost / 1e6, 2),
+            "Penalty Cost (€M)": round(y.penalty_cost / 1e6, 2),
+            "OPEX (€M)": round(y.opex / 1e6, 2),
+            "Net Cash Flow (€M)": round(y.net_cashflow / 1e6, 2),
+            "Delivery Rate (%)": round(y.fulfilled_share * 100, 1),
+            "Wind Gen (GWh)": round(y.wind_gen_mwh / 1e3, 1),
+            "PV Gen (GWh)": round(y.pv_gen_mwh / 1e3, 1),
+        }
+        for y in fin.yearly
+    ]
+    st.dataframe(pd.DataFrame(rows).set_index("Year"), use_container_width=True)
+
+
+# ── main render ───────────────────────────────────────────────────────────────
 
 def render() -> None:
     st.title("⚙️ Optimization")
 
-    if not _ensure_timeseries():
-        return
-
-    # Use base scenario if none selected yet
     if not state.has_scenario():
         state.set_scenario(BASE_SCENARIO)
-
     s = state.get_scenario()
-
-    # Validation
-    ts = state.get_timeseries()
-    from ppa.data_loader import get_available_days
-    errors = validate_scenario(s, available_days=get_available_days(ts))
 
     _render_scenario_summary(s)
     st.markdown("---")
 
-    if errors:
-        for err in errors:
-            st.error(err)
-        st.warning("Fix the above issues in the **Case Study Definition** tab before running.")
-        return
+    # ── European simulation ───────────────────────────────────────────────────
+    st.subheader("European simulation")
+    prices_ok, cf_ok = _render_data_status(s.lat, s.lon)
+    data_ready = prices_ok and cf_ok
 
-    cols = st.columns(4)
-    with cols[0]:
-        run_clicked = st.button(
-            "▶ Run Optimization", 
-            type="primary", 
-            width="stretch"
+    run_col, workers_col, status_col = st.columns([2, 1, 3])
+    with workers_col:
+        max_workers = st.selectbox(
+            "Parallel workers", [1, 2, 4, 6, 8], index=2, key="opt_max_workers",
+            help="Threads used for multi-year solving. Ignored for single-year runs.",
         )
-    with cols[1]:
-        if state.has_result():
-            r = state.get_result()
-            st.success(
-                f"Last run: status **{r.solver_status}** — "
-                f"condition **{r.solver_condition}**. "
-            )
-
-    if run_clicked:
-        with st.spinner("Building network and solving with HiGHS… (typically 5–15 seconds/year of simulation)"):
-            try:
-                ts_prepared = prepare_timeseries(ts, s)
-                n = build_network(ts_prepared, s)
-                status, condition = solve(n, s, ts_prepared)
-                result = extract_results(n, s, ts_prepared, status, condition)
-                state.set_result(result)
-
-                if s.run_financial_analysis:
-                    fin = run_financial_analysis(
-                        s, result.summary, result.revenue, result.n_period_hours
-                    )
-                    state.set_financial(fin)
-
-                if s.enable_counterfactual:
-                    cf = compute_counterfactuals(ts_prepared, s, result)
-                    state.set_counterfactual(cf)
-
-            except Exception as exc:
-                st.error(f"Optimization failed: {exc}")
-                return
-
-        st.success(
-            f"Optimization complete — solver: **{status}**, condition: **{condition}**. "
+    with run_col:
+        eu_run = st.button(
+            "▶ Run Simulation",
+            type="primary",
+            width="stretch",
+            key="opt_run_eu",
+            disabled=not data_ready,
         )
-        st.write(
-            "Navigate to the Results tabs."
+    with status_col:
+        if not data_ready:
+            st.warning("Download data first (see **Download Data** tab).")
+        elif state.has_multi_year_results():
+            n_done = len(state.get_multi_year_results())
+            st.success(f"Last run: {n_done} year(s) solved.")
+
+    if eu_run and data_ready:
+        try:
+            _run_eu_simulation(s, int(max_workers))
+        except Exception as exc:
+            st.error(f"Simulation failed: {exc}")
+        else:
+            st.rerun()
+
+    if state.has_multi_year_financial():
+        st.markdown("---")
+        _render_eu_results(state.get_multi_year_financial(), s.simulation_years)
+
+    # ── Single-day reference optimization (CSV-based) ─────────────────────────
+    st.markdown("---")
+    with st.expander("Single-day reference optimization (CSV-based)", expanded=False):
+        st.caption(
+            "Runs the LP on a single reference day from the bundled CSV timeseries. "
+            "Results feed the Results Overview, Results Deep Dive, and analysis tabs."
         )
+        ts = _get_timeseries()
+        if ts is None:
+            st.error("Could not find `data/march_2025_pypsa_timeseries.csv`. Check the `data/` folder.")
+        else:
+            from ppa.data_loader import get_available_days
+            errors = validate_scenario(s, available_days=get_available_days(ts))
+            if errors:
+                for err in errors:
+                    st.error(err)
+                st.warning("Fix the above issues in **Case Study Definition** before running.")
+            else:
+                c1, c2 = st.columns([1, 3])
+                with c1:
+                    single_run = st.button("▶ Run Single-Day", type="secondary", width="stretch", key="opt_run_single")
+                with c2:
+                    if state.has_result():
+                        r = state.get_result()
+                        st.success(f"Last run: **{r.solver_status}** / **{r.solver_condition}**")
+
+                if single_run:
+                    with st.spinner("Solving… (typically 5–15 s)"):
+                        try:
+                            from ppa.data_loader import prepare_timeseries
+                            from ppa.network import build_network
+                            from ppa.solver import solve
+                            from ppa.results import extract_results
+                            from ppa.financials import run_financial_analysis
+                            from ppa.counterfactuals import compute_counterfactuals
+
+                            ts_prep = prepare_timeseries(ts, s)
+                            n = build_network(ts_prep, s)
+                            status, condition = solve(n, s, ts_prep)
+                            result = extract_results(n, s, ts_prep, status, condition)
+                            state.set_result(result)
+
+                            if s.run_financial_analysis:
+                                fin = run_financial_analysis(s, result.summary, result.revenue, result.n_period_hours)
+                                state.set_financial(fin)
+                            if s.enable_counterfactual:
+                                cf = compute_counterfactuals(ts_prep, s, result)
+                                state.set_counterfactual(cf)
+                        except Exception as exc:
+                            st.error(f"Optimization failed: {exc}")
+                        else:
+                            st.success(f"Complete — {status} / {condition}. See Results tabs.")
