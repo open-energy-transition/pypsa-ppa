@@ -29,11 +29,11 @@ def render_scenario_form(initial: Scenario) -> Scenario:
         pv_mw = cols[1].slider("Solar PV (MWac)", 0, max_cap_per_technology, int(initial.pv_mw), step=10, key="sf_pv_mw")
         bess_mw = cols[2].slider(
             "BESS power (MW)", 0, max_cap_per_technology, int(initial.bess_mw), step=10,
-            disabled=not include_bess, key="sf_bess_mw"
+            key="sf_bess_mw"
         )
         bess_mwh = cols[3].slider(
             "BESS energy (MWh)", 0, max_cap_per_technology*max_bes_hours, int(initial.bess_mwh), step=20,
-            disabled=not include_bess, key="sf_bess_mwh"
+            key="sf_bess_mwh"
         )
 
     with st.expander("PPA contract terms", expanded=True):
@@ -51,7 +51,7 @@ def render_scenario_form(initial: Scenario) -> Scenario:
         pen_mult = cols[3].number_input(
             "Penalty multiplier (×tariff)", min_value=1.0, max_value=5.0,
             value=float(initial.pen_mult), step=0.1,
-            disabled=not enable_penalty, key="sf_pen_mult",
+            key="sf_pen_mult",
         )
 
     with st.expander("Market interaction", expanded=True):
@@ -59,7 +59,7 @@ def render_scenario_form(initial: Scenario) -> Scenario:
         market_buy_share = cols[0].slider(
             "Market buy cap (% of delivery)", 0, 100,
             int(initial.market_buy_share * 100), step=1, format="%d%%",
-            disabled=not enable_market_buy, key="sf_market_buy_share",
+            key="sf_market_buy_share",
         ) / 100.0
         market_spread = cols[1].number_input(
             "Bid-offer spread ($/MWh)", min_value=0.0, max_value=10.0,
@@ -74,7 +74,7 @@ def render_scenario_form(initial: Scenario) -> Scenario:
                                               float(initial.pv_capex_per_kw), 50.0, key="sf_pv_capex")
         bess_capex_per_kwh = cols[2].number_input("BESS CAPEX ($/kWh)", 100.0, 2000.0,
                                                 float(initial.bess_capex_per_kwh), 25.0,
-                                                disabled=not include_bess, key="sf_bess_capex")
+                                                key="sf_bess_capex")
         opex_rate = cols[3].number_input("Annual OPEX (% of CAPEX)", 0.5, 10.0,
                                        float(initial.opex_rate * 100), 0.1, format="%.1f",
                                        key="sf_opex_rate") / 100.0
@@ -100,14 +100,14 @@ def render_scenario_form(initial: Scenario) -> Scenario:
             "CAL Y+1 forward price ($/MWh)",
             min_value=0.0, max_value=500.0,
             value=float(initial.cal_forward_price), step=5.0,
-            disabled=not enable_counterfactual, key="sf_cal_forward_price",
+            key="sf_cal_forward_price",
             help="Flat baseload forward price for the next calendar year (e.g. ASX Cal 26 Base NSW).",
         )
         cal_hedge_fraction = cols[2].slider(
             "Hedge fraction (%)", 0, 100,
             int(initial.cal_hedge_fraction * 100),
             step=5, format="%d%%",
-            disabled=not enable_counterfactual, key="sf_cal_hedge_fraction",
+            key="sf_cal_hedge_fraction",
             help="Share of load hedged at CAL Y+1; remainder sourced at spot.",
         ) / 100.0
 

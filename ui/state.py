@@ -25,8 +25,23 @@ def get_scenario() -> "Scenario | None":
     return st.session_state.get(SCENARIO_KEY)
 
 
+_SCENARIO_FORM_KEYS = [
+    "sf_include_bess", "sf_enable_market_buy", "sf_enable_market_sell",
+    "sf_enable_shortfall", "sf_enable_penalty", "sf_run_financial_analysis",
+    "sf_enable_counterfactual", "sf_onsw_mw", "sf_pv_mw", "sf_bess_mw",
+    "sf_bess_mwh", "sf_ppaload_mw", "sf_ppa_price", "sf_required_delivery_share",
+    "sf_pen_mult", "sf_market_buy_share", "sf_market_spread",
+    "sf_wind_capex", "sf_pv_capex", "sf_bess_capex", "sf_opex_rate",
+    "sf_discount_rate", "sf_target_irr", "sf_project_life",
+    "sf_cal_forward_price", "sf_cal_hedge_fraction", "sf_chosen_day",
+]
+
+
 def set_scenario(s: "Scenario") -> None:
     st.session_state[SCENARIO_KEY] = s
+    # Reset form widget keys so the form re-initialises from the new scenario values
+    for key in _SCENARIO_FORM_KEYS:
+        st.session_state.pop(key, None)
 
 
 def has_scenario() -> bool:
