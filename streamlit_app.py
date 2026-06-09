@@ -7,7 +7,7 @@ st.set_page_config(
     initial_sidebar_state="collapsed",
 )
 
-from ui.tabs import welcome, introduction, case_study, optimization, results_overview, results_deep_dive, sensitivity_analysis, scenario_analysis, excel_import
+from ui.tabs import welcome, introduction, case_study, optimization, results_overview, results_deep_dive, sensitivity_analysis, scenario_analysis, excel_import, multi_year_simulation
 
 st.markdown(
     """
@@ -26,6 +26,7 @@ tabs = st.tabs([
     "Sensitivity Analysis",
     "Scenario Analysis",
     "Excel Import",
+    "🌍 Multi-Year Simulation",
 ], on_change="rerun")
 
 if tabs[0].open:
@@ -63,6 +64,10 @@ if tabs[7].open:
 if tabs[8].open:
     with tabs[8]:
         excel_import.render()
+
+if tabs[9].open:
+    with tabs[9]:
+        multi_year_simulation.render()
 
 with st.popover("Disclaimer", width="stretch", icon="⚠️"):
     st.write("""
