@@ -34,6 +34,9 @@ _SCENARIO_FORM_KEYS = [
     "sf_wind_capex", "sf_pv_capex", "sf_bess_capex", "sf_opex_rate",
     "sf_discount_rate", "sf_target_irr", "sf_project_life",
     "sf_cal_forward_price", "sf_cal_hedge_fraction", "sf_chosen_day",
+    "sf_lat", "sf_lon",
+    "sf_sim_years", "sf_first_sim_year", "sf_escalation",
+    "sf_pv_deg", "sf_wind_deg", "sf_bess_deg",
 ]
 
 

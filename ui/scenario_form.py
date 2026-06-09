@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import dataclasses
 
+import pandas as pd
 import streamlit as st
 
 from ppa.data_loader import get_available_days
@@ -88,6 +89,51 @@ def render_scenario_form(initial: Scenario) -> Scenario:
         project_life_yrs = cols[3].number_input("Project life (years)", 5, 40,
                                             int(initial.project_life_yrs), 1, key="sf_project_life")
 
+    with st.expander("Project Location", expanded=True):
+        cols = st.columns([1, 1, 2])
+        lat = cols[0].number_input(
+            "Latitude", -90.0, 90.0, float(initial.lat), 0.01, format="%.2f", key="sf_lat",
+            help="Decimal degrees N. Used to fetch renewables.ninja CF profiles.",
+        )
+        lon = cols[1].number_input(
+            "Longitude", -180.0, 180.0, float(initial.lon), 0.01, format="%.2f", key="sf_lon",
+            help="Decimal degrees E.",
+        )
+        loc_df = pd.DataFrame({"lat": [lat], "lon": [lon]})
+        cols[2].map(loc_df, zoom=4)
+
+    with st.expander("Simulation", expanded=True):
+        cols = st.columns(4)
+        simulation_years = int(cols[0].number_input(
+            "Simulation years", 1, 40, int(initial.simulation_years), 1, key="sf_sim_years",
+            help="1 = single full-year run; >1 = multi-year parallel simulation.",
+        ))
+        first_sim_year = int(cols[1].number_input(
+            "First simulation year", 2024, 2040, int(initial.first_sim_year), 1,
+            key="sf_first_sim_year",
+        ))
+        price_escalation_rate = cols[2].number_input(
+            "Price escalation (%/yr)", 0.0, 10.0,
+            float(initial.price_escalation_rate * 100), 0.1, format="%.1f",
+            key="sf_escalation",
+            help="Annual compound escalation applied to 2024 ENTSO-E base prices.",
+        ) / 100.0
+
+        st.caption("Technology degradation (compound annual, applied from year 2 onward)")
+        dcols = st.columns(3)
+        pv_degradation_rate = dcols[0].number_input(
+            "PV (%/yr)", 0.0, 5.0, float(initial.pv_degradation_rate * 100),
+            0.05, format="%.2f", key="sf_pv_deg",
+        ) / 100.0
+        wind_degradation_rate = dcols[1].number_input(
+            "Wind (%/yr)", 0.0, 5.0, float(initial.wind_degradation_rate * 100),
+            0.05, format="%.2f", key="sf_wind_deg",
+        ) / 100.0
+        bess_degradation_rate = dcols[2].number_input(
+            "BESS (%/yr)", 0.0, 10.0, float(initial.bess_degradation_rate * 100),
+            0.1, format="%.1f", key="sf_bess_deg",
+        ) / 100.0
+
     with st.expander("Counterfactual sourcing", expanded=True):
         cols = st.columns(4)
         enable_counterfactual = cols[0].toggle(
@@ -154,4 +200,12 @@ def render_scenario_form(initial: Scenario) -> Scenario:
         target_irr=float(target_irr),
         project_life_yrs=int(project_life_yrs),
         chosen_day=str(chosen_day),
+        lat=float(lat),
+        lon=float(lon),
+        simulation_years=simulation_years,
+        first_sim_year=first_sim_year,
+        price_escalation_rate=float(price_escalation_rate),
+        pv_degradation_rate=float(pv_degradation_rate),
+        wind_degradation_rate=float(wind_degradation_rate),
+        bess_degradation_rate=float(bess_degradation_rate),
     )

@@ -46,6 +46,7 @@ class Scenario:
 
     # Multi-year simulation
     simulation_years: int = 25
+    first_sim_year: int = 2025
     price_escalation_rate: float = 0.02  # annual escalation applied to base market prices
 
     # Technology degradation (compound per year, applied from year 1 onward)
