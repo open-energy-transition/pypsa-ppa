@@ -25,6 +25,7 @@ nbformat = ">=5.9"
 
 [pypi-dependencies]
 pypsatopo = ">=0.2"
+entsoe-py = ">=0.6"
 
 [tasks]
 app = "streamlit run streamlit_app.py"
