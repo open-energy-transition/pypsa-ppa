@@ -26,8 +26,8 @@ class Scenario:
     cal_hedge_fraction: float = 0.80
 
     # Portfolio sizing
-    onsw_mw: float = 150.0
-    pv_mw: float = 200.0
+    onsw_mw: float = 250.0
+    pv_mw: float = 150.0
     bess_mw: float = 60.0
     bess_mwh: float = 240.0
     bess_efficiency_store: float = 0.90
@@ -58,10 +58,10 @@ class Scenario:
     lat: float = 51.5
     lon: float = 10.0
 
-    # Financial
-    wind_capex_per_kw: float = 1800.0
-    pv_capex_per_kw: float = 1000.0
-    bess_capex_per_kwh: float = 500.0
+    # Financial — European 2024 benchmarks
+    wind_capex_per_kw: float = 1200.0   # €/kW, EU onshore wind
+    pv_capex_per_kw: float = 750.0      # €/kW, EU utility-scale PV
+    bess_capex_per_kwh: float = 380.0   # €/kWh, EU BESS
     opex_rate: float = 0.02
     project_life_yrs: int = 25
     discount_rate: float = 0.08
@@ -123,21 +123,21 @@ CASE_STUDIES: list[CaseStudy] = [
         subtitle="Wind-dominant portfolio, no storage",
         icon="⚓",
         storyline=(
-            "A first-mover IPP signs a 10-year PPA with an industrial offtaker at $100/MWh. "
+            "A first-mover IPP signs a 10-year PPA with an industrial offtaker at €90/MWh. "
             "The portfolio is wind-dominant with no storage and no market flexibility — a pure baseline "
             "to understand penalty exposure when obligations are hard to meet without smoothing. "
-            "Can the wind resource alone deliver 70% of a flat 100 MW load across March?"
+            "Can onshore wind alone deliver 70% of a flat 100 MW load across a full year in central Europe?"
         ),
         overrides={
             "name": "The Foundation Deal",
-            "onsw_mw": 200.0,
+            "onsw_mw": 300.0,
             "pv_mw": 80.0,
             "bess_mw": 0.0,
             "bess_mwh": 0.0,
             "include_bess": False,
             "enable_market_buy": False,
             "enable_market_sell": True,
-            "ppa_price": 100.0,
+            "ppa_price": 90.0,
             "required_delivery_share": 0.70,
             "market_buy_share": 0.0,
             "pen_mult": 1.5,
@@ -149,21 +149,21 @@ CASE_STUDIES: list[CaseStudy] = [
         subtitle="PV-heavy with large 4h BESS, no market buy",
         icon="☀️",
         storyline=(
-            "A developer in a high-solar, low-wind region pairs a large PV array with a 4-hour BESS "
-            "to shift afternoon generation into the early-evening PPA demand window. "
-            "Market purchases are disabled to maintain renewable additionality. "
-            "The question: does storage alone solve the nighttime delivery problem?"
+            "A developer pairs a large PV array with a 4-hour BESS to shift afternoon generation into "
+            "the evening PPA demand window. Market purchases are disabled to maintain renewable additionality. "
+            "At central-European solar CFs (~12%), nighttime delivery is a structural challenge — this scenario "
+            "illustrates where BESS alone falls short and highlights the value of a southern-European location."
         ),
         overrides={
             "name": "Solar + Storage Play",
-            "onsw_mw": 50.0,
-            "pv_mw": 300.0,
+            "onsw_mw": 80.0,
+            "pv_mw": 450.0,
             "bess_mw": 120.0,
             "bess_mwh": 480.0,
             "include_bess": True,
             "enable_market_buy": False,
             "enable_market_sell": True,
-            "ppa_price": 95.0,
+            "ppa_price": 90.0,
             "required_delivery_share": 0.75,
             "market_buy_share": 0.0,
         },
@@ -177,19 +177,19 @@ CASE_STUDIES: list[CaseStudy] = [
             "An aggressive IPP structure maximises merchant upside with a 90% delivery obligation "
             "and a generous 15% market buy allowance to always fulfil. "
             "The penalty regime is strict at 2× the tariff. "
-            "This scenario tests the optimizer under high NEM spot prices: "
-            "is the revenue uplift from market sales worth the volatility risk?"
+            "This scenario tests the optimizer under European spot price volatility: "
+            "is the revenue uplift from market sales worth the risk?"
         ),
         overrides={
             "name": "Merchant Hybrid",
-            "onsw_mw": 150.0,
+            "onsw_mw": 250.0,
             "pv_mw": 200.0,
             "bess_mw": 60.0,
             "bess_mwh": 240.0,
             "include_bess": True,
             "enable_market_buy": True,
             "enable_market_sell": True,
-            "ppa_price": 110.0,
+            "ppa_price": 95.0,
             "required_delivery_share": 0.90,
             "market_buy_share": 0.15,
             "pen_mult": 2.0,
@@ -202,27 +202,24 @@ CASE_STUDIES: list[CaseStudy] = [
         subtitle="Data-centre offtaker, premium price, near-zero market buy",
         icon="🏢",
         storyline=(
-            "A Fortune 500 company signs a 15-year virtual PPA for its data-centre fleet at $120/MWh. "
+            "A European corporation signs a 15-year virtual PPA for its data-centre fleet at €105/MWh. "
             "The offtaker demands 90% delivery and limits market supplementation to just 1% "
             "to preserve RE additionality claims. "
             "Can a balanced wind + solar + BESS portfolio hit a 90% SLA with almost no market flexibility?"
         ),
         overrides={
             "name": "Corporate PPA",
-            "onsw_mw": 180.0,
-            "pv_mw": 180.0,
+            "onsw_mw": 280.0,
+            "pv_mw": 200.0,
             "bess_mw": 90.0,
             "bess_mwh": 360.0,
             "include_bess": True,
             "enable_market_buy": True,
             "enable_market_sell": True,
-            "ppa_price": 120.0,
+            "ppa_price": 105.0,
             "required_delivery_share": 0.90,
             "market_buy_share": 0.01,
             "pen_mult": 1.2,
-            "wind_capex_per_kw": 1900.0,
-            "pv_capex_per_kw": 950.0,
-            "bess_capex_per_kwh": 450.0,
         },
     ),
 ]

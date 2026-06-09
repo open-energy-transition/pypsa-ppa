@@ -61,6 +61,7 @@ class OptimizationResult:
     solver_status: str
     solver_condition: str
     n_period_hours: int
+    market_prices: pd.Series = None  # type: ignore[assignment]
 
 
 def extract_results(
@@ -165,20 +166,22 @@ def extract_results(
         solver_status=solver_status,
         solver_condition=solver_condition,
         n_period_hours=len(ts),
+        market_prices=ts["ts_MktPrice"],
     )
 
 
-def build_supply_mix_df(dispatch: DispatchSeries, ts: pd.DataFrame) -> pd.DataFrame:
+def build_supply_mix_df(dispatch: DispatchSeries, ts: pd.DataFrame | None = None) -> pd.DataFrame:
     pv_direct = dispatch.pv_gen - dispatch.bess_store
+    idx = ts.index if ts is not None else dispatch.wind_gen.index
     df = pd.DataFrame(
         {
-            "Wind": dispatch.wind_gen,
-            "PV (direct)": pv_direct.clip(lower=0),
-            "BESS discharge": dispatch.bess_dispatch,
-            "Buy from market": dispatch.market_buy,
-            "BESS charging": -dispatch.bess_store,
+            "Wind": dispatch.wind_gen.values,
+            "PV (direct)": pv_direct.clip(lower=0).values,
+            "BESS discharge": dispatch.bess_dispatch.values,
+            "Buy from market": dispatch.market_buy.values,
+            "BESS charging": (-dispatch.bess_store).values,
         },
-        index=ts.index,
+        index=idx,
     )
     df["hour"] = df.index.hour
     return df
