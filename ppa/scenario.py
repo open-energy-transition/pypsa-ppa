@@ -41,8 +41,16 @@ class Scenario:
     market_buy_share: float = 0.05
     market_spread: float = 0.10
 
-    # Operational
+    # Operational (single-day mode)
     chosen_day: str = "2025-03-15"
+
+    # Multi-year simulation
+    simulation_years: int = 25
+    price_escalation_rate: float = 0.02  # annual escalation applied to base market prices
+
+    # European location (lat/lon for renewables.ninja CF downloads)
+    lat: float = 51.5
+    lon: float = 10.0
 
     # Financial
     wind_capex_per_kw: float = 1800.0
