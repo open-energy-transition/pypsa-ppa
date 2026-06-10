@@ -7,7 +7,18 @@ st.set_page_config(
     initial_sidebar_state="collapsed",
 )
 
-from ui.tabs import welcome, introduction, case_study, optimization, results_overview, results_deep_dive, sensitivity_analysis, scenario_analysis, excel_import
+from ui.tabs import (
+    welcome,
+    introduction,
+    case_study,
+    data_download,
+    optimization,
+    results_overview,
+    results_deep_dive,
+    sensitivity_analysis,
+    scenario_analysis,
+    excel_import,
+)
 
 st.markdown(
     """
@@ -20,6 +31,7 @@ tabs = st.tabs([
     "🏠 Welcome",
     "📖 Introduction to PPAs",
     "🔬 Case Study Definition",
+    "📡 Download Data",
     "⚙️ Optimization",
     "📊 Results Overview",
     "🔍 Results Deep Dive",
@@ -42,26 +54,30 @@ if tabs[2].open:
 
 if tabs[3].open:
     with tabs[3]:
-        optimization.render()
+        data_download.render()
 
 if tabs[4].open:
     with tabs[4]:
-        results_overview.render()
+        optimization.render()
 
 if tabs[5].open:
     with tabs[5]:
-        results_deep_dive.render()
+        results_overview.render()
 
 if tabs[6].open:
     with tabs[6]:
-        sensitivity_analysis.render()
+        results_deep_dive.render()
 
 if tabs[7].open:
     with tabs[7]:
-        scenario_analysis.render()
+        sensitivity_analysis.render()
 
 if tabs[8].open:
     with tabs[8]:
+        scenario_analysis.render()
+
+if tabs[9].open:
+    with tabs[9]:
         excel_import.render()
 
 with st.popover("Disclaimer", width="stretch", icon="⚠️"):

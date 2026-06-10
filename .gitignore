@@ -16,6 +16,9 @@ notebooks/outputs/
 # Data lock files (LibreOffice etc.)
 data/.~lock.*
 
+# Downloaded / cached data (re-fetchable)
+data/cache/
+
 # Editor
 .idea/
 .vscode/

@@ -7,6 +7,8 @@ from typing import Any
 
 import pandas as pd
 
+from ppa.industrial_profiles import PROFILE_KEYS
+
 
 @dataclass
 class Scenario:
@@ -26,8 +28,8 @@ class Scenario:
     cal_hedge_fraction: float = 0.80
 
     # Portfolio sizing
-    onsw_mw: float = 150.0
-    pv_mw: float = 200.0
+    onsw_mw: float = 250.0
+    pv_mw: float = 150.0
     bess_mw: float = 60.0
     bess_mwh: float = 240.0
     bess_efficiency_store: float = 0.90
@@ -35,19 +37,34 @@ class Scenario:
 
     # PPA contract terms
     ppaload_mw: float = 100.0
+    load_profile: str = "flat"  # key into ppa.industrial_profiles.PROFILE_INFO
     ppa_price: float = 100.0
     pen_mult: float = 1.5
     required_delivery_share: float = 0.75
     market_buy_share: float = 0.05
     market_spread: float = 0.10
 
-    # Operational
+    # Operational (single-day mode)
     chosen_day: str = "2025-03-15"
 
-    # Financial
-    wind_capex_per_kw: float = 1800.0
-    pv_capex_per_kw: float = 1000.0
-    bess_capex_per_kwh: float = 500.0
+    # Multi-year simulation
+    simulation_years: int = 25
+    first_sim_year: int = 2025
+    price_escalation_rate: float = 0.02  # annual escalation applied to base market prices
+
+    # Technology degradation (compound per year, applied from year 1 onward)
+    pv_degradation_rate: float = 0.005    # 0.5%/yr — industry standard for crystalline Si
+    wind_degradation_rate: float = 0.005  # 0.5%/yr
+    bess_degradation_rate: float = 0.020  # 2.0%/yr usable capacity fade
+
+    # European location (lat/lon for renewables.ninja CF downloads)
+    lat: float = 51.5
+    lon: float = 10.0
+
+    # Financial — European 2024 benchmarks
+    wind_capex_per_kw: float = 1200.0   # €/kW, EU onshore wind
+    pv_capex_per_kw: float = 750.0      # €/kW, EU utility-scale PV
+    bess_capex_per_kwh: float = 380.0   # €/kWh, EU BESS
     opex_rate: float = 0.02
     project_life_yrs: int = 25
     discount_rate: float = 0.08
@@ -106,80 +123,85 @@ CASE_STUDIES: list[CaseStudy] = [
     CaseStudy(
         id="foundation_deal",
         name="The Foundation Deal",
-        subtitle="Wind-dominant portfolio, no storage",
+        subtitle="Cement plant offtaker, wind-dominant, no storage",
         icon="⚓",
         storyline=(
-            "A first-mover IPP signs a 10-year PPA with an industrial offtaker at $100/MWh. "
+            "A first-mover IPP signs a 10-year PPA with a cement plant at €90/MWh. "
             "The portfolio is wind-dominant with no storage and no market flexibility — a pure baseline "
-            "to understand penalty exposure when obligations are hard to meet without smoothing. "
-            "Can the wind resource alone deliver 70% of a flat 100 MW load across March?"
+            "to understand penalty exposure. The cement load runs near-continuous but drops sharply "
+            "during its Sunday maintenance window. Can onshore wind alone hit a 70% delivery obligation "
+            "against this near-baseload industrial demand in central Europe?"
         ),
         overrides={
             "name": "The Foundation Deal",
-            "onsw_mw": 200.0,
+            "onsw_mw": 300.0,
             "pv_mw": 80.0,
             "bess_mw": 0.0,
             "bess_mwh": 0.0,
             "include_bess": False,
             "enable_market_buy": False,
             "enable_market_sell": True,
-            "ppa_price": 100.0,
+            "ppa_price": 90.0,
             "required_delivery_share": 0.70,
             "market_buy_share": 0.0,
             "pen_mult": 1.5,
+            "load_profile": "cement_plant",
         },
     ),
     CaseStudy(
         id="solar_bess",
         name="Solar + Storage Play",
-        subtitle="PV-heavy with large 4h BESS, no market buy",
+        subtitle="Green H₂ electrolyser offtaker, PV-heavy with 4h BESS",
         icon="☀️",
         storyline=(
-            "A developer in a high-solar, low-wind region pairs a large PV array with a 4-hour BESS "
-            "to shift afternoon generation into the early-evening PPA demand window. "
+            "A developer pairs a large PV array with a 4-hour BESS serving a green hydrogen electrolyser. "
+            "The electrolyser's flexible demand naturally aligns with solar generation — ramping up at midday "
+            "and backing off during evening grid peaks — making it an ideal PPA offtaker for a solar-heavy portfolio. "
             "Market purchases are disabled to maintain renewable additionality. "
-            "The question: does storage alone solve the nighttime delivery problem?"
+            "Does the demand flexibility of the electrolyser help or hinder delivery obligations compared to flat load?"
         ),
         overrides={
             "name": "Solar + Storage Play",
-            "onsw_mw": 50.0,
-            "pv_mw": 300.0,
-            "bess_mw": 120.0,
-            "bess_mwh": 480.0,
+            "onsw_mw": 80.0,
+            "pv_mw": 450.0,
+            "bess_mw": 50.0,
+            "bess_mwh": 200.0,
             "include_bess": True,
             "enable_market_buy": False,
             "enable_market_sell": True,
-            "ppa_price": 95.0,
+            "ppa_price": 105.0,
             "required_delivery_share": 0.75,
             "market_buy_share": 0.0,
+            "load_profile": "green_hydrogen",
         },
     ),
     CaseStudy(
         id="merchant_hybrid",
         name="Merchant Hybrid",
-        subtitle="High obligation, 2× penalty, generous market buy",
+        subtitle="Steel EAF offtaker, high obligation, 2× penalty",
         icon="📈",
         storyline=(
-            "An aggressive IPP structure maximises merchant upside with a 90% delivery obligation "
-            "and a generous 15% market buy allowance to always fulfil. "
+            "An aggressive IPP structure serves a steel Electric Arc Furnace (EAF) with a 90% delivery obligation "
+            "and a generous 15% market buy allowance. The EAF's batch melting cycles create highly variable demand — "
+            "spiking at ~95% during each heat then dropping to ~15% between charges. "
             "The penalty regime is strict at 2× the tariff. "
-            "This scenario tests the optimizer under high NEM spot prices: "
-            "is the revenue uplift from market sales worth the volatility risk?"
+            "Does the optimizer exploit the EAF's idle periods for market sales, and can BESS bridge the delivery gaps?"
         ),
         overrides={
             "name": "Merchant Hybrid",
-            "onsw_mw": 150.0,
+            "onsw_mw": 250.0,
             "pv_mw": 200.0,
             "bess_mw": 60.0,
             "bess_mwh": 240.0,
             "include_bess": True,
             "enable_market_buy": True,
             "enable_market_sell": True,
-            "ppa_price": 110.0,
+            "ppa_price": 95.0,
             "required_delivery_share": 0.90,
             "market_buy_share": 0.15,
             "pen_mult": 2.0,
             "market_spread": 0.50,
+            "load_profile": "steel_eaf",
         },
     ),
     CaseStudy(
@@ -188,27 +210,26 @@ CASE_STUDIES: list[CaseStudy] = [
         subtitle="Data-centre offtaker, premium price, near-zero market buy",
         icon="🏢",
         storyline=(
-            "A Fortune 500 company signs a 15-year virtual PPA for its data-centre fleet at $120/MWh. "
-            "The offtaker demands 90% delivery and limits market supplementation to just 1% "
-            "to preserve RE additionality claims. "
-            "Can a balanced wind + solar + BESS portfolio hit a 90% SLA with almost no market flexibility?"
+            "A European corporation signs a 15-year virtual PPA for its data-centre fleet at €105/MWh. "
+            "The data-centre load is near-flat with a modest business-hours peak — a demanding obligation "
+            "for an RE portfolio. Market supplementation is capped at 1% to preserve additionality claims. "
+            "Can a balanced wind + solar + BESS portfolio hit a 90% SLA against a near-constant high load "
+            "with almost no market flexibility?"
         ),
         overrides={
             "name": "Corporate PPA",
-            "onsw_mw": 180.0,
-            "pv_mw": 180.0,
+            "onsw_mw": 280.0,
+            "pv_mw": 200.0,
             "bess_mw": 90.0,
             "bess_mwh": 360.0,
             "include_bess": True,
             "enable_market_buy": True,
             "enable_market_sell": True,
-            "ppa_price": 120.0,
+            "ppa_price": 105.0,
             "required_delivery_share": 0.90,
             "market_buy_share": 0.01,
             "pen_mult": 1.2,
-            "wind_capex_per_kw": 1900.0,
-            "pv_capex_per_kw": 950.0,
-            "bess_capex_per_kwh": 450.0,
+            "load_profile": "data_center",
         },
     ),
 ]
@@ -238,6 +259,8 @@ def validate_scenario(s: Scenario, available_days: list[str] | None = None) -> l
         errors.append("Required delivery share must be between 0 and 1.")
     if s.onsw_mw == 0 and s.pv_mw == 0:
         errors.append("At least one generation asset (wind or solar) must have capacity > 0.")
+    if s.load_profile not in PROFILE_KEYS:
+        errors.append(f"Unknown load profile '{s.load_profile}'. Valid options: {PROFILE_KEYS}")
     if available_days and s.chosen_day not in available_days:
         errors.append(f"chosen_day '{s.chosen_day}' is not present in the timeseries data.")
     return errors

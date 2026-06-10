@@ -4,6 +4,7 @@ from pathlib import Path
 
 import pandas as pd
 
+from ppa.industrial_profiles import get_load_series
 from ppa.scenario import Scenario
 
 REQUIRED_COLUMNS = ["timestamp", "ts_PVGen", "ts_WindGen", "ts_NSWPrice"]
@@ -40,7 +41,8 @@ def load_timeseries(csv_path: str | Path) -> pd.DataFrame:
 def prepare_timeseries(ts: pd.DataFrame, scenario: Scenario) -> pd.DataFrame:
     ts = ts.copy()
     ts["ts_MktPrice"] = ts["ts_NSWPrice"]
-    ts["ppaload_mw"] = scenario.ppaload_mw
+    profile = get_load_series(scenario.load_profile, ts.index)
+    ts["ppaload_mw"] = (profile * scenario.ppaload_mw).values
     return ts
 
 

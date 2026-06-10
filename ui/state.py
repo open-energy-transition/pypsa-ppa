@@ -8,7 +8,7 @@ if TYPE_CHECKING:
     import pandas as pd
     from ppa.scenario import Scenario
     from ppa.results import OptimizationResult
-    from ppa.financials import FinancialResult
+    from ppa.financials import FinancialResult, MultiYearFinancialResult
     from ppa.counterfactuals import CounterfactualResult
 
 SCENARIO_KEY = "scenario"
@@ -17,14 +17,34 @@ FINANCIAL_KEY = "financial_result"
 COUNTERFACTUAL_KEY = "counterfactual_result"
 TIMESERIES_KEY = "timeseries"
 ACTIVE_CASE_STUDY_KEY = "active_case_study_id"
+MULTI_YEAR_RESULTS_KEY = "multi_year_results"
+MULTI_YEAR_FINANCIAL_KEY = "multi_year_financial"
 
 
 def get_scenario() -> "Scenario | None":
     return st.session_state.get(SCENARIO_KEY)
 
 
+_SCENARIO_FORM_KEYS = [
+    "sf_include_bess", "sf_enable_market_buy", "sf_enable_market_sell",
+    "sf_enable_shortfall", "sf_enable_penalty", "sf_run_financial_analysis",
+    "sf_enable_counterfactual", "sf_onsw_mw", "sf_pv_mw", "sf_bess_mw",
+    "sf_bess_mwh", "sf_ppaload_mw", "sf_ppa_price", "sf_required_delivery_share",
+    "sf_pen_mult", "sf_market_buy_share", "sf_market_spread",
+    "sf_wind_capex", "sf_pv_capex", "sf_bess_capex", "sf_opex_rate",
+    "sf_discount_rate", "sf_target_irr", "sf_project_life",
+    "sf_cal_forward_price", "sf_cal_hedge_fraction", "sf_chosen_day",
+    "sf_lat", "sf_lon",
+    "sf_sim_years", "sf_first_sim_year", "sf_escalation",
+    "sf_pv_deg", "sf_wind_deg", "sf_bess_deg",
+]
+
+
 def set_scenario(s: "Scenario") -> None:
     st.session_state[SCENARIO_KEY] = s
+    # Reset form widget keys so the form re-initialises from the new scenario values
+    for key in _SCENARIO_FORM_KEYS:
+        st.session_state.pop(key, None)
 
 
 def has_scenario() -> bool:
@@ -93,3 +113,27 @@ def get_active_case_study_id() -> str | None:
 
 def set_active_case_study_id(cs_id: str) -> None:
     st.session_state[ACTIVE_CASE_STUDY_KEY] = cs_id
+
+
+def get_multi_year_results() -> "list | None":
+    return st.session_state.get(MULTI_YEAR_RESULTS_KEY)
+
+
+def set_multi_year_results(results: list) -> None:
+    st.session_state[MULTI_YEAR_RESULTS_KEY] = results
+
+
+def has_multi_year_results() -> bool:
+    return MULTI_YEAR_RESULTS_KEY in st.session_state
+
+
+def get_multi_year_financial() -> "MultiYearFinancialResult | None":
+    return st.session_state.get(MULTI_YEAR_FINANCIAL_KEY)
+
+
+def set_multi_year_financial(fin: "MultiYearFinancialResult") -> None:
+    st.session_state[MULTI_YEAR_FINANCIAL_KEY] = fin
+
+
+def has_multi_year_financial() -> bool:
+    return MULTI_YEAR_FINANCIAL_KEY in st.session_state

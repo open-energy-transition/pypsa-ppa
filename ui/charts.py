@@ -178,21 +178,23 @@ def make_soc_chart(soc: "pd.Series", bess_mwh: float) -> go.Figure:
     return fig
 
 
-def make_price_series_chart(ts: "pd.DataFrame") -> go.Figure:
+def make_price_series_chart(prices: "pd.Series | pd.DataFrame", title: str = "Market spot price") -> go.Figure:
+    if hasattr(prices, "columns"):
+        prices = prices["ts_MktPrice"]
     fig = go.Figure()
     fig.add_trace(
         go.Scatter(
-            x=ts.index,
-            y=ts["ts_MktPrice"],
+            x=prices.index,
+            y=prices,
             mode="lines",
             name="Spot price",
             line=dict(color="#FF6F00", width=1),
         )
     )
     fig.update_layout(
-        title="Market spot price — March 2025 (NSW)",
+        title=title,
         xaxis_title="Time",
-        yaxis_title="$/MWh",
+        yaxis_title="€/MWh",
         height=300,
         showlegend=False,
     )
@@ -425,6 +427,31 @@ def make_cumulative_cost_chart(cf: CounterfactualResult) -> go.Figure:
         xaxis_title="",
         yaxis_title="Cumulative cost ($M)",
         height=320,
+        legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1),
+    )
+    return fig
+
+
+def make_multi_year_counterfactual_chart(
+    years: list[int],
+    ppa_prices: list[float],
+    spot_prices: list[float],
+    cal_prices: list[float],
+    blended_prices: list[float],
+) -> go.Figure:
+    """Grouped bar chart: effective €/MWh per strategy per year."""
+    fig = go.Figure()
+    x = [str(y) for y in years]
+    fig.add_trace(go.Bar(x=x, y=ppa_prices, name="PPA (offtaker)", marker_color="#1565C0"))
+    fig.add_trace(go.Bar(x=x, y=spot_prices, name="Spot-only", marker_color="#FF6F00"))
+    fig.add_trace(go.Bar(x=x, y=cal_prices, name="CAL Y+1", marker_color="#546E7A"))
+    fig.add_trace(go.Bar(x=x, y=blended_prices, name="Blended", marker_color="#FFA726"))
+    fig.update_layout(
+        barmode="group",
+        title="Effective procurement cost by year",
+        xaxis_title="Year",
+        yaxis_title="Effective €/MWh",
+        height=380,
         legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1),
     )
     return fig

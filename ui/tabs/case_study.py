@@ -1,3 +1,4 @@
+"""Case Study definition — select a preset and customise all scenario parameters."""
 from __future__ import annotations
 
 import streamlit as st
@@ -8,11 +9,9 @@ from ui.scenario_form import render_scenario_form
 
 
 def _render_case_study_card(cs, is_active: bool) -> bool:
-    """Render a single case study card. Returns True if selected."""
     border_color = "#1565C0" if is_active else "#E0E0E0"
     bg_color = "#E3F2FD" if is_active else "#FAFAFA"
     badge = " ✓ Active" if is_active else ""
-
     st.markdown(
         f"""
 <div style="border: 2px solid {border_color}; border-radius: 10px; padding: 16px;
@@ -27,7 +26,7 @@ def _render_case_study_card(cs, is_active: bool) -> bool:
     )
     st.markdown("")
     return st.button(
-        "Load this scenario" if not is_active else "Reload",
+        "Reload" if is_active else "Load this scenario",
         key=f"load_cs_{cs.id}",
         width="stretch",
         type="primary" if is_active else "secondary",
@@ -37,50 +36,51 @@ def _render_case_study_card(cs, is_active: bool) -> bool:
 def render() -> None:
     st.title("🔬 Case Study Definition")
     st.markdown(
-        "Choose a predefined scenario to explore, then customise any parameters below. "
-        "Changes to the form take effect when you run the optimisation."
+        "Choose a predefined scenario to explore, then customise any parameters below — "
+        "including **project location**, **simulation horizon**, and **technology degradation**. "
+        "Head to **Download Data** to fetch European data, then **Optimization** to run."
     )
     st.markdown("---")
 
     # ── Case study cards ──────────────────────────────────────────────────────
     st.subheader("Predefined case studies")
     active_id = state.get_active_case_study_id()
-
     cols = st.columns(len(CASE_STUDIES))
     for col, cs in zip(cols, CASE_STUDIES):
         with col:
-            selected = _render_case_study_card(cs, is_active=(cs.id == active_id))
-            if selected:
-                scenario = load_case_study(cs)
-                state.set_scenario(scenario)
+            if _render_case_study_card(cs, is_active=(cs.id == active_id)):
+                state.set_scenario(load_case_study(cs))
                 state.set_active_case_study_id(cs.id)
                 state.clear_result()
+                st.session_state.pop(state.MULTI_YEAR_RESULTS_KEY, None)
+                st.session_state.pop(state.MULTI_YEAR_FINANCIAL_KEY, None)
                 st.rerun()
 
-    # ── Custom parameter form ─────────────────────────────────────────────────
-    #st.markdown("---")
+    # ── Customise parameters ──────────────────────────────────────────────────
     with st.expander("Customise parameters", expanded=False):
         st.markdown(
-            "The controls below are pre-filled with the active case study. "
-            "Adjust any value, then head to the **Optimization** tab to run the model."
+            "Controls are pre-filled from the active case study. "
+            "Adjust any value, then click **Apply changes**."
         )
-
-        # Initialise with base scenario if nothing loaded yet
         if not state.has_scenario():
             state.set_scenario(BASE_SCENARIO)
 
         current = state.get_scenario()
         updated = render_scenario_form(current)
 
-        cols = st.columns([2,2])
-        with cols[0]:
+        c1, c2 = st.columns(2)
+        with c1:
             if st.button("Apply changes", type="primary", width="stretch"):
                 state.set_scenario(updated)
                 state.clear_result()
-                st.success("Scenario updated. Run the optimisation to see new results.")
-        with cols[1]:
-            if st.button("Reset to base defaults", width="stretch", type="secondary"):
+                st.session_state.pop(state.MULTI_YEAR_RESULTS_KEY, None)
+                st.session_state.pop(state.MULTI_YEAR_FINANCIAL_KEY, None)
+                st.success("Scenario updated. Head to Optimization to run.")
+        with c2:
+            if st.button("Reset to base defaults", type="secondary", width="stretch"):
                 state.set_scenario(BASE_SCENARIO)
                 state.set_active_case_study_id("")
                 state.clear_result()
+                st.session_state.pop(state.MULTI_YEAR_RESULTS_KEY, None)
+                st.session_state.pop(state.MULTI_YEAR_FINANCIAL_KEY, None)
                 st.rerun()

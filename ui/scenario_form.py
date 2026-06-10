@@ -2,9 +2,11 @@ from __future__ import annotations
 
 import dataclasses
 
+import pandas as pd
 import streamlit as st
 
 from ppa.data_loader import get_available_days
+from ppa.industrial_profiles import PROFILE_INFO, PROFILE_KEYS
 from ppa.scenario import Scenario
 from ui import state
 
@@ -29,17 +31,18 @@ def render_scenario_form(initial: Scenario) -> Scenario:
         pv_mw = cols[1].slider("Solar PV (MWac)", 0, max_cap_per_technology, int(initial.pv_mw), step=10, key="sf_pv_mw")
         bess_mw = cols[2].slider(
             "BESS power (MW)", 0, max_cap_per_technology, int(initial.bess_mw), step=10,
-            disabled=not include_bess, key="sf_bess_mw"
+            key="sf_bess_mw"
         )
         bess_mwh = cols[3].slider(
             "BESS energy (MWh)", 0, max_cap_per_technology*max_bes_hours, int(initial.bess_mwh), step=20,
-            disabled=not include_bess, key="sf_bess_mwh"
+            key="sf_bess_mwh"
         )
 
     with st.expander("PPA contract terms", expanded=True):
         cols = st.columns(4)
         ppaload_mw = cols[0].number_input("PPA offtake load (MW)", min_value=1.0, max_value=1000.0,
-                                           value=float(initial.ppaload_mw), step=10.0, key="sf_ppaload_mw")
+                                           value=float(initial.ppaload_mw), step=10.0, key="sf_ppaload_mw",
+                                           help="Peak rated MW. The load profile shapes how much of this is demanded each hour.")
         ppa_price = cols[1].number_input("PPA tariff ($/MWh)", min_value=1.0, max_value=500.0,
                                           value=float(initial.ppa_price), step=5.0, key="sf_ppa_price")
         required_delivery_share = cols[2].slider(
@@ -51,7 +54,25 @@ def render_scenario_form(initial: Scenario) -> Scenario:
         pen_mult = cols[3].number_input(
             "Penalty multiplier (×tariff)", min_value=1.0, max_value=5.0,
             value=float(initial.pen_mult), step=0.1,
-            disabled=not enable_penalty, key="sf_pen_mult",
+            key="sf_pen_mult",
+        )
+
+        # ── Load profile selector ─────────────────────────────────────────────
+        st.markdown("**Offtaker load profile**")
+        _profile_labels = [f"{PROFILE_INFO[k]['icon']} {PROFILE_INFO[k]['label']}" for k in PROFILE_KEYS]
+        _current_idx = PROFILE_KEYS.index(initial.load_profile) if initial.load_profile in PROFILE_KEYS else 0
+        cols = st.columns([1, 3])
+        _selected_label = cols[0].selectbox(
+            "Profile type",
+            options=_profile_labels,
+            index=_current_idx,
+            key="sf_load_profile",
+            label_visibility="collapsed",
+        )
+        load_profile = PROFILE_KEYS[_profile_labels.index(_selected_label)]
+        _info = PROFILE_INFO[load_profile]
+        cols[1].caption(
+            f"**Typical load factor: {_info['typical_lf']}** — {_info['description']}"
         )
 
     with st.expander("Market interaction", expanded=True):
@@ -59,7 +80,7 @@ def render_scenario_form(initial: Scenario) -> Scenario:
         market_buy_share = cols[0].slider(
             "Market buy cap (% of delivery)", 0, 100,
             int(initial.market_buy_share * 100), step=1, format="%d%%",
-            disabled=not enable_market_buy, key="sf_market_buy_share",
+            key="sf_market_buy_share",
         ) / 100.0
         market_spread = cols[1].number_input(
             "Bid-offer spread ($/MWh)", min_value=0.0, max_value=10.0,
@@ -74,7 +95,7 @@ def render_scenario_form(initial: Scenario) -> Scenario:
                                               float(initial.pv_capex_per_kw), 50.0, key="sf_pv_capex")
         bess_capex_per_kwh = cols[2].number_input("BESS CAPEX ($/kWh)", 100.0, 2000.0,
                                                 float(initial.bess_capex_per_kwh), 25.0,
-                                                disabled=not include_bess, key="sf_bess_capex")
+                                                key="sf_bess_capex")
         opex_rate = cols[3].number_input("Annual OPEX (% of CAPEX)", 0.5, 10.0,
                                        float(initial.opex_rate * 100), 0.1, format="%.1f",
                                        key="sf_opex_rate") / 100.0
@@ -88,6 +109,51 @@ def render_scenario_form(initial: Scenario) -> Scenario:
         project_life_yrs = cols[3].number_input("Project life (years)", 5, 40,
                                             int(initial.project_life_yrs), 1, key="sf_project_life")
 
+    with st.expander("Project Location", expanded=True):
+        cols = st.columns([1, 1, 2])
+        lat = cols[0].number_input(
+            "Latitude", -90.0, 90.0, float(initial.lat), 0.01, format="%.2f", key="sf_lat",
+            help="Decimal degrees N. Used to fetch renewables.ninja CF profiles.",
+        )
+        lon = cols[1].number_input(
+            "Longitude", -180.0, 180.0, float(initial.lon), 0.01, format="%.2f", key="sf_lon",
+            help="Decimal degrees E.",
+        )
+        loc_df = pd.DataFrame({"lat": [lat], "lon": [lon]})
+        cols[2].map(loc_df, zoom=4)
+
+    with st.expander("Simulation", expanded=True):
+        cols = st.columns(4)
+        simulation_years = int(cols[0].number_input(
+            "Simulation years", 1, 40, int(initial.simulation_years), 1, key="sf_sim_years",
+            help="1 = single full-year run; >1 = multi-year parallel simulation.",
+        ))
+        first_sim_year = int(cols[1].number_input(
+            "First simulation year", 2024, 2040, int(initial.first_sim_year), 1,
+            key="sf_first_sim_year",
+        ))
+        price_escalation_rate = cols[2].number_input(
+            "Price escalation (%/yr)", 0.0, 10.0,
+            float(initial.price_escalation_rate * 100), 0.1, format="%.1f",
+            key="sf_escalation",
+            help="Annual compound escalation applied to 2024 ENTSO-E base prices.",
+        ) / 100.0
+
+        st.caption("Technology degradation (compound annual, applied from year 2 onward)")
+        cols = st.columns(4)
+        pv_degradation_rate = cols[0].number_input(
+            "PV (%/yr)", 0.0, 5.0, float(initial.pv_degradation_rate * 100),
+            0.05, format="%.2f", key="sf_pv_deg",
+        ) / 100.0
+        wind_degradation_rate = cols[1].number_input(
+            "Wind (%/yr)", 0.0, 5.0, float(initial.wind_degradation_rate * 100),
+            0.05, format="%.2f", key="sf_wind_deg",
+        ) / 100.0
+        bess_degradation_rate = cols[2].number_input(
+            "BESS (%/yr)", 0.0, 10.0, float(initial.bess_degradation_rate * 100),
+            0.1, format="%.1f", key="sf_bess_deg",
+        ) / 100.0
+
     with st.expander("Counterfactual sourcing", expanded=True):
         cols = st.columns(4)
         enable_counterfactual = cols[0].toggle(
@@ -100,14 +166,14 @@ def render_scenario_form(initial: Scenario) -> Scenario:
             "CAL Y+1 forward price ($/MWh)",
             min_value=0.0, max_value=500.0,
             value=float(initial.cal_forward_price), step=5.0,
-            disabled=not enable_counterfactual, key="sf_cal_forward_price",
+            key="sf_cal_forward_price",
             help="Flat baseload forward price for the next calendar year (e.g. ASX Cal 26 Base NSW).",
         )
         cal_hedge_fraction = cols[2].slider(
             "Hedge fraction (%)", 0, 100,
             int(initial.cal_hedge_fraction * 100),
             step=5, format="%d%%",
-            disabled=not enable_counterfactual, key="sf_cal_hedge_fraction",
+            key="sf_cal_hedge_fraction",
             help="Share of load hedged at CAL Y+1; remainder sourced at spot.",
         ) / 100.0
 
@@ -141,6 +207,7 @@ def render_scenario_form(initial: Scenario) -> Scenario:
         bess_mw=float(bess_mw) if include_bess else 0.0,
         bess_mwh=float(bess_mwh) if include_bess else 0.0,
         ppaload_mw=float(ppaload_mw),
+        load_profile=load_profile,
         ppa_price=float(ppa_price),
         required_delivery_share=float(required_delivery_share),
         pen_mult=float(pen_mult),
@@ -154,4 +221,12 @@ def render_scenario_form(initial: Scenario) -> Scenario:
         target_irr=float(target_irr),
         project_life_yrs=int(project_life_yrs),
         chosen_day=str(chosen_day),
+        lat=float(lat),
+        lon=float(lon),
+        simulation_years=simulation_years,
+        first_sim_year=first_sim_year,
+        price_escalation_rate=float(price_escalation_rate),
+        pv_degradation_rate=float(pv_degradation_rate),
+        wind_degradation_rate=float(wind_degradation_rate),
+        bess_degradation_rate=float(bess_degradation_rate),
     )
