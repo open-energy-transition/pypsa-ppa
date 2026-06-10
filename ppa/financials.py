@@ -229,6 +229,15 @@ def run_multi_year_financial_analysis(
         total_revenue += net_rev
         total_gen_mwh += summ.wind_generation_mwh + summ.pv_generation_mwh + summ.bess_dispatch_mwh
 
+    # Extend cashflows to project_life_yrs if fewer years were simulated.
+    # The average of the simulated years is used for the remaining periods so that
+    # NPV/IRR always reflect the full project life regardless of simulation_years.
+    n_sim = len(year_results)
+    n_life = s.project_life_yrs
+    if n_sim < n_life:
+        avg_simulated_cf = sum(cashflows[1:]) / n_sim
+        cashflows.extend([avg_simulated_cf] * (n_life - n_sim))
+
     # ── NPV ──────────────────────────────────────────────────────────────────
     def _npv(rate: float) -> float:
         return sum(cf / (1 + rate) ** t for t, cf in enumerate(cashflows))
