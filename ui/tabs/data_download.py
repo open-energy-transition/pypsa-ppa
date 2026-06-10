@@ -83,37 +83,37 @@ def render() -> None:
     st.markdown("---")
     st.subheader("Cache status")
 
-    from ppa.data.entsoe_client import is_cached
+    from ppa.data.entsoe_client import list_cached_years as list_cached_price_years, AVAILABLE_YEARS as PRICE_YEARS
     from ppa.data.renewables_ninja import list_cached_years, AVAILABLE_YEARS
 
-    prices_ok = is_cached(2024)
+    cached_price_years = list_cached_price_years()
+    missing_prices = [y for y in PRICE_YEARS if y not in cached_price_years]
     cached_cf_years = list_cached_years(lat=lat, lon=lon)
     missing_cf = [y for y in AVAILABLE_YEARS if y not in cached_cf_years]
 
     sc1, sc2 = st.columns(2)
     with sc1:
-        st.markdown("**ENTSO-E 2024 prices (DE-LU)**")
-        if prices_ok:
-            st.success("Cached ✓")
+        st.markdown("**ENTSO-E day-ahead prices (DE-LU)**")
+        if not missing_prices:
+            st.success(f"All {len(PRICE_YEARS)} years cached ✓  ({', '.join(str(y) for y in cached_price_years)})")
+        elif cached_price_years:
+            st.warning(f"{len(cached_price_years)}/{len(PRICE_YEARS)} years cached. Missing: {missing_prices}")
         else:
-            st.warning("Not downloaded yet")
+            st.warning(f"No years cached. Will download: {PRICE_YEARS}")
 
     with sc2:
         st.markdown(f"**Renewables.ninja CF profiles** — ({lat:.2f}°N, {lon:.2f}°E)")
         if not missing_cf:
             st.success(f"All {len(AVAILABLE_YEARS)} years cached ✓  ({', '.join(str(y) for y in cached_cf_years)})")
         elif cached_cf_years:
-            st.warning(
-                f"{len(cached_cf_years)}/{len(AVAILABLE_YEARS)} years cached. "
-                f"Missing: {missing_cf}"
-            )
+            st.warning(f"{len(cached_cf_years)}/{len(AVAILABLE_YEARS)} years cached. Missing: {missing_cf}")
         else:
             st.warning(f"No years cached for this location. Will download: {AVAILABLE_YEARS}")
 
     # ── Download button ───────────────────────────────────────────────────────
     st.markdown("---")
 
-    needs_download = not prices_ok or bool(missing_cf)
+    needs_download = bool(missing_prices) or bool(missing_cf)
     tokens_present = bool(entsoe_token) and bool(ninja_token)
 
     if not needs_download:
@@ -130,7 +130,7 @@ def render() -> None:
         key="dd_download",
         help="Downloads missing ENTSO-E prices and renewables.ninja CF profiles.",
     ):
-        _do_download(entsoe_token, ninja_token, lat, lon, prices_ok, missing_cf)
+        _do_download(entsoe_token, ninja_token, lat, lon, missing_prices, missing_cf)
         st.rerun()
 
 
@@ -139,23 +139,23 @@ def _do_download(
     ninja_token: str,
     lat: float,
     lon: float,
-    prices_ok: bool,
+    missing_price_years: list[int],
     missing_cf_years: list[int],
 ) -> None:
-    total_steps = (0 if prices_ok else 1) + len(missing_cf_years) * 2
+    total_steps = len(missing_price_years) + len(missing_cf_years) * 2
     done = 0
     bar = st.progress(0, text="Preparing…")
 
-    # ENTSO-E prices
-    if not prices_ok:
-        bar.progress(done / total_steps, text="Fetching 2024 DE-LU day-ahead prices…")
+    # ENTSO-E prices — all missing years
+    from ppa.data.entsoe_client import fetch_day_ahead_prices
+    for year in missing_price_years:
+        bar.progress(done / total_steps, text=f"Fetching {year} DE-LU day-ahead prices…")
         try:
-            from ppa.data.entsoe_client import fetch_day_ahead_prices
-            fetch_day_ahead_prices(2024, entsoe_token)
+            fetch_day_ahead_prices(year, entsoe_token)
             done += 1
-            bar.progress(done / total_steps, text="ENTSO-E prices downloaded ✓")
+            bar.progress(done / total_steps, text=f"ENTSO-E {year} prices downloaded ✓")
         except Exception as exc:
-            st.error(f"ENTSO-E download failed: {exc}")
+            st.error(f"ENTSO-E {year} download failed: {exc}")
             return
 
     # renewables.ninja CF profiles
@@ -180,4 +180,4 @@ def _do_download(
         time.sleep(2)
 
     bar.progress(1.0, text="All data downloaded and cached ✓")
-    st.success(f"Download complete. Cached at data/cache/")
+    st.success("Download complete. Cached at data/cache/")

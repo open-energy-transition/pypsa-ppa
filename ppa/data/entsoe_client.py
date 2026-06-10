@@ -8,8 +8,8 @@ import pandas as pd
 CACHE_DIR = Path(__file__).parent.parent.parent / "data" / "cache" / "entsoe"
 DE_LU = "DE_LU"
 
-# Earliest year available on ENTSO-E Transparency Platform for DE-LU
-MIN_YEAR = 2015
+# Historical years available — matches renewables.ninja CF range
+AVAILABLE_YEARS: list[int] = [2018, 2019, 2020, 2021, 2022, 2023]
 
 
 def fetch_day_ahead_prices(
@@ -97,6 +97,13 @@ def _shift_to_year(prices: pd.Series, target_year: int) -> pd.Series:
         )
         result = pd.concat([result, pad])
     return result
+
+
+def list_cached_years(country_code: str = DE_LU, cache_dir: Path = CACHE_DIR) -> list[int]:
+    return sorted(
+        y for y in AVAILABLE_YEARS
+        if (cache_dir / f"da_prices_{country_code}_{y}.parquet").exists()
+    )
 
 
 def is_cached(year: int, country_code: str = DE_LU, cache_dir: Path = CACHE_DIR) -> bool:

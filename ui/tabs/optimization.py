@@ -90,27 +90,27 @@ def _render_scenario_summary(s) -> None:
 # ── data status (compact) ─────────────────────────────────────────────────────
 
 def _render_data_status(lat: float, lon: float) -> tuple[bool, bool]:
-    from ppa.data.entsoe_client import is_cached
+    from ppa.data.entsoe_client import list_cached_years as list_cached_price_years, AVAILABLE_YEARS as PRICE_YEARS
     from ppa.data.renewables_ninja import list_cached_years, AVAILABLE_YEARS
 
-    prices_ok = is_cached(2024)
-    cached_years = list_cached_years(lat=lat, lon=lon)
-    cf_ok = len(cached_years) > 0
+    cached_price_years = list_cached_price_years()
+    prices_ok = len(cached_price_years) > 0
+    cached_cf_years = list_cached_years(lat=lat, lon=lon)
+    cf_ok = len(cached_cf_years) > 0
 
     c1, c2 = st.columns(2)
     with c1:
         if prices_ok:
-            st.success("ENTSO-E 2024 prices: cached ✓")
+            missing = [y for y in PRICE_YEARS if y not in cached_price_years]
+            label = f"ENTSO-E prices: {len(cached_price_years)}/{len(PRICE_YEARS)} years cached"
+            st.warning(f"{label} (missing: {missing})") if missing else st.success(f"{label} ✓")
         else:
-            st.warning("ENTSO-E 2024 prices: not downloaded — go to **Download Data** tab")
+            st.warning("No ENTSO-E prices cached — go to **Download Data** tab")
     with c2:
         if cf_ok:
-            missing = [y for y in AVAILABLE_YEARS if y not in cached_years]
-            label = f"CF profiles: {len(cached_years)}/{len(AVAILABLE_YEARS)} years cached"
-            if missing:
-                st.warning(f"{label} (missing: {missing})")
-            else:
-                st.success(f"{label} ✓")
+            missing = [y for y in AVAILABLE_YEARS if y not in cached_cf_years]
+            label = f"CF profiles: {len(cached_cf_years)}/{len(AVAILABLE_YEARS)} years cached"
+            st.warning(f"{label} (missing: {missing})") if missing else st.success(f"{label} ✓")
         else:
             st.warning(f"No CF profiles cached for ({lat:.2f}, {lon:.2f}) — go to **Download Data** tab")
     return prices_ok, cf_ok
@@ -120,18 +120,26 @@ def _render_data_status(lat: float, lon: float) -> tuple[bool, bool]:
 
 def _run_eu_simulation(scenario, max_workers: int) -> None:
     from ppa.data import renewables_ninja as rn
-    from ppa.data.entsoe_client import fetch_day_ahead_prices
+    from ppa.data.entsoe_client import fetch_day_ahead_prices, list_cached_years as list_cached_price_years
     from ppa.multi_year import run_multi_year
     from ppa.financials import run_multi_year_financial_analysis
 
     lat, lon = scenario.lat, scenario.lon
-    cached_years = rn.list_cached_years(lat=lat, lon=lon)
+    cached_cf_years = rn.list_cached_years(lat=lat, lon=lon)
     pv_by_year: dict[int, pd.Series] = {}
     wind_by_year: dict[int, pd.Series] = {}
-    for year in cached_years:
+    for year in cached_cf_years:
         pv_by_year[year] = rn.download_pv_cf(year, "", lat=lat, lon=lon)
         wind_by_year[year] = rn.download_wind_cf(year, "", lat=lat, lon=lon)
-    base_prices = fetch_day_ahead_prices(2024, "")
+
+    prices_by_year: dict[int, pd.Series] = {}
+    for year in list_cached_price_years():
+        prices_by_year[year] = fetch_day_ahead_prices(year, "")
+
+    # Fall back to any available price year if a CF year has no matching price year
+    # (prices_by_year is cycled the same way as CF in pick_weather_year)
+    if not prices_by_year:
+        raise RuntimeError("No ENTSO-E prices cached. Go to Download Data first.")
 
     progress_bar = st.progress(0, text="Starting simulation…")
     status_text = st.empty()
@@ -144,8 +152,7 @@ def _run_eu_simulation(scenario, max_workers: int) -> None:
         scenario=scenario,
         pv_cf_by_year=pv_by_year,
         wind_cf_by_year=wind_by_year,
-        base_prices=base_prices,
-        base_price_year=2024,
+        prices_by_year=prices_by_year,
         first_sim_year=scenario.first_sim_year,
         max_workers=max_workers,
         progress_callback=_on_progress,

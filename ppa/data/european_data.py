@@ -3,7 +3,7 @@ from __future__ import annotations
 
 import pandas as pd
 
-from ppa.data.entsoe_client import get_prices_for_sim_year
+from ppa.data.entsoe_client import escalate_prices
 from ppa.data.renewables_ninja import AVAILABLE_YEARS
 from ppa.industrial_profiles import get_load_series
 
@@ -14,19 +14,20 @@ def build_year_timeseries(
     ppa_load_mw: float,
     pv_cf_by_year: dict[int, pd.Series],
     wind_cf_by_year: dict[int, pd.Series],
-    base_prices: pd.Series,
-    base_price_year: int,
+    prices_by_year: dict[int, pd.Series],
     price_escalation_rate: float,
     load_profile: str = "flat",
 ) -> pd.DataFrame:
     """
     Build a full-year hourly timeseries ready for build_network / solve.
 
-    The resulting DataFrame has a UTC DatetimeIndex named 'snapshot' and columns:
-      ts_PVGen, ts_WindGen, ts_MktPrice, ppaload_mw
+    Both CF profiles and market prices are drawn from `weather_year` so that
+    price–weather correlations are preserved (e.g. 2021: high prices + low wind).
+    Prices are then escalated from that historical year to sim_year.
     """
     pv_cf = pv_cf_by_year[weather_year]
     wind_cf = wind_cf_by_year[weather_year]
+    base_prices = prices_by_year[weather_year]
 
     # Build the canonical hourly index for this simulation year (UTC)
     year_index = pd.date_range(
@@ -39,8 +40,8 @@ def build_year_timeseries(
     pv_series = _align_to_index(pv_cf, year_index, fill_value=0.0)
     wind_series = _align_to_index(wind_cf, year_index, fill_value=0.0)
 
-    prices = get_prices_for_sim_year(sim_year, base_prices, base_price_year, price_escalation_rate)
-    price_series = _align_to_index(prices, year_index, fill_value=float(prices.median()))
+    escalated = escalate_prices(base_prices, from_year=weather_year, to_year=sim_year, rate=price_escalation_rate)
+    price_series = _align_to_index(escalated, year_index, fill_value=float(escalated.median()))
 
     # PyPSA requires timezone-naive snapshots; strip UTC tz while keeping UTC semantics
     naive_index = year_index.tz_localize(None)

@@ -54,8 +54,7 @@ def run_multi_year(
     scenario: Scenario,
     pv_cf_by_year: dict[int, pd.Series],
     wind_cf_by_year: dict[int, pd.Series],
-    base_prices: pd.Series,
-    base_price_year: int = 2024,
+    prices_by_year: dict[int, pd.Series],
     first_sim_year: int = 2025,
     max_workers: int = 4,
     progress_callback: Callable[[int, int, int], None] | None = None,
@@ -63,18 +62,15 @@ def run_multi_year(
     """
     Run `scenario.simulation_years` independent year-simulations in parallel.
 
-    Weather years are cycled from the keys of `pv_cf_by_year`.
-    Market prices are escalated from `base_price_year` using `scenario.price_escalation_rate`.
+    Weather years (CF + prices) are cycled from the available historical keys.
+    Using the same historical year for both CF and prices preserves correlations
+    (e.g. 2021: high prices + low wind).  Prices are then escalated from that
+    historical base year to the simulation year via `scenario.price_escalation_rate`.
     Technology degradation is applied per-year via `scenario.*_degradation_rate`.
-
-    Args:
-        progress_callback: called as (completed_count, total, sim_year) after each year finishes.
-
-    Returns:
-        List of OptimizationResult ordered by simulation year (index 0 = first sim year).
     """
     n_years = scenario.simulation_years
     available_weather_years = sorted(pv_cf_by_year.keys())
+    available_price_years = sorted(prices_by_year.keys())
 
     # Pre-build all timeseries and per-year scenarios on the main thread
     timeseries_by_idx: dict[int, pd.DataFrame] = {}
@@ -82,6 +78,8 @@ def run_multi_year(
     for idx in range(n_years):
         sim_year = first_sim_year + idx
         weather_year = pick_weather_year(idx, available_weather_years)
+        # Cycle price years independently if they don't fully overlap with CF years
+        price_year = pick_weather_year(idx, available_price_years)
         degraded = _degraded_scenario(scenario, idx)
         ts = build_year_timeseries(
             sim_year=sim_year,
@@ -89,8 +87,7 @@ def run_multi_year(
             ppa_load_mw=degraded.ppaload_mw,
             pv_cf_by_year=pv_cf_by_year,
             wind_cf_by_year=wind_cf_by_year,
-            base_prices=base_prices,
-            base_price_year=base_price_year,
+            prices_by_year={weather_year: prices_by_year[price_year]},
             price_escalation_rate=scenario.price_escalation_rate,
             load_profile=scenario.load_profile,
         )
