@@ -39,7 +39,7 @@ def _render_multi_year_overview(fin) -> None:
         st.dataframe(
             pd.DataFrame(capex_rows, columns=["Item", "Value"]),
             hide_index=True,
-            use_container_width=True,
+            width="stretch",
         )
     with cc2:
         avg_delivery = sum(y.fulfilled_share for y in fin.yearly) / len(fin.yearly) if fin.yearly else 0.0
@@ -55,7 +55,7 @@ def _render_multi_year_overview(fin) -> None:
         st.dataframe(
             pd.DataFrame(gen_rows, columns=["Metric", "Value"]),
             hide_index=True,
-            use_container_width=True,
+            width="stretch",
         )
 
     # ── Cumulative NPV chart ──────────────────────────────────────────────────
@@ -75,7 +75,7 @@ def _render_multi_year_overview(fin) -> None:
         xaxis_title="Year", yaxis_title="NPV (€M)", height=320,
         margin=dict(t=10, b=40),
     )
-    st.plotly_chart(fig, use_container_width=True)
+    st.plotly_chart(fig, width="stretch")
 
     # ── Year-by-year table ────────────────────────────────────────────────────
     st.markdown("---")
@@ -95,7 +95,7 @@ def _render_multi_year_overview(fin) -> None:
         }
         for y in fin.yearly
     ]
-    st.dataframe(pd.DataFrame(rows).set_index("Year"), use_container_width=True)
+    st.dataframe(pd.DataFrame(rows).set_index("Year"), width="stretch")
 
     st.caption(
         "Detailed hourly dispatch analysis is available in **Results Deep Dive** "
@@ -199,7 +199,7 @@ def _render_single_day_overview() -> None:
             "✅ Satisfied" if summary.market_buy_to_ppa_mwh <= buy_limit + 1 else "❌ Violated",
         ],
     }
-    st.dataframe(pd.DataFrame(compliance), hide_index=True, use_container_width=True)
+    st.dataframe(pd.DataFrame(compliance), hide_index=True, width="stretch")
 
     # ── Dispatch summary table ─────────────────────────────────────────────────
     st.subheader("Dispatch summary")
@@ -225,7 +225,7 @@ def _render_single_day_overview() -> None:
                 f"{summary.penalty_mwh:,.0f}",
             ],
         }
-        st.dataframe(pd.DataFrame(gen_data), hide_index=True, use_container_width=True)
+        st.dataframe(pd.DataFrame(gen_data), hide_index=True, width="stretch")
 
     with cols[1]:
         st.markdown("**Revenue breakdown**")
@@ -255,7 +255,7 @@ def _render_single_day_overview() -> None:
                 f"€{revenue.net_revenue:,.0f}",
             ],
         }
-        st.dataframe(pd.DataFrame(rev_data), hide_index=True, use_container_width=True)
+        st.dataframe(pd.DataFrame(rev_data), hide_index=True, width="stretch")
 
     st.markdown("---")
 
@@ -271,12 +271,12 @@ def _render_single_day_overview() -> None:
             supply_mix = build_supply_mix_df(result.dispatch, ts_prep)
             avg_24h = build_24h_avg(supply_mix)
             fig = make_supply_mix_24h_chart(avg_24h, s.ppaload_mw)
-            st.plotly_chart(fig, use_container_width=True, height=500)
+            st.plotly_chart(fig, width="stretch", height=500)
 
         with cols[1]:
             st.subheader("Revenue waterfall")
             fig_rev = make_revenue_breakdown_chart(revenue)
-            st.plotly_chart(fig_rev, use_container_width=True, height=500)
+            st.plotly_chart(fig_rev, width="stretch", height=500)
 
 
 def render() -> None:

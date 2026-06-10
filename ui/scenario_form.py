@@ -45,6 +45,17 @@ def render_scenario_form(initial: Scenario) -> Scenario:
                                            help="Peak rated MW. The load profile shapes how much of this is demanded each hour.")
         ppa_price = cols[1].number_input("PPA tariff ($/MWh)", min_value=1.0, max_value=500.0,
                                           value=float(initial.ppa_price), step=5.0, key="sf_ppa_price")
+        required_delivery_share = cols[2].slider(
+            "Required delivery share (%)", 50, 100, int(initial.required_delivery_share * 100),
+            step=5, format="%d%%",
+            help="Fraction of total contracted load that must be delivered on average.",
+            key="sf_required_delivery_share",
+        ) / 100.0
+        pen_mult = cols[3].number_input(
+            "Penalty multiplier (×tariff)", min_value=1.0, max_value=5.0,
+            value=float(initial.pen_mult), step=0.1,
+            key="sf_pen_mult",
+        )
 
         # ── Load profile selector ─────────────────────────────────────────────
         st.markdown("**Offtaker load profile**")
@@ -62,17 +73,6 @@ def render_scenario_form(initial: Scenario) -> Scenario:
         _info = PROFILE_INFO[load_profile]
         cols[1].caption(
             f"**Typical load factor: {_info['typical_lf']}** — {_info['description']}"
-        )
-        required_delivery_share = cols[2].slider(
-            "Required delivery share (%)", 50, 100, int(initial.required_delivery_share * 100),
-            step=5, format="%d%%",
-            help="Fraction of total contracted load that must be delivered on average.",
-            key="sf_required_delivery_share",
-        ) / 100.0
-        pen_mult = cols[3].number_input(
-            "Penalty multiplier (×tariff)", min_value=1.0, max_value=5.0,
-            value=float(initial.pen_mult), step=0.1,
-            key="sf_pen_mult",
         )
 
     with st.expander("Market interaction", expanded=True):

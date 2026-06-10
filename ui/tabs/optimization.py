@@ -215,7 +215,7 @@ def _render_npv_chart(fin) -> None:
         title="Cumulative NPV over Project Life",
         xaxis_title="Year", yaxis_title="NPV (€M)", height=350,
     )
-    st.plotly_chart(fig, use_container_width=True)
+    st.plotly_chart(fig, width="stretch")
 
 
 def _render_revenue_chart(fin) -> None:
@@ -230,7 +230,7 @@ def _render_revenue_chart(fin) -> None:
         barmode="relative", title="Annual Revenue Breakdown",
         xaxis_title="Year", yaxis_title="€M", height=400,
     )
-    st.plotly_chart(fig, use_container_width=True)
+    st.plotly_chart(fig, width="stretch")
 
 
 def _render_delivery_chart(fin) -> None:
@@ -246,7 +246,7 @@ def _render_delivery_chart(fin) -> None:
         xaxis_title="Year", yaxis_title="Delivery Rate (%)",
         yaxis=dict(range=[0, 105]), height=300,
     )
-    st.plotly_chart(fig, use_container_width=True)
+    st.plotly_chart(fig, width="stretch")
 
 
 def _render_yearly_table(fin) -> None:
@@ -265,7 +265,7 @@ def _render_yearly_table(fin) -> None:
         }
         for y in fin.yearly
     ]
-    st.dataframe(pd.DataFrame(rows).set_index("Year"), use_container_width=True)
+    st.dataframe(pd.DataFrame(rows).set_index("Year"), width="stretch")
 
 
 # ── main render ───────────────────────────────────────────────────────────────
@@ -285,7 +285,7 @@ def render() -> None:
     prices_ok, cf_ok = _render_data_status(s.lat, s.lon)
     data_ready = prices_ok and cf_ok
 
-    run_col, workers_col, status_col = st.columns([2, 1, 3])
+    run_col, workers_col, status_col = st.columns([1, 1, 2])
     with workers_col:
         max_workers = st.selectbox(
             "Parallel workers", [1, 2, 4, 6, 8], index=2, key="opt_max_workers",

@@ -27,18 +27,18 @@ def _render_dispatch_section(result, s, chosen_day: str) -> None:
     supply_mix = build_supply_mix_df(result.dispatch)
     day_mix = supply_mix[supply_mix.index.strftime("%Y-%m-%d") == chosen_day]
     fig = make_supply_mix_day_chart(day_mix, s.ppaload_mw, chosen_day)
-    st.plotly_chart(fig, use_container_width=True, height=500)
+    st.plotly_chart(fig, width="stretch", height=500)
 
     if s.include_bess and s.effective_bess_mwh > 0:
         st.subheader("BESS state of charge")
         fig_soc = make_soc_chart(result.dispatch.soc, s.effective_bess_mwh)
-        st.plotly_chart(fig_soc, use_container_width=True, height=400)
+        st.plotly_chart(fig_soc, width="stretch", height=400)
 
     if getattr(result, "market_prices", None) is not None:
         st.subheader("Market spot price")
         price_day = result.market_prices[result.market_prices.index.strftime("%Y-%m-%d") == chosen_day]
         fig_price = make_price_series_chart(price_day, title=f"Day-ahead price — {chosen_day}")
-        st.plotly_chart(fig_price, use_container_width=True, height=300)
+        st.plotly_chart(fig_price, width="stretch", height=300)
 
 
 def _render_gen_stats(result, s) -> None:
@@ -60,7 +60,7 @@ def _render_gen_stats(result, s) -> None:
         ],
         columns=["Metric", "Value", "Detail"],
     )
-    st.dataframe(stats_df, hide_index=True, use_container_width=True)
+    st.dataframe(stats_df, hide_index=True, width="stretch")
 
 
 def _render_multi_year_counterfactuals(results, fin, s) -> None:
@@ -99,7 +99,7 @@ def _render_multi_year_counterfactuals(results, fin, s) -> None:
 
     st.plotly_chart(
         make_multi_year_counterfactual_chart(years, ppa_prices, spot_prices, cal_prices, blended_prices),
-        use_container_width=True,
+        width="stretch",
     )
 
     # Lifetime totals table
@@ -121,7 +121,7 @@ def _render_multi_year_counterfactuals(results, fin, s) -> None:
         ("Blended", f"€{_eff(total_blended):.2f}/MWh", _em(total_blended),
          f"€{(total_blended - total_ppa) / 1e6:+.2f}M vs PPA"),
     ], columns=["Strategy", "Lifetime effective price", "Lifetime total cost", "vs PPA"])
-    st.dataframe(tbl, hide_index=True, use_container_width=True)
+    st.dataframe(tbl, hide_index=True, width="stretch")
 
 
 def _render_multi_year_deep_dive() -> None:
@@ -165,7 +165,7 @@ def _render_multi_year_deep_dive() -> None:
                 ],
                 columns=["Component", "Value", "Basis"],
             )
-            st.dataframe(capex_df, hide_index=True, use_container_width=True)
+            st.dataframe(capex_df, hide_index=True, width="stretch")
         with ec2:
             st.markdown("**Project economics**")
             irr_str = f"{fin.irr:.1%}" if fin.irr == fin.irr else "n/a"
@@ -182,7 +182,7 @@ def _render_multi_year_deep_dive() -> None:
                 ],
                 columns=["Metric", "Value", "Note"],
             )
-            st.dataframe(econ_df, hide_index=True, use_container_width=True)
+            st.dataframe(econ_df, hide_index=True, width="stretch")
 
     # ── Daily dispatch ────────────────────────────────────────────────────────
     st.markdown("---")
@@ -227,7 +227,7 @@ def _render_single_day_deep_dive() -> None:
                 ],
                 columns=["Component", "Value", "Basis"],
             )
-            st.dataframe(capex_df, hide_index=True, use_container_width=True)
+            st.dataframe(capex_df, hide_index=True, width="stretch")
 
         with cols[1]:
             st.markdown("**Project economics**")
@@ -252,7 +252,7 @@ def _render_single_day_deep_dive() -> None:
                 ],
                 columns=["Metric", "Value", "Note"],
             )
-            st.dataframe(econ_df, hide_index=True, use_container_width=True, height=500)
+            st.dataframe(econ_df, hide_index=True, width="stretch", height=500)
 
     # ── Dispatch detail ────────────────────────────────────────────────────────
     st.markdown("---")
@@ -272,7 +272,7 @@ def _render_single_day_deep_dive() -> None:
             fig_price = make_price_series_chart(result.market_prices, title="Market spot price")
         else:
             fig_price = make_price_series_chart(ts_prep)
-        st.plotly_chart(fig_price, use_container_width=True, height=400)
+        st.plotly_chart(fig_price, width="stretch", height=400)
 
     # ── Generation statistics ──────────────────────────────────────────────────
     st.markdown("---")
@@ -292,10 +292,10 @@ def _render_single_day_deep_dive() -> None:
         col_bar, col_cum = st.columns([1, 2])
         with col_bar:
             fig_cf = make_counterfactual_bar_chart(cf, s)
-            st.plotly_chart(fig_cf, use_container_width=True, height=400)
+            st.plotly_chart(fig_cf, width="stretch", height=400)
         with col_cum:
             fig_cum = make_cumulative_cost_chart(cf)
-            st.plotly_chart(fig_cum, use_container_width=True, height=400)
+            st.plotly_chart(fig_cum, width="stretch", height=400)
 
         cf_table = pd.DataFrame(
             [
@@ -310,7 +310,7 @@ def _render_single_day_deep_dive() -> None:
             ],
             columns=["Strategy", "Effective €/MWh", "Period total", "vs PPA (€, + = more expensive)"],
         )
-        st.dataframe(cf_table, hide_index=True, use_container_width=True)
+        st.dataframe(cf_table, hide_index=True, width="stretch")
 
 
 def render() -> None:
