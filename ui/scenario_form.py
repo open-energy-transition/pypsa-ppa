@@ -50,8 +50,8 @@ def render_scenario_form(initial: Scenario) -> Scenario:
         st.markdown("**Offtaker load profile**")
         _profile_labels = [f"{PROFILE_INFO[k]['icon']} {PROFILE_INFO[k]['label']}" for k in PROFILE_KEYS]
         _current_idx = PROFILE_KEYS.index(initial.load_profile) if initial.load_profile in PROFILE_KEYS else 0
-        profile_cols = st.columns([2, 3])
-        _selected_label = profile_cols[0].selectbox(
+        cols = st.columns([1, 3])
+        _selected_label = cols[0].selectbox(
             "Profile type",
             options=_profile_labels,
             index=_current_idx,
@@ -60,7 +60,7 @@ def render_scenario_form(initial: Scenario) -> Scenario:
         )
         load_profile = PROFILE_KEYS[_profile_labels.index(_selected_label)]
         _info = PROFILE_INFO[load_profile]
-        profile_cols[1].caption(
+        cols[1].caption(
             f"**Typical load factor: {_info['typical_lf']}** — {_info['description']}"
         )
         required_delivery_share = cols[2].slider(
@@ -140,16 +140,16 @@ def render_scenario_form(initial: Scenario) -> Scenario:
         ) / 100.0
 
         st.caption("Technology degradation (compound annual, applied from year 2 onward)")
-        dcols = st.columns(3)
-        pv_degradation_rate = dcols[0].number_input(
+        cols = st.columns(4)
+        pv_degradation_rate = cols[0].number_input(
             "PV (%/yr)", 0.0, 5.0, float(initial.pv_degradation_rate * 100),
             0.05, format="%.2f", key="sf_pv_deg",
         ) / 100.0
-        wind_degradation_rate = dcols[1].number_input(
+        wind_degradation_rate = cols[1].number_input(
             "Wind (%/yr)", 0.0, 5.0, float(initial.wind_degradation_rate * 100),
             0.05, format="%.2f", key="sf_wind_deg",
         ) / 100.0
-        bess_degradation_rate = dcols[2].number_input(
+        bess_degradation_rate = cols[2].number_input(
             "BESS (%/yr)", 0.0, 10.0, float(initial.bess_degradation_rate * 100),
             0.1, format="%.1f", key="sf_bess_deg",
         ) / 100.0
