@@ -17,6 +17,7 @@ from ui.tabs import (
     results_deep_dive,
     sensitivity_analysis,
     scenario_analysis,
+    financial_model,
     excel_import,
 )
 
@@ -37,6 +38,7 @@ tabs = st.tabs([
     "🔍 Results Deep Dive",
     "Sensitivity Analysis",
     "Scenario Analysis",
+    "🏦 Financial Model",
     "Excel Import",
 ], on_change="rerun")
 
@@ -78,6 +80,10 @@ if tabs[8].open:
 
 if tabs[9].open:
     with tabs[9]:
+        financial_model.render()
+
+if tabs[10].open:
+    with tabs[10]:
         excel_import.render()
 
 with st.popover("Disclaimer", width="stretch", icon="⚠️"):
