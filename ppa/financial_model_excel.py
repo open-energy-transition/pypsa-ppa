@@ -318,12 +318,47 @@ def _write_model(
     label_row("nonsolar_idx", "Non-solar-hour price", "×")
     put_formula("nonsolar_idx", lambda pr, cl: f"=(1+{I['nonsolar_price_inflation']})^({cl}${hdr}+{I['indexation_offset_years']}-1)", "0.000")
 
-    # ── Capital spend (toolkit values) ────────────────────────────────────────
+    # ── Capital spend (live: cost inputs × capacity × indexation) ─────────────
+    # Per-technology spend is spread evenly over each tech's development /
+    # construction window. The timing fractions (0 or 1/n over the window) are
+    # baked in per period, but the cost rates and capacities are live cell
+    # references, so editing any build/connection/devex assumption flows through.
+    def _fracs(first: int, last: int) -> list[float]:
+        arr = [0.0] * n
+        if last >= first:
+            per = 1.0 / (last - first + 1)
+            for pp in range(first, last + 1):
+                arr[pp - 1] = per
+        return arr
+
+    onsw_dev_f = _fracs(*tl.tech_dev(p.onsw_dev_years))
+    pv_dev_f = _fracs(*tl.tech_dev(p.pv_dev_years))
+    bess_dev_f = _fracs(*tl.tech_dev(p.bess_dev_years))
+    onsw_con_f = _fracs(*tl.tech_constr(p.onsw_constr_years))
+    pv_con_f = _fracs(*tl.tech_constr(p.pv_constr_years))
+    bess_con_f = _fracs(*tl.tech_constr(p.bess_constr_years))
+
+    def _devex_fn(pr: int, cl: str) -> str:
+        return (
+            f"={cl}{R['cost_idx']}*("
+            f"{onsw_dev_f[pr-1]}*{I['onsw_devex']}*{E['onsw_mw']}"
+            f"+{pv_dev_f[pr-1]}*{I['pv_devex']}*{E['pv_mw']}"
+            f"+{bess_dev_f[pr-1]}*{I['bess_devex']}*{E['bess_mwh']})"
+        )
+
+    def _capex_fn(pr: int, cl: str) -> str:
+        return (
+            f"={cl}{R['cost_idx']}*("
+            f"{onsw_con_f[pr-1]}*({I['onsw_build_cost']}+{I['onsw_connection_cost']})*{E['onsw_mw']}"
+            f"+{pv_con_f[pr-1]}*({I['pv_build_cost']}+{I['pv_connection_cost']})*{E['pv_mw']}"
+            f"+{bess_con_f[pr-1]}*({I['bess_build_cost']}+{I['bess_connection_cost']})*{E['bess_mwh']})"
+        )
+
     label_row("capital", "Capital spend", "€m", section=True)
     label_row("devex", "Devex", "€m")
-    put_values("devex", sc["devex"])
+    put_formula("devex", _devex_fn)
     label_row("capex", "Capex", "€m")
-    put_values("capex", sc["capex"])
+    put_formula("capex", _capex_fn)
     label_row("capital_spend", "Total capital spend", "€m")
     put_formula("capital_spend", lambda pr, cl: f"={cl}{R['devex']}+{cl}{R['capex']}")
 
@@ -381,21 +416,54 @@ def _write_model(
     label_row("loan_repay", "Loan repayment", "€m")
     put_values("loan_repay", sc["loan_repay"])
 
-    # ── Depreciation (formulas off toolkit base) ──────────────────────────────
-    book_base = float(result.total_capex)        # devex + capex + IDC
-    tax_base = float(sc["capex"].sum())
+    # ── Depreciation (live, straight-line capped at the asset base) ───────────
+    firstcol, lastcol = col(1), col(n)
     label_row("dep", "Depreciation", "€m", section=True)
-    label_row("book_dep", "Book depreciation", "€m")
-    put_values("book_dep", sc["book_dep"])
-    label_row("tax_dep", "Tax depreciation", "€m")
-    put_values("tax_dep", sc["tax_dep"])
 
-    # ── P&L tax (formulas) ────────────────────────────────────────────────────
+    # Asset bases (live): tax = capex only; book = devex + capex + capitalised IDC.
+    label_row("tax_base", "Tax asset base", "€m")
+    ws.cell(R["tax_base"], _pcol(1),
+            f"=SUM({firstcol}{R['capex']}:{lastcol}{R['capex']})").number_format = "#,##0.0"
+    label_row("book_base", "Book asset base", "€m")
+    ws.cell(R["book_base"], _pcol(1), (
+        f"=SUM({firstcol}{R['devex']}:{lastcol}{R['devex']})"
+        f"+SUM({firstcol}{R['capex']}:{lastcol}{R['capex']})"
+        f"+SUM({firstcol}{R['idc']}:{lastcol}{R['idc']})"
+    )).number_format = "#,##0.0"
+
+    def _dep_fn(self_row: int, base_row: int, rate_cell: str):
+        # Straight-line at `rate` on the asset base, but never depreciate more
+        # than the remaining book value (cumulative prior depreciation in-row).
+        base = f"${firstcol}${base_row}"
+
+        def fn(pr: int, cl: str) -> str:
+            prior = "0" if pr == 1 else f"SUM(${firstcol}{self_row}:{col(pr-1)}{self_row})"
+            return (
+                f"={cl}{R['ops_flag']}*MIN({base}*{rate_cell},MAX({base}-{prior},0))"
+            )
+        return fn
+
+    label_row("tax_dep", "Tax depreciation", "€m")
+    put_formula("tax_dep", _dep_fn(R["tax_dep"], R["tax_base"], I["tax_depreciation_rate"]))
+    label_row("book_dep", "Book depreciation", "€m")
+    put_formula("book_dep", _dep_fn(R["book_dep"], R["book_base"], I["book_depreciation_rate"]))
+
+    # ── P&L tax (live, with loss carry-forward) ───────────────────────────────
     label_row("pl", "Profit & tax", "€m", section=True)
     label_row("pbt", "Profit before tax", "€m")
     put_formula("pbt", lambda pr, cl: f"={cl}{R['ebitda']}-{cl}{R['interest']}-{cl}{R['book_dep']}")
+    label_row("taxable", "Taxable income", "€m")
+    put_formula("taxable", lambda pr, cl: f"={cl}{R['ebitda']}-{cl}{R['interest']}-{cl}{R['tax_dep']}")
+    label_row("carry", "Carry-forward losses", "€m")
+    put_formula("carry", lambda pr, cl: (
+        f"=MIN(0,{cl}{R['taxable']})" if pr == 1
+        else f"=MIN(0,{cl}{R['taxable']}+{col(pr-1)}{R['carry']})"
+    ))
     label_row("tax", "Income tax", "€m")
-    put_values("tax", sc["tax"])  # carry-forward is path-dependent; toolkit value
+    put_formula("tax", lambda pr, cl: (
+        f"=MAX(0,{cl}{R['taxable']})*{I['corp_tax_rate']}" if pr == 1
+        else f"=MAX(0,{cl}{R['taxable']}+{col(pr-1)}{R['carry']})*{I['corp_tax_rate']}"
+    ))
     label_row("pat", "Profit after tax", "€m")
     put_formula("pat", lambda pr, cl: f"={cl}{R['pbt']}-{cl}{R['tax']}")
 
@@ -471,8 +539,9 @@ def _write_outputs(wb: Workbook, result: ProjectFinanceResult) -> None:
     kpi("LCOE", result.lcoe, "#,##0.0 \"€/MWh\"")
 
     ws.cell(row + 1, 2,
-            "IRRs recompute live from the Model sheet. Other values are the toolkit "
-            "result; they update if you re-derive debt sizing manually.").font = (
+            "IRRs and the capex→depreciation→tax→cash-flow chain recompute live from the "
+            "Model sheet. Debt sizing/IDC are pre-solved (circular); re-run the toolkit to "
+            "re-size debt after large cost changes.").font = (
         Font(italic=True, color="A0A0A0", size=9))
 
 
@@ -488,14 +557,18 @@ def _write_notes(wb: Workbook) -> None:
         "This workbook is a streamlined export of the PyPSA-PPA toolkit's project-finance model.",
         "",
         "Live (formula-driven, recompute on edit):",
+        "  • Capex & devex — per-technology build/connection/devex cost × capacity ×",
+        "    indexation (spend timing baked per period; edit a cost and it flows through).",
         "  • Indexation multipliers, all revenue lines, opex, EBITDA.",
-        "  • Book/tax depreciation are applied off a fixed asset base.",
+        "  • Book/tax depreciation (straight-line, capped at the live asset base).",
+        "  • Taxable income, loss carry-forward and income tax.",
         "  • PBT, PAT, FCFF, FCFE, DSCR, and the Project/Equity IRR outputs.",
         "",
         "Toolkit-sized values (green) — edit to override:",
         "  • Debt drawdown, IDC and the contracted/uncontracted tranche split are circular",
         "    (debt size depends on IDC which depends on drawdown), so they are pre-solved.",
-        "  • Income tax embeds loss carry-forward, which is path-dependent across years.",
+        "    Changing capex therefore updates returns but not the debt amount — re-run the",
+        "    toolkit to re-size debt.",
         "",
         "Simplifications (consistent with the source model):",
         "  • No working capital, no dividends, no terminal/decommissioning value.",
