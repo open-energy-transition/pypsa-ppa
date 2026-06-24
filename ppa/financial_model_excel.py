@@ -58,6 +58,12 @@ def export_financial_model(
     _write_outputs(wb, result)
     _write_notes(wb)
 
+    # Order: headline sheets first, the bulky per-year hourly sheets at the end.
+    hourly = [ws for ws in wb._sheets if ws.title.startswith("Hourly ")]
+    others = [ws for ws in wb._sheets if not ws.title.startswith("Hourly ")]
+    wb._sheets = others + hourly
+    wb.active = 0
+
     # Recalculate formulas on open
     wb.calculation.calcMode = "auto"
     wb.calculation.fullCalcOnLoad = True
