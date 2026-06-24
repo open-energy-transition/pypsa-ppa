@@ -47,10 +47,13 @@ def export_financial_model(
     p: ProjectFinanceInputs,
     e: EnergyInputs,
     result: ProjectFinanceResult,
+    year_results: list | None = None,
 ) -> bytes:
     wb = Workbook()
     inputs_cells = _write_inputs(wb, p)
-    energy_cells = _write_energy(wb, e)
+    # Per-year hourly dispatch sheets; the Energy totals roll up from these.
+    hourly_refs = _write_hourly_sheets(wb, year_results) if year_results else None
+    energy_cells = _write_energy(wb, e, hourly_refs)
     _write_model(wb, p, e, result, inputs_cells, energy_cells)
     _write_outputs(wb, result)
     _write_notes(wb)
@@ -168,18 +171,160 @@ def _write_inputs(wb: Workbook, p: ProjectFinanceInputs) -> dict[str, str]:
     return cells
 
 
+# ── Hourly dispatch sheets (one per simulated year) ──────────────────────────
+
+# Fixed row layout for the per-sheet annual aggregate block, so the Energy sheet
+# can reference these cells by address.
+_AGG_ROWS = {
+    "scale": 4,
+    "ppa_gwh": 5,
+    "excess_solar_gwh": 6,
+    "excess_nonsolar_gwh": 7,
+    "penalty_gwh": 8,
+    "total_solar_gwh": 9,
+    "total_nonsolar_gwh": 10,
+    "sell_solar_price": 11,
+    "sell_nonsolar_price": 12,
+    "purchase_price": 13,
+    "marketbuy_gwh": 14,
+}
+_HOURLY_HEADER_ROW = 16
+_HOURLY_DATA_START = 17
+
+# Hourly data columns (1-based): timestamp, hour, then the energy/price series.
+_HOURLY_COLS = [
+    "Timestamp", "Hour", "Wind (MWh)", "PV (MWh)", "BESS discharge (MWh)",
+    "BESS charge (MWh)", "Total generation (MWh)", "Market buy (MWh)",
+    "Market sell (MWh)", "PPA delivered (MWh)", "Penalty (MWh)", "Price (€/MWh)",
+]
+# Column letters for the formulas below
+_C_HOUR, _C_TOTAL, _C_BUY, _C_SELL, _C_PPA, _C_PEN, _C_PRICE = "B", "G", "H", "I", "J", "K", "L"
+
+
+def _write_hourly_sheets(wb: Workbook, year_results: list) -> dict[str, list[str]]:
+    """Write one hourly-dispatch sheet per simulated year and return, per metric,
+    the list of per-year aggregate cell references (for the Energy sheet to average).
+
+    Each sheet carries the raw hourly series (generation, sales, purchases, PPA
+    delivery, penalty, price) and an annual aggregate block that *sums* those
+    rows — so the totals feeding the financial model are auditable roll-ups of
+    the hourly data, computed live by Excel formulas."""
+    import numpy as np  # noqa: F401  (kept for parity / future use)
+
+    refs: dict[str, list[str]] = {k: [] for k in _AGG_ROWS if k != "scale"}
+
+    for idx, res in enumerate(year_results, start=1):
+        d = res.dispatch
+        prices = res.market_prices
+        first_year = getattr(res.scenario, "first_sim_year", 0)
+        year_label = (first_year + idx - 1) if first_year else idx
+        sheet = wb.create_sheet(f"Hourly Y{idx}")
+        sheet.column_dimensions["A"].width = 18
+
+        # Series → arrays
+        wind = d.wind_gen.to_numpy()
+        pv = d.pv_gen.to_numpy()
+        bess_dis = d.bess_dispatch.to_numpy()
+        bess_chg = d.bess_store.to_numpy()
+        buy = d.market_buy.to_numpy()
+        sell = d.market_sell.to_numpy()
+        ppa = d.ppa_delivery.to_numpy()
+        pen = d.penalty_gen.to_numpy()
+        price = prices.to_numpy()
+        total = wind + pv + bess_dis
+        index = d.wind_gen.index
+        hours = index.hour
+        n_hours = len(wind)
+        last = _HOURLY_DATA_START + n_hours - 1
+
+        # ── Header / aggregate block ──────────────────────────────────────────
+        sheet["A1"] = f"Hourly dispatch — Year {idx} ({year_label})"
+        sheet["A1"].font = _TITLE
+        sheet["A2"] = "Annual totals below are sums of the hourly rows (× annualisation factor)."
+        sheet["A2"].font = Font(italic=True, color="808080")
+
+        def agg(key: str, label: str, formula, unit: str, fmt: str = "#,##0.00") -> None:
+            r = _AGG_ROWS[key]
+            sheet.cell(r, 1, label).font = Font(bold=True)
+            c = sheet.cell(r, 3, formula)
+            c.number_format = fmt
+            c.fill = _PREFILL
+            sheet.cell(r, 4, unit).font = Font(color="808080")
+
+        rng = lambda col: f"${col}${_HOURLY_DATA_START}:${col}${last}"
+        hour_rng = rng(_C_HOUR)
+        scale_cell = f"$C${_AGG_ROWS['scale']}"
+        solar = f'SUMIFS({{r}},{hour_rng},">=9",{hour_rng},"<17")'
+
+        agg("scale", "Annualisation factor (8760 / hours)", round(8760.0 / n_hours, 6), "×", "0.0000")
+        agg("ppa_gwh", "PPA delivered", f"=SUM({rng(_C_PPA)})*{scale_cell}/1000", "GWh p.a.")
+        agg("excess_solar_gwh", "Excess sold — solar hours",
+            f"={solar.format(r=rng(_C_SELL))}*{scale_cell}/1000", "GWh p.a.")
+        agg("excess_nonsolar_gwh", "Excess sold — non-solar hours",
+            f"=(SUM({rng(_C_SELL)})-{solar.format(r=rng(_C_SELL))})*{scale_cell}/1000", "GWh p.a.")
+        agg("penalty_gwh", "Penalty (undelivered)", f"=SUM({rng(_C_PEN)})*{scale_cell}/1000", "GWh p.a.")
+        agg("total_solar_gwh", "Total generation — solar hours",
+            f"={solar.format(r=rng(_C_TOTAL))}*{scale_cell}/1000", "GWh p.a.")
+        agg("total_nonsolar_gwh", "Total generation — non-solar hours",
+            f"=(SUM({rng(_C_TOTAL)})-{solar.format(r=rng(_C_TOTAL))})*{scale_cell}/1000", "GWh p.a.")
+        # Volume-weighted capture prices (solar / non-solar hours), guarded for /0
+        solar_w = f'({hour_rng}>=9)*({hour_rng}<17)'
+        nonsolar_w = f'(({hour_rng}<9)+({hour_rng}>=17))'
+        agg("sell_solar_price", "Merchant capture — solar hours",
+            f"=IFERROR(SUMPRODUCT({solar_w}*{rng(_C_SELL)}*{rng(_C_PRICE)})"
+            f"/SUMPRODUCT({solar_w}*{rng(_C_SELL)}),0)", "€/MWh")
+        agg("sell_nonsolar_price", "Merchant capture — non-solar hours",
+            f"=IFERROR(SUMPRODUCT({nonsolar_w}*{rng(_C_SELL)}*{rng(_C_PRICE)})"
+            f"/SUMPRODUCT({nonsolar_w}*{rng(_C_SELL)}),0)", "€/MWh")
+        agg("purchase_price", "Market purchase price",
+            f"=IFERROR(SUMPRODUCT({rng(_C_BUY)}*{rng(_C_PRICE)})/SUM({rng(_C_BUY)}),0)", "€/MWh")
+        agg("marketbuy_gwh", "Market purchase volume", f"=SUM({rng(_C_BUY)})*{scale_cell}/1000", "GWh p.a.")
+
+        # ── Hourly data ───────────────────────────────────────────────────────
+        hc = sheet.cell(_HOURLY_HEADER_ROW, 1)  # ensure header row exists before append
+        for j, name in enumerate(_HOURLY_COLS, start=1):
+            cell = sheet.cell(_HOURLY_HEADER_ROW, j, name)
+            cell.font = _HEADER
+            cell.fill = _HEADER_FILL
+        # Force appends to begin immediately after the header row.
+        sheet._current_row = _HOURLY_HEADER_ROW
+        for i in range(n_hours):
+            sheet.append([
+                index[i].strftime("%Y-%m-%d %H:%M"), int(hours[i]),
+                round(float(wind[i]), 3), round(float(pv[i]), 3),
+                round(float(bess_dis[i]), 3), round(float(bess_chg[i]), 3),
+                round(float(total[i]), 3), round(float(buy[i]), 3),
+                round(float(sell[i]), 3), round(float(ppa[i]), 3),
+                round(float(pen[i]), 3), round(float(price[i]), 3),
+            ])
+        sheet.freeze_panes = f"A{_HOURLY_DATA_START}"
+
+        for k in refs:
+            refs[k].append(f"'Hourly Y{idx}'!$C${_AGG_ROWS[k]}")
+
+    return refs
+
+
 # ── Energy sheet (PyPSA interface) ───────────────────────────────────────────
 
 
-def _write_energy(wb: Workbook, e: EnergyInputs) -> dict[str, str]:
+def _write_energy(
+    wb: Workbook,
+    e: EnergyInputs,
+    hourly_refs: dict[str, list[str]] | None = None,
+) -> dict[str, str]:
     ws = wb.create_sheet("Energy")
     ws.column_dimensions["B"].width = 42
     ws.column_dimensions["C"].width = 16
     ws.column_dimensions["D"].width = 10
 
-    ws["B1"] = "PyPSA Energy Model Results (pre-filled)"
+    ws["B1"] = "PyPSA Energy Model Results"
     ws["B1"].font = _TITLE
-    ws["B2"] = f"Scenario: {e.name}"
+    ws["B2"] = (
+        f"Scenario: {e.name}. "
+        + ("Annual totals are the average of the per-year sums on the Hourly sheets."
+           if hourly_refs else "Pre-filled from the energy model.")
+    )
     ws["B2"].font = Font(italic=True, color="808080")
 
     cells: dict[str, str] = {}
@@ -188,7 +333,11 @@ def _write_energy(wb: Workbook, e: EnergyInputs) -> dict[str, str]:
     def field(label: str, key: str, value, unit: str = "") -> None:
         nonlocal row
         ws.cell(row, 2, label)
-        vc = ws.cell(row, 3, value)
+        # Summable metrics roll up from the hourly sheets when available.
+        if hourly_refs and key in hourly_refs:
+            vc = ws.cell(row, 3, f"=AVERAGE({','.join(hourly_refs[key])})")
+        else:
+            vc = ws.cell(row, 3, value)
         vc.fill = _PREFILL
         vc.border = _BORDER
         if isinstance(value, float):
@@ -557,6 +706,9 @@ def _write_notes(wb: Workbook) -> None:
         "This workbook is a streamlined export of the PyPSA-PPA toolkit's project-finance model.",
         "",
         "Live (formula-driven, recompute on edit):",
+        "  • Hourly sheets (one per simulated year) hold the full hourly dispatch; the",
+        "    Energy-sheet annual totals are SUM/SUMIFS roll-ups of those hours, averaged",
+        "    across years. Edit the hourly data and the totals (and the model) follow.",
         "  • Capex & devex — per-technology build/connection/devex cost × capacity ×",
         "    indexation (spend timing baked per period; edit a cost and it flows through).",
         "  • Indexation multipliers, all revenue lines, opex, EBITDA.",

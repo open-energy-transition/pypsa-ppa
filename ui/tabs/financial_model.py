@@ -22,15 +22,19 @@ from ui import state
 # ── Energy interface ──────────────────────────────────────────────────────────
 
 
-def _build_energy_inputs() -> EnergyInputs | None:
-    """Derive the financial model's energy inputs from the latest PyPSA run."""
+def _energy_source() -> tuple[EnergyInputs | None, list]:
+    """Energy inputs plus the underlying per-year results (for hourly export).
+
+    The same result set drives both ``EnergyInputs`` (averaged) and the per-year
+    hourly sheets, so the workbook's rolled-up totals match the model exactly."""
     if state.has_multi_year_results():
         results = [r for r in state.get_multi_year_results() if r is not None]
         if results:
-            return energy_inputs_from_results(results)
+            return energy_inputs_from_results(results), results
     if state.has_result():
-        return energy_inputs_from_result(state.get_result())
-    return None
+        r = state.get_result()
+        return energy_inputs_from_result(r), [r]
+    return None, []
 
 
 # ── Input widgets ──────────────────────────────────────────────────────────────
@@ -243,7 +247,7 @@ def render() -> None:
         "Project & Equity IRR. Run it here, or export a live Excel workbook."
     )
 
-    energy = _build_energy_inputs()
+    energy, results_list = _energy_source()
     if energy is None:
         st.info(
             "No energy results yet. Run a simulation in the **Optimization** tab first — "
@@ -298,12 +302,19 @@ def render() -> None:
     # ── Export ────────────────────────────────────────────────────────────────
     st.markdown("---")
     st.subheader("Export")
+    n_years = len(results_list)
     st.caption(
-        "Download a streamlined, **live** Excel workbook — energy results pre-filled, "
-        "the revenue→tax→cash-flow chain and IRRs as formulas, ready for further analysis."
+        "Download a streamlined, **live** Excel workbook — one **Hourly** sheet per "
+        f"simulated year ({n_years}) with full hourly dispatch, the Energy totals rolled "
+        "up from those hours, and the revenue→tax→cash-flow chain and IRRs as formulas."
     )
+    if n_years > 12:
+        st.caption(
+            f"⚠️ {n_years} years × 8 760 hours makes a large workbook — it may take a moment "
+            "to build and download."
+        )
     try:
-        xlsx = export_financial_model(result.inputs, result.energy, result)
+        xlsx = export_financial_model(result.inputs, result.energy, result, year_results=results_list)
         fname = f"financial_model_{(result.energy.name or 'scenario').replace(' ', '_')}.xlsx"
         st.download_button(
             "⬇️ Export financial model to Excel",
