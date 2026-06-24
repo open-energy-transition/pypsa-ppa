@@ -43,7 +43,7 @@ def render_scenario_form(initial: Scenario) -> Scenario:
         ppaload_mw = cols[0].number_input("PPA offtake load (MW)", min_value=1.0, max_value=1000.0,
                                            value=float(initial.ppaload_mw), step=10.0, key="sf_ppaload_mw",
                                            help="Peak rated MW. The load profile shapes how much of this is demanded each hour.")
-        ppa_price = cols[1].number_input("PPA tariff ($/MWh)", min_value=1.0, max_value=500.0,
+        ppa_price = cols[1].number_input("PPA tariff (€/MWh)", min_value=1.0, max_value=500.0,
                                           value=float(initial.ppa_price), step=5.0, key="sf_ppa_price")
         required_delivery_share = cols[2].slider(
             "Required delivery share (%)", 50, 100, int(initial.required_delivery_share * 100),
@@ -83,7 +83,7 @@ def render_scenario_form(initial: Scenario) -> Scenario:
             key="sf_market_buy_share",
         ) / 100.0
         market_spread = cols[1].number_input(
-            "Bid-offer spread ($/MWh)", min_value=0.0, max_value=10.0,
+            "Bid-offer spread (€/MWh)", min_value=0.0, max_value=10.0,
             value=float(initial.market_spread), step=0.05, key="sf_market_spread",
         )
 
@@ -163,11 +163,11 @@ def render_scenario_form(initial: Scenario) -> Scenario:
             help="Compute spot-only and CAL Y+1 forward costs for the offtaker after each run.",
         )
         cal_forward_price = cols[1].number_input(
-            "CAL Y+1 forward price ($/MWh)",
+            "CAL Y+1 forward price (€/MWh)",
             min_value=0.0, max_value=500.0,
             value=float(initial.cal_forward_price), step=5.0,
             key="sf_cal_forward_price",
-            help="Flat baseload forward price for the next calendar year (e.g. ASX Cal 26 Base NSW).",
+            help="Flat baseload forward price for the next calendar year (e.g. EEX German Cal Base).",
         )
         cal_hedge_fraction = cols[2].slider(
             "Hedge fraction (%)", 0, 100,

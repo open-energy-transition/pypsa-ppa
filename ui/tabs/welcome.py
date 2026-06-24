@@ -30,7 +30,7 @@ storage.
     * *Portfolio modelling*: Wind + solar + battery storage co-located at a single aggregation point.
     * *PPA contract encoding*: Flat offtake loads, delivery obligations, shortfall caps, penalty multipliers.
     * *Market interaction*: Spot market buy/sell with configurable caps and bid-offer spreads.
-    * *Linear optimisation*: HiGHS solver via PyPSA / Linopy for each 744-hour month.
+    * *Linear optimisation*: HiGHS solver via PyPSA / Linopy over the full hourly horizon.
     * *Financial analysis*: CAPEX, LCOE, IRR, NPV, and breakeven PPA price discovery.
     * *Scenario comparison:* Four predefined case studies plus full custom parameter control.
 
@@ -61,11 +61,9 @@ storage.
 - [Plotly](https://plotly.com) — interactive charts
 
 ### Data
-Initially, real hourly NEM data for **March 2025** (NSW dispatch region) are considered (sourced via UNSW-CEEM's *NEMOSIS*).
+Real hourly **European** data for central Germany are used:
 
-Includes:
-- Wind capacity factors
-- Solar PV capacity factors
-- NSW spot electricity prices
+- Wind & solar capacity factors — [renewables.ninja](https://renewables.ninja)
+- German (DE-LU) day-ahead spot prices — [ENTSO-E](https://transparency.entsoe.eu)
             """
         )

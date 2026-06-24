@@ -322,12 +322,12 @@ def render() -> None:
     st.markdown("---")
     with st.expander("Single-day reference optimization (CSV-based)", expanded=False):
         st.caption(
-            "Runs the LP on a single reference day from the bundled CSV timeseries. "
+            "Runs the LP on a single reference day from a bundled timeseries. "
             "Results feed the Results Overview, Results Deep Dive, and analysis tabs."
         )
         ts = _get_timeseries()
         if ts is None:
-            st.error("Could not find `data/march_2025_pypsa_timeseries.csv`. Check the `data/` folder.")
+            st.error("Could not find the bundled reference timeseries in the `data/` folder.")
         else:
             from ppa.data_loader import get_available_days
             errors = validate_scenario(s, available_days=get_available_days(ts))

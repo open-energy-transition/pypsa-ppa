@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import streamlit as st
 
-from ppa.data_loader import find_default_csv, load_timeseries
+from ppa.data.european_data import load_illustration_ts
 from ppa.scenario import BASE_SCENARIO
 from ui.charts import (
     make_price_vs_ppa_chart,
@@ -13,8 +13,8 @@ from ui.charts import (
 
 
 @st.cache_data
-def _load_ts(path: str):
-    return load_timeseries(path)
+def _load_ts():
+    return load_illustration_ts()
 
 
 def render() -> None:
@@ -51,8 +51,7 @@ PPAs have become a central instrument in the global energy transition:
     )
 
     # Chart: spot price vs PPA price
-    csv = find_default_csv()
-    ts = _load_ts(str(csv)) if csv else None
+    ts = _load_ts()
     if ts is not None:
         st.plotly_chart(
             make_price_vs_ppa_chart(ts, ppa_price=BASE_SCENARIO.ppa_price),
@@ -60,10 +59,10 @@ PPAs have become a central instrument in the global energy transition:
             height=400,
         )
         st.caption(
-            "Real NSW wholesale spot prices for March 2025 can swing from deeply negative "
-            "(oversupply) to thousands of dollars per MWh (scarcity events) within the same day. "
-            "A PPA fixes the revenue stream for the generator at the contracted tariff — "
-            "insulating both parties from this volatility."
+            "Real European day-ahead wholesale prices (German DE-LU market) can swing from "
+            "deeply negative (oversupply) to hundreds of euros per MWh (scarcity events) within "
+            "the same day. A PPA fixes the revenue stream for the generator at the contracted "
+            "tariff — insulating both parties from this volatility."
         )
 
     st.subheader("PPA structures vary widely")
@@ -101,7 +100,7 @@ PPAs have become a central instrument in the global energy transition:
         f"{s.ppaload_mw:.0f} MW load on average over the period. Up to "
         f"**{s.allowed_shortfall_share:.0%}** may go undelivered without penalty. "
         f"Any shortfall beyond that cap incurs a **{s.pen_mult:.1f}× tariff** penalty "
-        f"(${s.ppa_price * s.pen_mult:.0f}/MWh)."
+        f"(€{s.ppa_price * s.pen_mult:.0f}/MWh)."
     )
 
     st.markdown("---")
@@ -119,10 +118,10 @@ PPAs have become a central instrument in the global energy transition:
 | **IPP** | Independent Power Producer — owns and operates generation assets |
 | **Offtaker** | The buyer in a PPA |
 | **BESS** | Battery Energy Storage System — co-located storage used to shift generation in time |
-| **NEM / AEMO** | National Electricity Market / its operator in eastern Australia |
+| **ENTSO-E** | European Network of Transmission System Operators for Electricity — source of day-ahead wholesale prices |
 | **Spot price** | Real-time wholesale electricity price — can spike very high or go negative |
 | **Merchant revenue** | Revenue from selling into the spot market at prevailing prices |
-| **LCOE** | Levelised Cost of Energy — total lifetime costs ÷ total lifetime energy ($/MWh) |
+| **LCOE** | Levelised Cost of Energy — total lifetime costs ÷ total lifetime energy (€/MWh) |
 | **Tariff** | The contracted price per MWh paid by the offtaker under the PPA, fixed at signing for the duration of the contract. The tariff is a revenue-side figure: it is what the project actually earns per MWh delivered. The LCOE is a cost-side figure: it is what the project needs to earn to recover its capital and operating costs over its lifetime. A project is commercially viable when its PPA tariff exceeds its LCOE, with the margin representing the return to investors. Unlike the spot price, the tariff does not fluctuate, which is what makes it valuable for project finance. |
 | **IRR** | Internal Rate of Return — the discount rate at which project NPV = 0 |
 | **WACC** | Weighted Average Cost of Capital — blended required return on debt and equity |
