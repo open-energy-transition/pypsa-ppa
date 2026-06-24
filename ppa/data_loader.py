@@ -40,7 +40,9 @@ def load_timeseries(csv_path: str | Path) -> pd.DataFrame:
 
 def prepare_timeseries(ts: pd.DataFrame, scenario: Scenario) -> pd.DataFrame:
     ts = ts.copy()
-    ts["ts_MktPrice"] = ts["ts_NSWPrice"]
+    # European data already carries ts_MktPrice; the legacy CSV exposes ts_NSWPrice.
+    if "ts_MktPrice" not in ts.columns and "ts_NSWPrice" in ts.columns:
+        ts["ts_MktPrice"] = ts["ts_NSWPrice"]
     profile = get_load_series(scenario.load_profile, ts.index)
     ts["ppaload_mw"] = (profile * scenario.ppaload_mw).values
     return ts

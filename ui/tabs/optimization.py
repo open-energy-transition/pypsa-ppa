@@ -9,22 +9,20 @@ from ppa.scenario import BASE_SCENARIO, validate_scenario
 from ui import state
 
 
-# ── timeseries loader (single-day CSV path) ───────────────────────────────────
+# ── timeseries loader (European reference-month path) ──────────────────────────
 
 @st.cache_data
-def _cached_load_timeseries(csv_path: str):
-    from ppa.data_loader import load_timeseries
-    return load_timeseries(csv_path)
+def _cached_reference_ts():
+    from ppa.data.european_data import load_reference_month_ts
+    return load_reference_month_ts()
 
 
 def _get_timeseries():
     if state.has_timeseries():
         return state.get_timeseries()
-    from ppa.data_loader import find_default_csv
-    csv_path = find_default_csv()
-    if csv_path is None:
+    ts = _cached_reference_ts()
+    if ts is None:
         return None
-    ts = _cached_load_timeseries(str(csv_path))
     state.set_timeseries(ts)
     return ts
 
@@ -318,16 +316,17 @@ def render() -> None:
         st.markdown("---")
         _render_eu_results(state.get_multi_year_financial(), s.simulation_years)
 
-    # ── Single-day reference optimization (CSV-based) ─────────────────────────
+    # ── Single-day reference optimization (European reference month) ──────────
     st.markdown("---")
-    with st.expander("Single-day reference optimization (CSV-based)", expanded=False):
+    with st.expander("Single-day reference optimization (European reference month)", expanded=False):
         st.caption(
-            "Runs the LP on a single reference day from a bundled timeseries. "
-            "Results feed the Results Overview, Results Deep Dive, and analysis tabs."
+            "Runs the LP over a representative European month (German DE-LU prices + "
+            "renewables.ninja capacity factors). Pick the day to inspect under **Reference "
+            "day selection**. Results feed the Results Overview, Results Deep Dive, and analysis tabs."
         )
         ts = _get_timeseries()
         if ts is None:
-            st.error("Could not find the bundled reference timeseries in the `data/` folder.")
+            st.error("Could not load the European reference timeseries from `data/cache/`.")
         else:
             from ppa.data_loader import get_available_days
             errors = validate_scenario(s, available_days=get_available_days(ts))

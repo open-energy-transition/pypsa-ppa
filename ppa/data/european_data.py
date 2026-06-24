@@ -36,7 +36,7 @@ def load_illustration_ts(
     # Align all three on a clean hourly index for the year (positional align is
     # robust to small index/timezone differences between the two sources).
     n = min(len(price), len(pv), len(wind))
-    index = pd.date_range(f"{year}-01-01", periods=n, freq="h")
+    index = pd.date_range(f"{year}-01-01", periods=n, freq="h", name="snapshot")
     return pd.DataFrame(
         {
             "ts_MktPrice": price.to_numpy()[:n],
@@ -45,6 +45,23 @@ def load_illustration_ts(
         },
         index=index,
     )
+
+
+def load_reference_month_ts(
+    year: int = 2023,
+    month: int = 3,
+    lat: float = 51.5,
+    lon: float = 10.0,
+) -> pd.DataFrame | None:
+    """A single representative European month for the single-day reference run.
+
+    Slices one month out of :func:`load_illustration_ts` (German DE-LU prices +
+    renewables.ninja CFs) so the reference LP stays quick (~one month of hours)
+    while using European market data. Returns ``None`` if the cache is missing."""
+    ts = load_illustration_ts(year, lat, lon)
+    if ts is None:
+        return None
+    return ts[ts.index.month == month]
 
 
 def build_year_timeseries(

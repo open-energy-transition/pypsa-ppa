@@ -45,7 +45,7 @@ class Scenario:
     market_spread: float = 0.10
 
     # Operational (single-day mode)
-    chosen_day: str = "2025-03-15"
+    chosen_day: str = "2023-03-15"
 
     # Multi-year simulation
     simulation_years: int = 25
@@ -305,7 +305,7 @@ def scenario_from_excel(path: str | Path) -> Scenario:
         required_delivery_share=_float("required_delivery_share", 0.75),
         market_buy_share=_float("market_buy_share", 0.05),
         market_spread=_float("market_spread", 0.10),
-        chosen_day=str(params.get("chosen_day", "2025-03-15")).strip(),
+        chosen_day=str(params.get("chosen_day", "2023-03-15")).strip(),
         wind_capex_per_kw=_float("wind_capex_per_kw", 1800.0),
         pv_capex_per_kw=_float("pv_capex_per_kw", 1000.0),
         bess_capex_per_kwh=_float("bess_capex_per_kwh", 500.0),
