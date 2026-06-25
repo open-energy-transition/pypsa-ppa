@@ -527,16 +527,24 @@ def _write_model(
     put_formula("penalty_cost", lambda pr, cl: (
         f"={cl}{R['ppa_flag']}*{E['penalty_gwh']}*1000*({I['ppa_tariff']}*{I['penalty_multiple']}*{cl}{R['ppa_idx']})/1000000"
     ))
+    # Merchant prices are escalated only if the energy inputs aren't already
+    # year-specific (otherwise price growth would be double-counted).
+    esc = p.escalate_merchant_prices
+
+    def _merch_solar(pr, cl):
+        fac = f"*{cl}{R['solar_idx']}" if esc else ""
+        return (f"=({cl}{R['ppa_flag']}*{E['excess_solar_gwh']}+{cl}{R['nonppa_flag']}*{E['total_solar_gwh']})"
+                f"*1000*({E['sell_solar_price']}{fac})/1000000")
+
+    def _merch_nonsolar(pr, cl):
+        fac = f"*{cl}{R['nonsolar_idx']}" if esc else ""
+        return (f"=({cl}{R['ppa_flag']}*{E['excess_nonsolar_gwh']}+{cl}{R['nonppa_flag']}*{E['total_nonsolar_gwh']})"
+                f"*1000*({E['sell_nonsolar_price']}{fac})/1000000")
+
     label_row("merch_solar", "Merchant — solar hours", "€m")
-    put_formula("merch_solar", lambda pr, cl: (
-        f"=({cl}{R['ppa_flag']}*{E['excess_solar_gwh']}+{cl}{R['nonppa_flag']}*{E['total_solar_gwh']})"
-        f"*1000*({E['sell_solar_price']}*{cl}{R['solar_idx']})/1000000"
-    ))
+    put_formula("merch_solar", _merch_solar)
     label_row("merch_nonsolar", "Merchant — non-solar hours", "€m")
-    put_formula("merch_nonsolar", lambda pr, cl: (
-        f"=({cl}{R['ppa_flag']}*{E['excess_nonsolar_gwh']}+{cl}{R['nonppa_flag']}*{E['total_nonsolar_gwh']})"
-        f"*1000*({E['sell_nonsolar_price']}*{cl}{R['nonsolar_idx']})/1000000"
-    ))
+    put_formula("merch_nonsolar", _merch_nonsolar)
     label_row("lgc_rev", "LGC / GO revenue", "€m")
     put_formula("lgc_rev", lambda pr, cl: (
         f"=({cl}{R['ppa_flag']}*({E['excess_solar_gwh']}+{E['excess_nonsolar_gwh']})"
