@@ -1,4 +1,4 @@
-"""Case Study definition — select a preset and customise all scenario parameters."""
+"""Case Setup — select a preset and customise all scenario parameters."""
 from __future__ import annotations
 
 import streamlit as st
@@ -34,7 +34,7 @@ def _render_case_study_card(cs, is_active: bool) -> bool:
 
 
 def render() -> None:
-    st.title("🔬 Case Study Definition")
+    st.title("🔬 Case Selection and Adjustment")
     st.markdown(
         "Choose a predefined scenario to explore, then customise any parameters below — "
         "including **project location**, **simulation horizon**, and **technology degradation**. "

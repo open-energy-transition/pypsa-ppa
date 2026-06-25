@@ -26,7 +26,7 @@ def render() -> None:
     st.title("📡 Download Data")
     st.markdown(
         "Download European market prices (from ENTSO-E Transparency Platform, "
-        "https://transparency.entsoe.eu/) and wind/solar capacity-factor profiles "
+        "https://transparency.entsoe.eu/) and wind/solar hourly profiles "
         "(from https://renewables.ninja) for the location defined in your active "
         "scenario. Data is cached locally — downloads only happen once per location."
     )

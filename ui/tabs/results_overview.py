@@ -14,10 +14,10 @@ def _render_multi_year_overview(fin) -> None:
 
     # ── Lifetime KPIs ─────────────────────────────────────────────────────────
     st.subheader("Lifetime KPIs")
-    st.caption(
+    st.info(
         "Based on a simplified unlevered model (CAPEX, OPEX, NPV/IRR). For a full "
-        "levered project-finance appraisal — debt sizing, depreciation, tax, Equity IRR, "
-        "and an Excel export — run the **Financial Model** tab."
+        "levered project-finance appraisal incl. e.g., debt sizing, depreciation, "
+        "tax, Equity IRR, and an Excel export see the **Financial Model** tab."
     )
     cols = st.columns(5)
     irr_str = f"{fin.irr:.1%}" if fin.irr == fin.irr else "N/A"
@@ -309,7 +309,7 @@ def render() -> None:
 
     else:
         st.info(
-            "No results yet. Run the **European simulation** in the **Optimization** tab "
+            "No results yet. Run the **Simulation** in the **Optimization** tab "
             "to see lifetime financial results here.",
             icon="⚙️",
         )

@@ -137,7 +137,7 @@ def _render_multi_year_deep_dive() -> None:
     result = results[year_idx]
 
     available_days = sorted(result.dispatch.wind_gen.index.normalize().unique().strftime("%Y-%m-%d"))
-    chosen_day = cols[1].selectbox("Day to inspect", available_days, index=0, key="dd_chosen_day")
+    chosen_day = cols[1].selectbox("Day to inspect", available_days, index=0, key="dd_chosen_day1")
 
     # ── Financial summary for selected year ───────────────────────────────────
     st.markdown("---")
@@ -263,7 +263,7 @@ def _render_single_day_deep_dive() -> None:
         ts_prep = prepare_timeseries(ts, s)
         available_days = get_available_days(ts)
         default_idx = available_days.index(s.chosen_day) if s.chosen_day in available_days else 14
-        chosen_day = st.selectbox("Select a day to inspect", available_days, index=default_idx, key="dd_chosen_day")
+        chosen_day = st.selectbox("Select a day to inspect", available_days, index=default_idx, key="dd_chosen_day2")
 
         _render_dispatch_section(result, s, chosen_day)
 
@@ -314,7 +314,7 @@ def _render_single_day_deep_dive() -> None:
 
 
 def render() -> None:
-    st.title("🔍 Results Deep Dive")
+    st.title("🔍 Detailed Results")
 
     if state.has_multi_year_results() and state.has_multi_year_financial():
         n = len(state.get_multi_year_financial().yearly)
