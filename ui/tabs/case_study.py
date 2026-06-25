@@ -1,4 +1,4 @@
-"""Case Study definition — select a preset and customise all scenario parameters."""
+"""Case Setup — select a preset and customise all scenario parameters."""
 from __future__ import annotations
 
 import streamlit as st
@@ -34,7 +34,7 @@ def _render_case_study_card(cs, is_active: bool) -> bool:
 
 
 def render() -> None:
-    st.title("🔬 Case Study Definition")
+    st.title("🔬 Case Selection and Adjustment")
     st.markdown(
         "Choose a predefined scenario to explore, then customise any parameters below — "
         "including **project location**, **simulation horizon**, and **technology degradation**. "
@@ -45,7 +45,7 @@ def render() -> None:
     # ── Case study cards ──────────────────────────────────────────────────────
     st.subheader("Predefined case studies")
     active_id = state.get_active_case_study_id()
-    cols = st.columns(len(CASE_STUDIES))
+    cols = st.columns(len(CASE_STUDIES), vertical_alignment="bottom")
     for col, cs in zip(cols, CASE_STUDIES):
         with col:
             if _render_case_study_card(cs, is_active=(cs.id == active_id)):
@@ -68,15 +68,15 @@ def render() -> None:
         current = state.get_scenario()
         updated = render_scenario_form(current)
 
-        c1, c2 = st.columns(2)
-        with c1:
+        cols = st.columns(2)
+        with cols[0]:
             if st.button("Apply changes", type="primary", width="stretch"):
                 state.set_scenario(updated)
                 state.clear_result()
                 st.session_state.pop(state.MULTI_YEAR_RESULTS_KEY, None)
                 st.session_state.pop(state.MULTI_YEAR_FINANCIAL_KEY, None)
                 st.success("Scenario updated. Head to Optimization to run.")
-        with c2:
+        with cols[1]:
             if st.button("Reset to base defaults", type="secondary", width="stretch"):
                 state.set_scenario(BASE_SCENARIO)
                 state.set_active_case_study_id("")

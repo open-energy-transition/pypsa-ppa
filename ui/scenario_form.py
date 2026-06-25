@@ -16,11 +16,14 @@ max_bes_hours = 8
 def render_scenario_form(initial: Scenario) -> Scenario:
     """Render all scenario controls and return a new Scenario from widget values."""
     st.subheader("Feature toggles")
+
     cols = st.columns(4)
+    
     include_bess = cols[0].toggle("Include BESS", value=initial.include_bess, key="sf_include_bess")
     enable_market_buy = cols[1].toggle("Enable market buy", value=initial.enable_market_buy, key="sf_enable_market_buy")
     enable_market_sell = cols[2].toggle("Enable market sell", value=initial.enable_market_sell, key="sf_enable_market_sell")
     enable_shortfall = cols[3].toggle("Enable shortfall allowance", value=initial.enable_shortfall, key="sf_enable_shortfall")
+    
     cols = st.columns(4)
     enable_penalty = cols[0].toggle("Enable penalty regime", value=initial.enable_penalty, key="sf_enable_penalty")
     run_financial_analysis = cols[1].toggle("Run financial analysis", value=initial.run_financial_analysis, key="sf_run_financial_analysis")
@@ -43,7 +46,7 @@ def render_scenario_form(initial: Scenario) -> Scenario:
         ppaload_mw = cols[0].number_input("PPA offtake load (MW)", min_value=1.0, max_value=1000.0,
                                            value=float(initial.ppaload_mw), step=10.0, key="sf_ppaload_mw",
                                            help="Peak rated MW. The load profile shapes how much of this is demanded each hour.")
-        ppa_price = cols[1].number_input("PPA tariff ($/MWh)", min_value=1.0, max_value=500.0,
+        ppa_price = cols[1].number_input("PPA tariff (€/MWh)", min_value=1.0, max_value=500.0,
                                           value=float(initial.ppa_price), step=5.0, key="sf_ppa_price")
         required_delivery_share = cols[2].slider(
             "Required delivery share (%)", 50, 100, int(initial.required_delivery_share * 100),
@@ -61,6 +64,7 @@ def render_scenario_form(initial: Scenario) -> Scenario:
         st.markdown("**Offtaker load profile**")
         _profile_labels = [f"{PROFILE_INFO[k]['icon']} {PROFILE_INFO[k]['label']}" for k in PROFILE_KEYS]
         _current_idx = PROFILE_KEYS.index(initial.load_profile) if initial.load_profile in PROFILE_KEYS else 0
+    
         cols = st.columns([1, 3])
         _selected_label = cols[0].selectbox(
             "Profile type",
@@ -83,7 +87,7 @@ def render_scenario_form(initial: Scenario) -> Scenario:
             key="sf_market_buy_share",
         ) / 100.0
         market_spread = cols[1].number_input(
-            "Bid-offer spread ($/MWh)", min_value=0.0, max_value=10.0,
+            "Bid-offer spread (€/MWh)", min_value=0.0, max_value=10.0,
             value=float(initial.market_spread), step=0.05, key="sf_market_spread",
         )
 
@@ -120,7 +124,7 @@ def render_scenario_form(initial: Scenario) -> Scenario:
             help="Decimal degrees E.",
         )
         loc_df = pd.DataFrame({"lat": [lat], "lon": [lon]})
-        cols[2].map(loc_df, zoom=4)
+        cols[2].map(loc_df, zoom=5, height=300)
 
     with st.expander("Simulation", expanded=True):
         cols = st.columns(4)
@@ -163,11 +167,11 @@ def render_scenario_form(initial: Scenario) -> Scenario:
             help="Compute spot-only and CAL Y+1 forward costs for the offtaker after each run.",
         )
         cal_forward_price = cols[1].number_input(
-            "CAL Y+1 forward price ($/MWh)",
+            "CAL Y+1 forward price (€/MWh)",
             min_value=0.0, max_value=500.0,
             value=float(initial.cal_forward_price), step=5.0,
             key="sf_cal_forward_price",
-            help="Flat baseload forward price for the next calendar year (e.g. ASX Cal 26 Base NSW).",
+            help="Flat baseload forward price for the next calendar year (e.g. EEX German Cal Base).",
         )
         cal_hedge_fraction = cols[2].slider(
             "Hedge fraction (%)", 0, 100,
@@ -176,7 +180,6 @@ def render_scenario_form(initial: Scenario) -> Scenario:
             key="sf_cal_hedge_fraction",
             help="Share of load hedged at CAL Y+1; remainder sourced at spot.",
         ) / 100.0
-
     with st.expander("Reference day selection", expanded=True):
         cols = st.columns(4)
         # Chosen day selector (use available days from loaded timeseries)

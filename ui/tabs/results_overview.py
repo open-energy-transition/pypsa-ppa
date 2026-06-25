@@ -14,21 +14,26 @@ def _render_multi_year_overview(fin) -> None:
 
     # ── Lifetime KPIs ─────────────────────────────────────────────────────────
     st.subheader("Lifetime KPIs")
-    c1, c2, c3, c4, c5 = st.columns(5)
+    st.info(
+        "Based on a simplified unlevered model (CAPEX, OPEX, NPV/IRR). For a full "
+        "levered project-finance appraisal incl. e.g., debt sizing, depreciation, "
+        "tax, Equity IRR, and an Excel export see the **Financial Model** tab."
+    )
+    cols = st.columns(5)
     irr_str = f"{fin.irr:.1%}" if fin.irr == fin.irr else "N/A"
     lcoe_str = f"€{fin.lcoe:.1f}/MWh" if fin.lcoe == fin.lcoe else "N/A"
     payback_str = f"{fin.simple_payback:.1f} yrs" if fin.simple_payback < 1e8 else "N/A"
-    c1.metric("NPV", f"€{fin.npv / 1e6:.1f}M")
-    c2.metric("Project IRR", irr_str)
-    c3.metric("LCOE", lcoe_str)
-    c4.metric("Simple Payback", payback_str)
-    c5.metric("Lifetime Net Revenue", f"€{fin.total_lifetime_revenue / 1e6:.1f}M")
+    cols[0].metric("NPV", f"€{fin.npv / 1e6:.1f}M")
+    cols[1].metric("Project IRR", irr_str)
+    cols[2].metric("LCOE", lcoe_str)
+    cols[3].metric("Simple Payback", payback_str)
+    cols[4].metric("Lifetime Net Revenue", f"€{fin.total_lifetime_revenue / 1e6:.1f}M")
 
     # ── CAPEX breakdown ───────────────────────────────────────────────────────
     st.markdown("---")
     st.subheader("CAPEX & OPEX")
-    cc1, cc2 = st.columns(2)
-    with cc1:
+    cols = st.columns(2)
+    with cols[0]:
         capex_rows = [
             ("Onshore wind", f"€{fin.capex.capex_wind / 1e6:.1f}M"),
             ("Solar PV", f"€{fin.capex.capex_pv / 1e6:.1f}M"),
@@ -41,7 +46,7 @@ def _render_multi_year_overview(fin) -> None:
             hide_index=True,
             width="stretch",
         )
-    with cc2:
+    with cols[1]:
         avg_delivery = sum(y.fulfilled_share for y in fin.yearly) / len(fin.yearly) if fin.yearly else 0.0
         total_gen_gwh = fin.total_lifetime_generation_mwh / 1e3
         avg_wind_gwh = sum(y.wind_gen_mwh for y in fin.yearly) / len(fin.yearly) / 1e3 if fin.yearly else 0.0
@@ -112,6 +117,11 @@ def _render_single_day_overview() -> None:
 
     # ── KPI row ───────────────────────────────────────────────────────────────
     st.subheader("Key performance indicators")
+    st.caption(
+        "Financial figures here use a simplified unlevered model. For a full levered "
+        "project-finance appraisal — debt sizing, depreciation, tax, Equity IRR, and an "
+        "Excel export — run the **Financial Model** tab."
+    )
     cols = st.columns(4)
     cols[0].metric(
         "PPA Fulfilment",
@@ -299,7 +309,7 @@ def render() -> None:
 
     else:
         st.info(
-            "No results yet. Run the **European simulation** in the **Optimization** tab "
+            "No results yet. Run the **Simulation** in the **Optimization** tab "
             "to see lifetime financial results here.",
             icon="⚙️",
         )

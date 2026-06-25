@@ -19,6 +19,7 @@ TIMESERIES_KEY = "timeseries"
 ACTIVE_CASE_STUDY_KEY = "active_case_study_id"
 MULTI_YEAR_RESULTS_KEY = "multi_year_results"
 MULTI_YEAR_FINANCIAL_KEY = "multi_year_financial"
+PROJECT_FINANCE_KEY = "project_finance_result"
 
 
 def get_scenario() -> "Scenario | None":
@@ -137,3 +138,15 @@ def set_multi_year_financial(fin: "MultiYearFinancialResult") -> None:
 
 def has_multi_year_financial() -> bool:
     return MULTI_YEAR_FINANCIAL_KEY in st.session_state
+
+
+def get_project_finance() -> "object | None":
+    return st.session_state.get(PROJECT_FINANCE_KEY)
+
+
+def set_project_finance(r: "object") -> None:
+    st.session_state[PROJECT_FINANCE_KEY] = r
+
+
+def has_project_finance() -> bool:
+    return PROJECT_FINANCE_KEY in st.session_state

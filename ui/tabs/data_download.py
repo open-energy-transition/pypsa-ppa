@@ -25,9 +25,10 @@ def _save_token(name: str, value: str) -> None:
 def render() -> None:
     st.title("📡 Download Data")
     st.markdown(
-        "Download European market prices (ENTSO-E) and wind/solar capacity-factor profiles "
-        "(renewables.ninja) for the location defined in your active scenario. "
-        "Data is cached locally — downloads only happen once per location."
+        "Download European market prices (from ENTSO-E Transparency Platform, "
+        "https://transparency.entsoe.eu/) and wind/solar hourly profiles "
+        "(from https://renewables.ninja) for the location defined in your active "
+        "scenario. Data is cached locally — downloads only happen once per location."
     )
 
     # ── Active location ───────────────────────────────────────────────────────
@@ -38,26 +39,28 @@ def render() -> None:
 
     lat, lon = scenario.lat, scenario.lon
 
-    col_info, col_map = st.columns([2, 2])
-    with col_info:
+    cols = st.columns([2, 2])
+    with cols[0]:
         st.subheader("Active scenario location")
         st.markdown(f"**{lat:.2f}°N, {lon:.2f}°E**")
-        st.caption(
-            "Change the location in the *Project Location* section of the scenario form "
-            "(**Case Study Definition** → Customise parameters → Project Location)."
+        st.info(
+            "**Hint**: Change the location in the *Project Location* section of the "
+            "**Case Study Definition** tab: Customise parameters → Project Location."
         )
-    with col_map:
-        st.map(pd.DataFrame({"lat": [lat], "lon": [lon]}), zoom=4)
+    with cols[1]:
+        st.map(pd.DataFrame({"lat": [lat], "lon": [lon]}), zoom=4, height=300)
 
     st.markdown("---")
 
     # ── API tokens ────────────────────────────────────────────────────────────
     st.subheader("API tokens")
-    tc1, tc2 = st.columns(2)
+    cols = st.columns(4)
 
-    with tc1:
+    with cols[0]:
         st.markdown("**ENTSO-E Transparency Platform**")
         st.caption("Free — register at transparency.entsoe.eu")
+
+    with cols[1]:
         entsoe_token = st.text_input(
             "ENTSO-E token",
             value=_get_token("entsoe"),
@@ -67,9 +70,11 @@ def render() -> None:
         )
         _save_token("entsoe", entsoe_token)
 
-    with tc2:
+    with cols[2]:
         st.markdown("**Renewables.ninja**")
         st.caption("Free — register at renewables.ninja")
+
+    with cols[3]:
         ninja_token = st.text_input(
             "Renewables.ninja token",
             value=_get_token("ninja"),
@@ -91,20 +96,26 @@ def render() -> None:
     cached_cf_years = list_cached_years(lat=lat, lon=lon)
     missing_cf = [y for y in AVAILABLE_YEARS if y not in cached_cf_years]
 
-    sc1, sc2 = st.columns(2)
-    with sc1:
-        st.markdown("**ENTSO-E day-ahead prices (DE-LU)**")
+    cols = st.columns(4)
+    with cols[0]:
+        st.markdown("**ENTSO-E day-ahead (DA) prices**")
+
+    with cols[1]:
         if not missing_prices:
-            st.success(f"All {len(PRICE_YEARS)} years cached ✓  ({', '.join(str(y) for y in cached_price_years)})")
+            st.success(f"All {len(PRICE_YEARS)} years cached ✓ ")
+            st.caption(f"Available: {', '.join(str(y) for y in cached_price_years)}")
         elif cached_price_years:
             st.warning(f"{len(cached_price_years)}/{len(PRICE_YEARS)} years cached. Missing: {missing_prices}")
         else:
             st.warning(f"No years cached. Will download: {PRICE_YEARS}")
 
-    with sc2:
-        st.markdown(f"**Renewables.ninja CF profiles** — ({lat:.2f}°N, {lon:.2f}°E)")
+    with cols[2]:
+        st.markdown(f"**Renewables.ninja renewable profiles**")
+
+    with cols[3]:
         if not missing_cf:
-            st.success(f"All {len(AVAILABLE_YEARS)} years cached ✓  ({', '.join(str(y) for y in cached_cf_years)})")
+            st.success(f"All {len(AVAILABLE_YEARS)} years cached ✓ ")
+            st.caption(f"Available: {', '.join(str(y) for y in cached_cf_years)}")
         elif cached_cf_years:
             st.warning(f"{len(cached_cf_years)}/{len(AVAILABLE_YEARS)} years cached. Missing: {missing_cf}")
         else:

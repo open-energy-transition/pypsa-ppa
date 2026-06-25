@@ -1,11 +1,67 @@
 """Assemble a full-year hourly timeseries for one simulation year from cached CF + price data."""
 from __future__ import annotations
 
+from pathlib import Path
+
 import pandas as pd
 
-from ppa.data.entsoe_client import escalate_prices
-from ppa.data.renewables_ninja import AVAILABLE_YEARS
+from ppa.data.entsoe_client import escalate_prices, CACHE_DIR as ENTSOE_CACHE, DE_LU
+from ppa.data.renewables_ninja import AVAILABLE_YEARS, CACHE_DIR as NINJA_CACHE
 from ppa.industrial_profiles import get_load_series
+
+
+def load_illustration_ts(
+    year: int = 2023,
+    lat: float = 51.5,
+    lon: float = 10.0,
+) -> pd.DataFrame | None:
+    """Assemble a representative European hourly timeseries from cached data.
+
+    Reads cached ENTSO-E German (DE-LU) day-ahead prices and renewables.ninja
+    wind/solar capacity factors for ``year`` at ``lat``/``lon`` (central Germany
+    by default) and returns a DataFrame with ``ts_MktPrice``, ``ts_WindGen`` and
+    ``ts_PVGen`` on a common hourly index. Cache-only (no network); returns
+    ``None`` if the required files are not present so callers can degrade
+    gracefully."""
+    price_file = Path(ENTSOE_CACHE) / f"da_prices_{DE_LU}_{year}.parquet"
+    pv_file = Path(NINJA_CACHE) / f"pv_{lat:.2f}_{lon:.2f}_{year}.parquet"
+    wind_file = Path(NINJA_CACHE) / f"wind_{lat:.2f}_{lon:.2f}_{year}.parquet"
+    if not (price_file.exists() and pv_file.exists() and wind_file.exists()):
+        return None
+
+    price = pd.read_parquet(price_file)["price"]
+    pv = pd.read_parquet(pv_file)["cf"]
+    wind = pd.read_parquet(wind_file)["cf"]
+
+    # Align all three on a clean hourly index for the year (positional align is
+    # robust to small index/timezone differences between the two sources).
+    n = min(len(price), len(pv), len(wind))
+    index = pd.date_range(f"{year}-01-01", periods=n, freq="h", name="snapshot")
+    return pd.DataFrame(
+        {
+            "ts_MktPrice": price.to_numpy()[:n],
+            "ts_WindGen": wind.to_numpy()[:n],
+            "ts_PVGen": pv.to_numpy()[:n],
+        },
+        index=index,
+    )
+
+
+def load_reference_month_ts(
+    year: int = 2023,
+    month: int = 3,
+    lat: float = 51.5,
+    lon: float = 10.0,
+) -> pd.DataFrame | None:
+    """A single representative European month for the single-day reference run.
+
+    Slices one month out of :func:`load_illustration_ts` (German DE-LU prices +
+    renewables.ninja CFs) so the reference LP stays quick (~one month of hours)
+    while using European market data. Returns ``None`` if the cache is missing."""
+    ts = load_illustration_ts(year, lat, lon)
+    if ts is None:
+        return None
+    return ts[ts.index.month == month]
 
 
 def build_year_timeseries(

@@ -17,6 +17,7 @@ from ui.tabs import (
     results_deep_dive,
     sensitivity_analysis,
     scenario_analysis,
+    financial_model,
     excel_import,
 )
 
@@ -29,60 +30,78 @@ st.markdown(
 
 tabs = st.tabs([
     "🏠 Welcome",
-    "📖 Introduction to PPAs",
-    "🔬 Case Study Definition",
-    "📡 Download Data",
+    "🔬 Case Setup",
+    "📡 Get Data",
     "⚙️ Optimization",
-    "📊 Results Overview",
-    "🔍 Results Deep Dive",
+    "🔍 Results",
+    "🏦 Financial Model",
     "Sensitivity Analysis",
-    "Scenario Analysis",
-    "Excel Import",
+    "📖 HELP",
+    # "📊 Results Overview",
+    # "Scenario Analysis",
+    # "Excel Import",
 ], on_change="rerun")
 
-if tabs[0].open:
-    with tabs[0]:
+i = 0
+if tabs[i].open:
+    with tabs[i]:
         welcome.render()
 
-if tabs[1].open:
-    with tabs[1]:
-        introduction.render()
-
-if tabs[2].open:
-    with tabs[2]:
+i += 1
+if tabs[i].open:
+    with tabs[i]:
         case_study.render()
 
-if tabs[3].open:
-    with tabs[3]:
+i += 1
+if tabs[i].open:
+    with tabs[i]:
         data_download.render()
 
-if tabs[4].open:
-    with tabs[4]:
+i += 1
+if tabs[i].open:
+    with tabs[i]:
         optimization.render()
 
-if tabs[5].open:
-    with tabs[5]:
-        results_overview.render()
-
-if tabs[6].open:
-    with tabs[6]:
+i += 1
+if tabs[i].open:
+    with tabs[i]:
         results_deep_dive.render()
 
-if tabs[7].open:
-    with tabs[7]:
+i += 1
+if tabs[i].open:
+    with tabs[i]:
+        financial_model.render()
+
+i += 1
+if tabs[i].open:
+    with tabs[i]:
         sensitivity_analysis.render()
 
-if tabs[8].open:
-    with tabs[8]:
-        scenario_analysis.render()
+i += 1
+if tabs[i].open:
+    with tabs[i]:
+        introduction.render()
 
-if tabs[9].open:
-    with tabs[9]:
-        excel_import.render()
+#i += 1
+#if tabs[i].open:
+#    with tabs[i]:
+#        scenario_analysis.render()
+
+#i += 1
+#if tabs[i].open:
+#    with tabs[i]:
+#        excel_import.render()
+
+#i += 1
+#if tabs[i].open:
+#    with tabs[i]:
+#        results_overview.render()
 
 with st.popover("Disclaimer", width="stretch", icon="⚠️"):
-    st.write("""
+    st.write(
+        """
         The content of this document/web page is intended for the exclusive use of **Open Energy Transition**'s client and other contractually agreed recipients.
         It may only be made available in whole or in part to third parties with the client's consent and on a non-reliance basis.
         **Open Energy Transition** is not liable to third parties for the completeness and accuracy of the information provided therein.
-        """)
+        """
+    )
