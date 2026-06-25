@@ -122,6 +122,10 @@ class ProjectFinanceInputs:
     ppa_indexation: float = 0.02
     solar_price_inflation: float = 0.01
     nonsolar_price_inflation: float = 0.02
+    # Whether the model escalates merchant capture prices over the project life.
+    # Turn OFF when the energy inputs already come from a multi-year simulation that
+    # escalated market prices per year, so price growth is not double-counted.
+    escalate_merchant_prices: bool = True
 
     # ── Project finance ─────────────────────────────────────────────────────
     debt_tenor: int = 15
@@ -395,8 +399,15 @@ def run_project_finance(
 
     cost_idx = index_mult(p.cost_inflation)
     ppa_idx = index_mult(p.ppa_indexation)
-    solar_idx = index_mult(p.solar_price_inflation)
-    nonsolar_idx = index_mult(p.nonsolar_price_inflation)
+    # Merchant price escalation is skipped when the energy inputs already embed
+    # per-year price escalation (avoids double-counting). PPA / LGC / cost
+    # indexation are owned by the financial model and always apply.
+    if p.escalate_merchant_prices:
+        solar_idx = index_mult(p.solar_price_inflation)
+        nonsolar_idx = index_mult(p.nonsolar_price_inflation)
+    else:
+        solar_idx = np.ones(n)
+        nonsolar_idx = np.ones(n)
 
     # ── Schedule 1: Capital spend ────────────────────────────────────────────
     onsw_devex_tot = p.onsw_devex * e.onsw_mw

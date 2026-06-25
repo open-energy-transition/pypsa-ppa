@@ -14,6 +14,11 @@ def _render_multi_year_overview(fin) -> None:
 
     # ── Lifetime KPIs ─────────────────────────────────────────────────────────
     st.subheader("Lifetime KPIs")
+    st.caption(
+        "Based on a simplified unlevered model (CAPEX, OPEX, NPV/IRR). For a full "
+        "levered project-finance appraisal — debt sizing, depreciation, tax, Equity IRR, "
+        "and an Excel export — run the **Financial Model** tab."
+    )
     c1, c2, c3, c4, c5 = st.columns(5)
     irr_str = f"{fin.irr:.1%}" if fin.irr == fin.irr else "N/A"
     lcoe_str = f"€{fin.lcoe:.1f}/MWh" if fin.lcoe == fin.lcoe else "N/A"
@@ -112,6 +117,11 @@ def _render_single_day_overview() -> None:
 
     # ── KPI row ───────────────────────────────────────────────────────────────
     st.subheader("Key performance indicators")
+    st.caption(
+        "Financial figures here use a simplified unlevered model. For a full levered "
+        "project-finance appraisal — debt sizing, depreciation, tax, Equity IRR, and an "
+        "Excel export — run the **Financial Model** tab."
+    )
     cols = st.columns(4)
     cols[0].metric(
         "PPA Fulfilment",

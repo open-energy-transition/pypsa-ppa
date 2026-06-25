@@ -22,19 +22,23 @@ from ui import state
 # ── Energy interface ──────────────────────────────────────────────────────────
 
 
-def _energy_source() -> tuple[EnergyInputs | None, list]:
-    """Energy inputs plus the underlying per-year results (for hourly export).
+def _energy_source() -> tuple[EnergyInputs | None, list, bool]:
+    """Energy inputs, the underlying per-year results, and a multi-year flag.
 
     The same result set drives both ``EnergyInputs`` (averaged) and the per-year
-    hourly sheets, so the workbook's rolled-up totals match the model exactly."""
+    hourly sheets, so the workbook's rolled-up totals match the model exactly.
+    The multi-year flag tells the model whether merchant prices are already
+    escalated per year (so it should not escalate them again)."""
     if state.has_multi_year_results():
         results = [r for r in state.get_multi_year_results() if r is not None]
+        if len(results) > 1:
+            return energy_inputs_from_results(results), results, True
         if results:
-            return energy_inputs_from_results(results), results
+            return energy_inputs_from_results(results), results, False
     if state.has_result():
         r = state.get_result()
-        return energy_inputs_from_result(r), [r]
-    return None, []
+        return energy_inputs_from_result(r), [r], False
+    return None, [], False
 
 
 # ── Input widgets ──────────────────────────────────────────────────────────────
@@ -52,7 +56,7 @@ def _num(label: str, key: str, default, *, step=None, fmt=None, pct=False, help=
     return st.number_input(label, key=key, help=help, **kwargs)
 
 
-def _collect_inputs(seed: ProjectFinanceInputs) -> ProjectFinanceInputs:
+def _collect_inputs(seed: ProjectFinanceInputs, multi_year: bool) -> ProjectFinanceInputs:
     """Render the editable assumption form and return a ProjectFinanceInputs."""
     f = "fm_"
 
@@ -110,6 +114,24 @@ def _collect_inputs(seed: ProjectFinanceInputs) -> ProjectFinanceInputs:
             ppa_idx = _num("PPA & LGC indexation (%/yr)", f + "ppa_idx", seed.ppa_indexation, step=0.005, fmt="%.3f")
             solar_infl = _num("Solar-hour price infl. (%/yr)", f + "solar_infl", seed.solar_price_inflation, step=0.005, fmt="%.3f")
             nonsolar_infl = _num("Non-solar price infl. (%/yr)", f + "nonsolar_infl", seed.nonsolar_price_inflation, step=0.005, fmt="%.3f")
+        esc_key = f + "esc_merch"
+        if esc_key not in st.session_state:
+            st.session_state[esc_key] = not multi_year
+        escalate_merchant = st.checkbox(
+            "Escalate merchant prices over the project life",
+            key=esc_key,
+            help=(
+                "Leave OFF when the energy inputs come from a multi-year simulation that "
+                "already escalates market prices each year (avoids double-counting price "
+                "growth). Turn ON for a single base-year snapshot. The solar-hour / non-solar "
+                "price inflation rates above only apply when this is ON."
+            ),
+        )
+        if multi_year and escalate_merchant:
+            st.caption(
+                "⚠️ Merchant prices are already escalated by the multi-year energy run — "
+                "leaving this on double-counts price growth."
+            )
 
     with st.expander("🏦 Debt, depreciation & tax", expanded=True):
         c1, c2, c3 = st.columns(3)
@@ -142,6 +164,7 @@ def _collect_inputs(seed: ProjectFinanceInputs) -> ProjectFinanceInputs:
         ppa_tenor=tenor, ppa_tariff=tariff, penalty_multiple=pen, lgc_price=lgc,
         indexation_offset_years=offset, cost_inflation=cost_infl, ppa_indexation=ppa_idx,
         solar_price_inflation=solar_infl, nonsolar_price_inflation=nonsolar_infl,
+        escalate_merchant_prices=escalate_merchant,
         debt_tenor=debt_tenor, debt_rate=debt_rate,
         dscr_contracted=dscr_c, dscr_uncontracted=dscr_u,
         max_gearing_contracted=gear_c, max_gearing_uncontracted=gear_u,
@@ -247,7 +270,7 @@ def render() -> None:
         "Project & Equity IRR. Run it here, or export a live Excel workbook."
     )
 
-    energy, results_list = _energy_source()
+    energy, results_list, multi_year = _energy_source()
     if energy is None:
         st.info(
             "No energy results yet. Run a simulation in the **Optimization** tab first — "
@@ -279,7 +302,7 @@ def render() -> None:
 
     # ── Editable financial assumptions ────────────────────────────────────────
     st.subheader("Financial assumptions")
-    inputs = _collect_inputs(seed)
+    inputs = _collect_inputs(seed, multi_year)
 
     # ── Run ───────────────────────────────────────────────────────────────────
     run = st.button("▶️ Run financial model", type="primary", width="stretch")
