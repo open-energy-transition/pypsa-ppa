@@ -17,7 +17,7 @@ notebooks/outputs/
 data/.~lock.*
 
 # Downloaded / cached data (re-fetchable)
-data/cache/
+# data/cache/
 
 # Editor
 .idea/
