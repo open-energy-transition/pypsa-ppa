@@ -131,29 +131,29 @@ def _render_multi_year_deep_dive() -> None:
 
     # ── Year + day selectors ──────────────────────────────────────────────────
     year_options = [y.year for y in fin.yearly]
-    c1, c2 = st.columns(2)
-    selected_year = c1.selectbox("Simulation year", year_options, key="dd_year")
+    cols = st.columns(2)
+    selected_year = cols[0].selectbox("Simulation year", year_options, key="dd_year")
     year_idx = year_options.index(selected_year)
     result = results[year_idx]
 
     available_days = sorted(result.dispatch.wind_gen.index.normalize().unique().strftime("%Y-%m-%d"))
-    chosen_day = c2.selectbox("Day to inspect", available_days, index=0, key="dd_chosen_day")
+    chosen_day = cols[1].selectbox("Day to inspect", available_days, index=0, key="dd_chosen_day")
 
     # ── Financial summary for selected year ───────────────────────────────────
     st.markdown("---")
     st.subheader(f"Year {selected_year} — financial summary")
     yf = fin.yearly[year_idx]
-    kc1, kc2, kc3, kc4, kc5 = st.columns(5)
-    kc1.metric("PPA Revenue", f"€{yf.ppa_revenue / 1e6:.2f}M")
-    kc2.metric("Merchant Revenue", f"€{yf.merch_revenue / 1e6:.2f}M")
-    kc3.metric("Net Cash Flow", f"€{yf.net_cashflow / 1e6:.2f}M")
-    kc4.metric("Delivery Rate", f"{yf.fulfilled_share:.1%}")
-    kc5.metric("Wind+PV Gen", f"{(yf.wind_gen_mwh + yf.pv_gen_mwh) / 1e3:.0f} GWh")
+    cols = st.columns(5)
+    cols[0].metric("PPA Revenue", f"€{yf.ppa_revenue / 1e6:.2f}M")
+    cols[1].metric("Merchant Revenue", f"€{yf.merch_revenue / 1e6:.2f}M")
+    cols[2].metric("Net Cash Flow", f"€{yf.net_cashflow / 1e6:.2f}M")
+    cols[3].metric("Delivery Rate", f"{yf.fulfilled_share:.1%}")
+    cols[4].metric("Wind+PV Gen", f"{(yf.wind_gen_mwh + yf.pv_gen_mwh) / 1e3:.0f} GWh")
 
     # ── Lifetime project economics ────────────────────────────────────────────
     with st.expander("Lifetime project economics", expanded=False):
-        ec1, ec2 = st.columns(2)
-        with ec1:
+        cols = st.columns(2)
+        with cols[0]:
             st.markdown("**CAPEX & OPEX**")
             capex_df = pd.DataFrame(
                 [
@@ -166,7 +166,7 @@ def _render_multi_year_deep_dive() -> None:
                 columns=["Component", "Value", "Basis"],
             )
             st.dataframe(capex_df, hide_index=True, width="stretch")
-        with ec2:
+        with cols[1]:
             st.markdown("**Project economics**")
             irr_str = f"{fin.irr:.1%}" if fin.irr == fin.irr else "n/a"
             lcoe_str = f"€{fin.lcoe:.2f}/MWh" if fin.lcoe == fin.lcoe else "n/a"
@@ -289,11 +289,11 @@ def _render_single_day_deep_dive() -> None:
             "under alternative sourcing strategies? All figures are for the modelled period."
         )
 
-        col_bar, col_cum = st.columns([1, 2])
-        with col_bar:
+        cols = st.columns([1, 2])
+        with cols[0]:
             fig_cf = make_counterfactual_bar_chart(cf, s)
             st.plotly_chart(fig_cf, width="stretch", height=400)
-        with col_cum:
+        with cols[1]:
             fig_cum = make_cumulative_cost_chart(cf)
             st.plotly_chart(fig_cum, width="stretch", height=400)
 

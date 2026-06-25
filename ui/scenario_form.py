@@ -16,11 +16,14 @@ max_bes_hours = 8
 def render_scenario_form(initial: Scenario) -> Scenario:
     """Render all scenario controls and return a new Scenario from widget values."""
     st.subheader("Feature toggles")
+
     cols = st.columns(4)
+    
     include_bess = cols[0].toggle("Include BESS", value=initial.include_bess, key="sf_include_bess")
     enable_market_buy = cols[1].toggle("Enable market buy", value=initial.enable_market_buy, key="sf_enable_market_buy")
     enable_market_sell = cols[2].toggle("Enable market sell", value=initial.enable_market_sell, key="sf_enable_market_sell")
     enable_shortfall = cols[3].toggle("Enable shortfall allowance", value=initial.enable_shortfall, key="sf_enable_shortfall")
+    
     cols = st.columns(4)
     enable_penalty = cols[0].toggle("Enable penalty regime", value=initial.enable_penalty, key="sf_enable_penalty")
     run_financial_analysis = cols[1].toggle("Run financial analysis", value=initial.run_financial_analysis, key="sf_run_financial_analysis")
@@ -61,6 +64,7 @@ def render_scenario_form(initial: Scenario) -> Scenario:
         st.markdown("**Offtaker load profile**")
         _profile_labels = [f"{PROFILE_INFO[k]['icon']} {PROFILE_INFO[k]['label']}" for k in PROFILE_KEYS]
         _current_idx = PROFILE_KEYS.index(initial.load_profile) if initial.load_profile in PROFILE_KEYS else 0
+    
         cols = st.columns([1, 3])
         _selected_label = cols[0].selectbox(
             "Profile type",
@@ -120,7 +124,7 @@ def render_scenario_form(initial: Scenario) -> Scenario:
             help="Decimal degrees E.",
         )
         loc_df = pd.DataFrame({"lat": [lat], "lon": [lon]})
-        cols[2].map(loc_df, zoom=4)
+        cols[2].map(loc_df, zoom=5, height=300)
 
     with st.expander("Simulation", expanded=True):
         cols = st.columns(4)
@@ -176,7 +180,6 @@ def render_scenario_form(initial: Scenario) -> Scenario:
             key="sf_cal_hedge_fraction",
             help="Share of load hedged at CAL Y+1; remainder sourced at spot.",
         ) / 100.0
-
     with st.expander("Reference day selection", expanded=True):
         cols = st.columns(4)
         # Chosen day selector (use available days from loaded timeseries)

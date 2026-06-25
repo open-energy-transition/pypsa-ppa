@@ -32,8 +32,8 @@ def _get_timeseries():
 def _render_scenario_summary(s) -> None:
     st.subheader("Scenario summary")
 
-    c1, c2, c3, c4 = st.columns(4)
-    with c1:
+    cols = st.columns(4)
+    with cols[0]:
         st.markdown("**Portfolio**")
         st.markdown(f"- Wind: **{s.onsw_mw:.0f} MW**")
         st.markdown(f"- Solar: **{s.pv_mw:.0f} MWac**")
@@ -42,7 +42,7 @@ def _render_scenario_summary(s) -> None:
         else:
             st.markdown("- BESS: *disabled*")
 
-    with c2:
+    with cols[1]:
         st.markdown("**PPA contract**")
         st.markdown(f"- Offtake: **{s.ppaload_mw:.0f} MW** flat")
         st.markdown(f"- Tariff: **€{s.ppa_price:.0f}/MWh**")
@@ -52,7 +52,7 @@ def _render_scenario_summary(s) -> None:
         else:
             st.markdown("- Penalty: *disabled*")
 
-    with c3:
+    with cols[2]:
         st.markdown("**Market interaction**")
         if s.enable_market_buy:
             st.markdown(f"- Buy cap: **{s.market_buy_share:.0%}** of delivery")
@@ -67,7 +67,7 @@ def _render_scenario_summary(s) -> None:
         else:
             st.markdown("- Shortfall: *disabled*")
 
-    with c4:
+    with cols[3]:
         st.markdown("**Simulation**")
         st.markdown(f"- Location: **{s.lat:.2f}°N, {s.lon:.2f}°E**")
         if s.simulation_years == 1:
@@ -96,21 +96,23 @@ def _render_data_status(lat: float, lon: float) -> tuple[bool, bool]:
     cached_cf_years = list_cached_years(lat=lat, lon=lon)
     cf_ok = len(cached_cf_years) > 0
 
-    c1, c2 = st.columns(2)
-    with c1:
+    cols = st.columns(2)
+    with cols[0]:
         if prices_ok:
             missing = [y for y in PRICE_YEARS if y not in cached_price_years]
-            label = f"ENTSO-E prices: {len(cached_price_years)}/{len(PRICE_YEARS)} years cached"
+            label = f"ENTSO-E prices: {len(cached_price_years)} / {len(PRICE_YEARS)} years cached"
             st.warning(f"{label} (missing: {missing})") if missing else st.success(f"{label} ✓")
         else:
             st.warning("No ENTSO-E prices cached — go to **Download Data** tab")
-    with c2:
+
+    with cols[1]:
         if cf_ok:
             missing = [y for y in AVAILABLE_YEARS if y not in cached_cf_years]
-            label = f"CF profiles: {len(cached_cf_years)}/{len(AVAILABLE_YEARS)} years cached"
+            label = f"CF profiles: {len(cached_cf_years)} /{len(AVAILABLE_YEARS)} years cached"
             st.warning(f"{label} (missing: {missing})") if missing else st.success(f"{label} ✓")
         else:
             st.warning(f"No CF profiles cached for ({lat:.2f}, {lon:.2f}) — go to **Download Data** tab")
+
     return prices_ok, cf_ok
 
 
@@ -139,12 +141,12 @@ def _run_eu_simulation(scenario, max_workers: int) -> None:
     if not prices_by_year:
         raise RuntimeError("No ENTSO-E prices cached. Go to Download Data first.")
 
-    progress_bar = st.progress(0, text="Starting simulation…")
+    progress_bar = st.progress(0, text="Starting simulation...")
     status_text = st.empty()
 
     def _on_progress(done: int, total: int, sim_year: int) -> None:
         progress_bar.progress(done / total, text=f"Year {sim_year} ({done}/{total})")
-        status_text.text(f"Solved {done} of {total} year(s)…")
+        status_text.text(f"Solved {done} of {total} year(s)...")
 
     results = run_multi_year(
         scenario=scenario,
@@ -171,15 +173,15 @@ def _run_eu_simulation(scenario, max_workers: int) -> None:
 def _render_eu_results(fin, n_years: int) -> None:
     st.subheader("Simulation results")
 
-    c1, c2, c3, c4, c5 = st.columns(5)
+    cols = st.columns(5)
     irr_str = f"{fin.irr:.1%}" if fin.irr == fin.irr else "N/A"
     lcoe_str = f"€{fin.lcoe:.1f}/MWh" if fin.lcoe == fin.lcoe else "N/A"
     payback_str = f"{fin.simple_payback:.1f} yrs" if fin.simple_payback < 1e8 else "N/A"
-    c1.metric("NPV", f"€{fin.npv/1e6:.1f}M")
-    c2.metric("Project IRR", irr_str)
-    c3.metric("LCOE", lcoe_str)
-    c4.metric("Simple Payback", payback_str)
-    c5.metric("Lifetime Net Revenue", f"€{fin.total_lifetime_revenue/1e6:.1f}M")
+    cols[0].metric("NPV", f"€{fin.npv/1e6:.1f}M")
+    cols[1].metric("Project IRR", irr_str)
+    cols[2].metric("LCOE", lcoe_str)
+    cols[3].metric("Simple Payback", payback_str)
+    cols[4].metric("Lifetime Net Revenue", f"€{fin.total_lifetime_revenue/1e6:.1f}M")
 
     if n_years == 1:
         y = fin.yearly[0]
@@ -283,13 +285,8 @@ def render() -> None:
     prices_ok, cf_ok = _render_data_status(s.lat, s.lon)
     data_ready = prices_ok and cf_ok
 
-    run_col, workers_col, status_col = st.columns([1, 1, 2])
-    with workers_col:
-        max_workers = st.selectbox(
-            "Parallel workers", [1, 2, 4, 6, 8], index=2, key="opt_max_workers",
-            help="Threads used for multi-year solving. Ignored for single-year runs.",
-        )
-    with run_col:
+    cols = st.columns([1, 1, 2], vertical_alignment="bottom")
+    with cols[0]:
         eu_run = st.button(
             "▶ Run Simulation",
             type="primary",
@@ -297,7 +294,12 @@ def render() -> None:
             key="opt_run_eu",
             disabled=not data_ready,
         )
-    with status_col:
+    with cols[1]:
+        max_workers = st.selectbox(
+            "Parallel workers", [1, 2, 4, 5, 6, 7, 8, 9, 10, 20, 25], index=2, key="opt_max_workers",
+            help="Threads used for multi-year solving. Ignored for single-year runs.",
+        )
+    with cols[2]:
         if not data_ready:
             st.warning("Download data first (see **Download Data** tab).")
         elif state.has_multi_year_results():
@@ -335,16 +337,16 @@ def render() -> None:
                     st.error(err)
                 st.warning("Fix the above issues in **Case Study Definition** before running.")
             else:
-                c1, c2 = st.columns([1, 3])
-                with c1:
+                cols = st.columns([1, 3])
+                with cols[0]:
                     single_run = st.button("▶ Run Single-Day", type="secondary", width="stretch", key="opt_run_single")
-                with c2:
+                with cols[1]:
                     if state.has_result():
                         r = state.get_result()
                         st.success(f"Last run: **{r.solver_status}** / **{r.solver_condition}**")
 
                 if single_run:
-                    with st.spinner("Solving… (typically 5–15 s)"):
+                    with st.spinner("Solving... (typically 5–15 s)"):
                         try:
                             from ppa.data_loader import prepare_timeseries
                             from ppa.network import build_network

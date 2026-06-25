@@ -85,8 +85,9 @@ def _collect_inputs(seed: ProjectFinanceInputs, multi_year: bool) -> ProjectFina
             anc = _num("Ancillary (% of revenue)", f + "anc", seed.ancillary_pct, step=0.005, fmt="%.3f")
 
     with st.expander("📅 Timing (development, construction, life)", expanded=False):
-        c1, c2, c3 = st.columns(3)
+        c1, c2, c3 = st.columns(3, vertical_alignment="bottom")
         with c1:
+            st.markdown("**Overall Settings (yrs)**")
             duration = int(_num("Model duration (yrs)", f + "duration", seed.model_duration, step=1))
             life = int(_num("Operating life (yrs)", f + "life", seed.operating_life, step=1))
             dev_start = int(_num("Development start period", f + "dev_start", seed.development_start, step=1))
