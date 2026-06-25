@@ -88,10 +88,22 @@ pypsa-ppa/
 
 ## Data
 
-The timeseries data covers **March 2025** from the Australian National Electricity Market (NSW dispatch region), sourced via [NEMOSIS](https://github.com/UNSW-CEEM/NEMOSIS):
+### Renewable & price timeseries
 
-- Hourly wind and solar capacity factors
-- NSW wholesale spot electricity prices
+Market prices and renewable capacity factors are sourced from ENTSO-E (DE-LU day-ahead prices) and [renewables.ninja](https://renewables.ninja) (wind/solar CFs for a user-specified European location).
+
+### Industrial load profiles
+
+Offtaker demand shapes for **cement** and **steel** are derived from real measured hourly profiles published by the [Forschungsstelle für Energiewirtschaft (FfE)](https://www.ffe.de) via their open data API (`id_opendata=59`), following the approach of [PyPSA-EUR PR #1875](https://github.com/PyPSA/pypsa-eur/pull/1875). The 2017 reference year data is bundled at `ppa/data/ffe_profiles.json` and mapped to any simulation year by averaging over (month, day-of-week, hour) triplets to preserve seasonal and weekday patterns.
+
+| Profile key | Data source | FfE sector |
+|---|---|---|
+| `flat` | Synthetic | — |
+| `cement_plant` | FfE open data | Non-metallic Minerals (id 4) |
+| `steel_eaf` | FfE open data | Iron & steel industry (id 1) |
+| `green_hydrogen` | Synthetic | — |
+| `data_center` | Synthetic | — |
+| `aluminum_smelter` | Synthetic | — |
 
 ## Dependencies
 
