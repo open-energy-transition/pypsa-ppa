@@ -6,8 +6,12 @@ numpy==2.4.6
 pyarrow==24.0.0
 openpyxl==3.1.5
 plotly==6.6.0
-matplotlib==3.7.2
+matplotlib==3.10.9
 scipy==1.17.1
-streamlit>=1.36
+streamlit==1.57.0
 pypsatopo==1.1.2
 xarray==2026.2.0
+netcdf4==1.7.4
+geopandas==1.1.3
+shapely==2.1.2
+pyogrio==0.12.1
