@@ -24,19 +24,26 @@ from ui.tabs import (
 st.markdown(
     """
     # PyPSA-based PPA Explorer
-    Interactive and full flexible toolkit for modelling renewable portfolios under different Power Purchase Agreement (PPA) assumptions.
     """
 )
+with st.popover("Disclaimer", width="stretch", icon="⚠️"):
+    st.write(
+        """
+        The content of this document/web page is intended for the exclusive use of **Open Energy Transition (OET)**'s client and other contractually agreed recipients.
+        It may only be made available in whole or in part to third parties with the client's consent and on a non-reliance basis.
+        **Open Energy Transition** is not liable to third parties for the completeness and accuracy of the information provided therein.
+        """
+    )
 
 tabs = st.tabs([
-    "🏠 Welcome",
-    "🔬 Case Setup",
-    "📡 Get Data",
-    "⚙️ Optimization",
-    "🔍 Results",
-    "🏦 Financial Model",
-    "Sensitivity Analysis",
-    "📖 HELP",
+    "| 👋 Welcome",
+    "| 1. 🔬 Case Setup",
+    "| 2.📡 Get Data",
+    "| 3. ⚙️ Optimization",
+    "| 4. 🔍 Results",
+    "| 5. 🏦 Financial Model",
+    "| 6. 📊 Sensitivity Analysis",
+    "| 7. 📖 HELP",
     # "📊 Results Overview",
     # "Scenario Analysis",
     # "Excel Import",
@@ -96,12 +103,3 @@ if tabs[i].open:
 #if tabs[i].open:
 #    with tabs[i]:
 #        results_overview.render()
-
-with st.popover("Disclaimer", width="stretch", icon="⚠️"):
-    st.write(
-        """
-        The content of this document/web page is intended for the exclusive use of **Open Energy Transition**'s client and other contractually agreed recipients.
-        It may only be made available in whole or in part to third parties with the client's consent and on a non-reliance basis.
-        **Open Energy Transition** is not liable to third parties for the completeness and accuracy of the information provided therein.
-        """
-    )

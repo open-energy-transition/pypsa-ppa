@@ -87,7 +87,7 @@ def _write_inputs(wb: Workbook, p: ProjectFinanceInputs) -> dict[str, str]:
 
     ws["B1"] = "Financial Model — Inputs"
     ws["B1"].font = _TITLE
-    ws["B2"] = "Yellow cells are editable assumptions. Costs in €m/MW (€m/MWh for BESS)."
+    ws["B2"] = "Yellow cells are editable assumptions. Costs in €M/MW (€M/MWh for BESS)."
     ws["B2"].font = Font(italic=True, color="808080")
 
     cells: dict[str, str] = {}
@@ -116,24 +116,24 @@ def _write_inputs(wb: Workbook, p: ProjectFinanceInputs) -> dict[str, str]:
         row += 1
 
     section("Build cost")
-    field("Onshore wind build cost", "onsw_build_cost", p.onsw_build_cost, "€m/MW")
-    field("Solar PV build cost", "pv_build_cost", p.pv_build_cost, "€m/MW")
-    field("BESS build cost", "bess_build_cost", p.bess_build_cost, "€m/MWh")
+    field("Onshore wind build cost", "onsw_build_cost", p.onsw_build_cost, "€M/MW")
+    field("Solar PV build cost", "pv_build_cost", p.pv_build_cost, "€M/MW")
+    field("BESS build cost", "bess_build_cost", p.bess_build_cost, "€M/MWh")
     row += 1
     section("Connection cost")
-    field("Onshore wind connection", "onsw_connection_cost", p.onsw_connection_cost, "€m/MW")
-    field("Solar PV connection", "pv_connection_cost", p.pv_connection_cost, "€m/MW")
-    field("BESS connection", "bess_connection_cost", p.bess_connection_cost, "€m/MWh")
+    field("Onshore wind connection", "onsw_connection_cost", p.onsw_connection_cost, "€M/MW")
+    field("Solar PV connection", "pv_connection_cost", p.pv_connection_cost, "€M/MW")
+    field("BESS connection", "bess_connection_cost", p.bess_connection_cost, "€M/MWh")
     row += 1
     section("Project development cost (devex)")
-    field("Onshore wind devex", "onsw_devex", p.onsw_devex, "€m/MW")
-    field("Solar PV devex", "pv_devex", p.pv_devex, "€m/MW")
-    field("BESS devex", "bess_devex", p.bess_devex, "€m/MWh")
+    field("Onshore wind devex", "onsw_devex", p.onsw_devex, "€M/MW")
+    field("Solar PV devex", "pv_devex", p.pv_devex, "€M/MW")
+    field("BESS devex", "bess_devex", p.bess_devex, "€M/MWh")
     row += 1
     section("Fixed O&M (p.a.)")
-    field("Onshore wind fixed O&M", "onsw_fixed_om", p.onsw_fixed_om, "€m/MW")
-    field("Solar PV fixed O&M", "pv_fixed_om", p.pv_fixed_om, "€m/MW")
-    field("BESS fixed O&M", "bess_fixed_om", p.bess_fixed_om, "€m/MWh")
+    field("Onshore wind fixed O&M", "onsw_fixed_om", p.onsw_fixed_om, "€M/MW")
+    field("Solar PV fixed O&M", "pv_fixed_om", p.pv_fixed_om, "€M/MW")
+    field("BESS fixed O&M", "bess_fixed_om", p.bess_fixed_om, "€M/MWh")
     field("Ancillary services", "ancillary_pct", p.ancillary_pct, "% of revenue")
     row += 1
     section("Timing (years)")
@@ -509,21 +509,21 @@ def _write_model(
             f"+{bess_con_f[pr-1]}*({I['bess_build_cost']}+{I['bess_connection_cost']})*{E['bess_mwh']})"
         )
 
-    label_row("capital", "Capital spend", "€m", section=True)
-    label_row("devex", "Devex", "€m")
+    label_row("capital", "Capital spend", "€M", section=True)
+    label_row("devex", "Devex", "€M")
     put_formula("devex", _devex_fn)
-    label_row("capex", "Capex", "€m")
+    label_row("capex", "Capex", "€M")
     put_formula("capex", _capex_fn)
-    label_row("capital_spend", "Total capital spend", "€m")
+    label_row("capital_spend", "Total capital spend", "€M")
     put_formula("capital_spend", lambda pr, cl: f"={cl}{R['devex']}+{cl}{R['capex']}")
 
     # ── Revenue (formulas) ────────────────────────────────────────────────────
-    label_row("revenue", "Revenue", "€m", section=True)
-    label_row("ppa_rev", "PPA revenue", "€m")
+    label_row("revenue", "Revenue", "€M", section=True)
+    label_row("ppa_rev", "PPA revenue", "€M")
     put_formula("ppa_rev", lambda pr, cl: (
         f"={cl}{R['ppa_flag']}*{E['ppa_gwh']}*1000*({I['ppa_tariff']}*{cl}{R['ppa_idx']})/1000000"
     ))
-    label_row("penalty_cost", "Penalty cost", "€m")
+    label_row("penalty_cost", "Penalty cost", "€M")
     put_formula("penalty_cost", lambda pr, cl: (
         f"={cl}{R['ppa_flag']}*{E['penalty_gwh']}*1000*({I['ppa_tariff']}*{I['penalty_multiple']}*{cl}{R['ppa_idx']})/1000000"
     ))
@@ -541,53 +541,53 @@ def _write_model(
         return (f"=({cl}{R['ppa_flag']}*{E['excess_nonsolar_gwh']}+{cl}{R['nonppa_flag']}*{E['total_nonsolar_gwh']})"
                 f"*1000*({E['sell_nonsolar_price']}{fac})/1000000")
 
-    label_row("merch_solar", "Merchant — solar hours", "€m")
+    label_row("merch_solar", "Merchant — solar hours", "€M")
     put_formula("merch_solar", _merch_solar)
-    label_row("merch_nonsolar", "Merchant — non-solar hours", "€m")
+    label_row("merch_nonsolar", "Merchant — non-solar hours", "€M")
     put_formula("merch_nonsolar", _merch_nonsolar)
-    label_row("lgc_rev", "LGC / GO revenue", "€m")
+    label_row("lgc_rev", "LGC / GO revenue", "€M")
     put_formula("lgc_rev", lambda pr, cl: (
         f"=({cl}{R['ppa_flag']}*({E['excess_solar_gwh']}+{E['excess_nonsolar_gwh']})"
         f"+{cl}{R['nonppa_flag']}*({E['total_solar_gwh']}+{E['total_nonsolar_gwh']}))"
         f"*1000*({I['lgc_price']}*{cl}{R['ppa_idx']})/1000000"
     ))
-    label_row("net_contracted", "Net contracted revenue", "€m")
+    label_row("net_contracted", "Net contracted revenue", "€M")
     put_formula("net_contracted", lambda pr, cl: f"={cl}{R['ppa_rev']}-{cl}{R['penalty_cost']}")
-    label_row("net_uncontracted", "Net uncontracted revenue", "€m")
+    label_row("net_uncontracted", "Net uncontracted revenue", "€M")
     put_formula("net_uncontracted", lambda pr, cl: f"={cl}{R['merch_solar']}+{cl}{R['merch_nonsolar']}+{cl}{R['lgc_rev']}")
-    label_row("total_rev", "Total revenue", "€m")
+    label_row("total_rev", "Total revenue", "€M")
     put_formula("total_rev", lambda pr, cl: f"={cl}{R['net_contracted']}+{cl}{R['net_uncontracted']}")
 
     # ── Opex / EBITDA (formulas) ──────────────────────────────────────────────
-    label_row("opex_sec", "Operating costs", "€m", section=True)
+    label_row("opex_sec", "Operating costs", "€M", section=True)
     fixed_om_expr = (
         f"({I['onsw_fixed_om']}*{E['onsw_mw']}+{I['pv_fixed_om']}*{E['pv_mw']}+{I['bess_fixed_om']}*{E['bess_mwh']})"
     )
-    label_row("opex", "Total O&M expenses", "€m")
+    label_row("opex", "Total O&M expenses", "€M")
     put_formula("opex", lambda pr, cl: f"={cl}{R['ops_flag']}*{fixed_om_expr}+{I['ancillary_pct']}*{cl}{R['total_rev']}")
-    label_row("ebitda", "EBITDA", "€m")
+    label_row("ebitda", "EBITDA", "€M")
     put_formula("ebitda", lambda pr, cl: f"={cl}{R['total_rev']}-{cl}{R['opex']}")
 
     # ── Debt (toolkit values + interest formula reference) ────────────────────
-    label_row("debt", "Debt schedule", "€m", section=True)
-    label_row("debt_draw", "Debt drawdown", "€m")
+    label_row("debt", "Debt schedule", "€M", section=True)
+    label_row("debt_draw", "Debt drawdown", "€M")
     put_values("debt_draw", sc["debt_draw"])
-    label_row("idc", "Interest during construction", "€m")
+    label_row("idc", "Interest during construction", "€M")
     put_values("idc", sc["idc"])
-    label_row("interest", "Term loan interest", "€m")
+    label_row("interest", "Term loan interest", "€M")
     put_values("interest", sc["interest"])
-    label_row("loan_repay", "Loan repayment", "€m")
+    label_row("loan_repay", "Loan repayment", "€M")
     put_values("loan_repay", sc["loan_repay"])
 
     # ── Depreciation (live, straight-line capped at the asset base) ───────────
     firstcol, lastcol = col(1), col(n)
-    label_row("dep", "Depreciation", "€m", section=True)
+    label_row("dep", "Depreciation", "€M", section=True)
 
     # Asset bases (live): tax = capex only; book = devex + capex + capitalised IDC.
-    label_row("tax_base", "Tax asset base", "€m")
+    label_row("tax_base", "Tax asset base", "€M")
     ws.cell(R["tax_base"], _pcol(1),
             f"=SUM({firstcol}{R['capex']}:{lastcol}{R['capex']})").number_format = "#,##0.0"
-    label_row("book_base", "Book asset base", "€m")
+    label_row("book_base", "Book asset base", "€M")
     ws.cell(R["book_base"], _pcol(1), (
         f"=SUM({firstcol}{R['devex']}:{lastcol}{R['devex']})"
         f"+SUM({firstcol}{R['capex']}:{lastcol}{R['capex']})"
@@ -606,43 +606,43 @@ def _write_model(
             )
         return fn
 
-    label_row("tax_dep", "Tax depreciation", "€m")
+    label_row("tax_dep", "Tax depreciation", "€M")
     put_formula("tax_dep", _dep_fn(R["tax_dep"], R["tax_base"], I["tax_depreciation_rate"]))
-    label_row("book_dep", "Book depreciation", "€m")
+    label_row("book_dep", "Book depreciation", "€M")
     put_formula("book_dep", _dep_fn(R["book_dep"], R["book_base"], I["book_depreciation_rate"]))
 
     # ── P&L tax (live, with loss carry-forward) ───────────────────────────────
-    label_row("pl", "Profit & tax", "€m", section=True)
-    label_row("pbt", "Profit before tax", "€m")
+    label_row("pl", "Profit & tax", "€M", section=True)
+    label_row("pbt", "Profit before tax", "€M")
     put_formula("pbt", lambda pr, cl: f"={cl}{R['ebitda']}-{cl}{R['interest']}-{cl}{R['book_dep']}")
-    label_row("taxable", "Taxable income", "€m")
+    label_row("taxable", "Taxable income", "€M")
     put_formula("taxable", lambda pr, cl: f"={cl}{R['ebitda']}-{cl}{R['interest']}-{cl}{R['tax_dep']}")
-    label_row("carry", "Carry-forward losses", "€m")
+    label_row("carry", "Carry-forward losses", "€M")
     put_formula("carry", lambda pr, cl: (
         f"=MIN(0,{cl}{R['taxable']})" if pr == 1
         else f"=MIN(0,{cl}{R['taxable']}+{col(pr-1)}{R['carry']})"
     ))
-    label_row("tax", "Income tax", "€m")
+    label_row("tax", "Income tax", "€M")
     put_formula("tax", lambda pr, cl: (
         f"=MAX(0,{cl}{R['taxable']})*{I['corp_tax_rate']}" if pr == 1
         else f"=MAX(0,{cl}{R['taxable']}+{col(pr-1)}{R['carry']})*{I['corp_tax_rate']}"
     ))
-    label_row("pat", "Profit after tax", "€m")
+    label_row("pat", "Profit after tax", "€M")
     put_formula("pat", lambda pr, cl: f"={cl}{R['pbt']}-{cl}{R['tax']}")
 
     # ── Returns (formulas) ────────────────────────────────────────────────────
-    label_row("returns", "Returns", "€m", section=True)
-    label_row("fcff", "FCFF (project)", "€m")
+    label_row("returns", "Returns", "€M", section=True)
+    label_row("fcff", "FCFF (project)", "€M")
     put_formula("fcff", lambda pr, cl: (
         f"={cl}{R['ops_flag']}*({cl}{R['ebitda']}-{cl}{R['tax']})-{cl}{R['capital_spend']}"
     ))
-    label_row("equity_spend", "Equity investment", "€m")
+    label_row("equity_spend", "Equity investment", "€M")
     put_formula("equity_spend", lambda pr, cl: f"={cl}{R['capital_spend']}-{cl}{R['debt_draw']}")
-    label_row("fcfe", "FCFE (equity)", "€m")
+    label_row("fcfe", "FCFE (equity)", "€M")
     put_formula("fcfe", lambda pr, cl: (
         f"={cl}{R['ops_flag']}*({cl}{R['pat']}+{cl}{R['book_dep']}-{cl}{R['loan_repay']})-{cl}{R['equity_spend']}"
     ))
-    label_row("cfads", "CFADS", "€m")
+    label_row("cfads", "CFADS", "€M")
     put_formula("cfads", lambda pr, cl: f"={cl}{R['ops_flag']}*({cl}{R['ebitda']}-{cl}{R['tax']})")
     label_row("dscr", "DSCR", "ratio")
     put_formula("dscr", lambda pr, cl: (
@@ -691,11 +691,11 @@ def _write_outputs(wb: Workbook, result: ProjectFinanceResult) -> None:
         f"=IFERROR(IRR({rng.get('fcff','')}),\"n/a\")" if rng.get("fcff") else None)
     kpi("Equity IRR (FCFE)", result.equity_irr, "0.0%",
         f"=IFERROR(IRR({rng.get('fcfe','')}),\"n/a\")" if rng.get("fcfe") else None)
-    kpi("NPV @ WACC (project)", result.npv_project, "#,##0.0 \"€m\"")
+    kpi("NPV @ WACC (project)", result.npv_project, "#,##0.0 \"€M\"")
     kpi("Gearing", result.gearing, "0.0%")
-    kpi("Total funding (incl. IDC)", result.total_capex, "#,##0.0 \"€m\"")
-    kpi("Total debt", result.total_debt, "#,##0.0 \"€m\"")
-    kpi("Total equity", result.total_equity, "#,##0.0 \"€m\"")
+    kpi("Total funding (incl. IDC)", result.total_capex, "#,##0.0 \"€M\"")
+    kpi("Total debt", result.total_debt, "#,##0.0 \"€M\"")
+    kpi("Total equity", result.total_equity, "#,##0.0 \"€M\"")
     kpi("Minimum DSCR", result.min_dscr, "0.00")
     kpi("Average DSCR", result.avg_dscr, "0.00")
     kpi("Equity payback", result.payback_years, "0.0 \"yrs\"")
