@@ -60,7 +60,8 @@ def _render_gen_stats(result, s) -> None:
         ],
         columns=["Metric", "Value", "Detail"],
     )
-    st.dataframe(stats_df, hide_index=True, width="stretch")
+    cols = st.columns(2)
+    cols[0].dataframe(stats_df, hide_index=True, width="stretch")
 
 
 def _render_multi_year_counterfactuals(results, fin, s) -> None:

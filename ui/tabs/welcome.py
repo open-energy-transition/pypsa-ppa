@@ -9,16 +9,17 @@ def render() -> None:
     with cols[0]:
         st.markdown(
             """
-# 🏠 Welcome to the PyPSA PPA Toolkit!
+# 👋 Welcome to the PyPSA PPA Toolkit!
 
-This app uses **PyPSA** — an open-source energy system optimisation framework — to model
-how a renewable portfolio (wind, solar, battery storage) should be dispatched when bound
-by the commercial terms of a Power Purchase Agreement.
-The underlying optimisation finds the **least-cost hourly dispatch** across the provided 
-set of information.
+**Interactive, full flexible and open-source toolkit** for modelling renewable portfolios under different 
+**Power Purchase Agreement (PPA)** assumptions.
+**PyPSA** — an open-source energy system optimisation framework — is used to optimise how a renewable portfolio
+(wind, solar, battery storage) should be dispatched when bound by the commercial terms of a PPA.
 
 ## How to use this toolkit
-1. **Case Setup** — pick one of the four predefined case studies to load a starting scenario, then
+Navigate through the tabs to manage different aspects of your project (economic and demand parameters) from left to right.
+
+1. 🔬 **Case Setup** — pick one of the four predefined case studies to load a starting scenario, then
    customise any parameters using the sliders and inputs below the cards to reflect your personal assumptions.
     * *Portfolio modelling*: Wind + solar + battery storage co-located at a single aggregation point.
     * *PPA contract encoding*: Flat offtake loads, delivery obligations, shortfall caps, penalty multipliers.
@@ -26,20 +27,20 @@ set of information.
     * *Financial assumptions*: CAPEX, LCOE, IRR, NPV, and breakeven PPA price discovery.
     * *Simulation details:* Years of simulation, price escalation, and technology degradation.
 
-2. **Get Data** — download the necessary data.
+2. 📡 **Get Data** — download the necessary data.
 
-3. **Optimization** — review the scenario summary and run the optimization to solve
+3. ⚙️ **Optimization** — review the scenario summary and run the optimization to solve
    the model. This typically takes 5–15 seconds.
 
-4. **Results** — examine the full financial model (CAPEX, IRR, NPV, breakeven
+4. 🔍 **Results** — examine the full financial model (CAPEX, IRR, NPV, breakeven
    PPA price) and a detailed daily dispatch chart.
 
-5. **Financial Model** — explore the financial model in detail, including CAPEX, LCOE, 
+5. 🏦 **Financial Model** — explore the financial model in detail, including CAPEX, LCOE, 
    IRR, NPV, and breakeven PPA price.
 
-6. **Sensitivity Analysis** — understand the impact of individual parameters on the overall economics.
+6. 📊 **Sensitivity Analysis** — understand the impact of individual parameters on the overall economics.
 
-7. **HELP** — introduce key concepts and terminology for newbies in the world of PPA and PyPSA.
+7. 📖 **HELP** — introduce key concepts and terminology for newbies in the world of PPA and PyPSA.
             """
         )
 

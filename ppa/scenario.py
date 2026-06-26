@@ -54,7 +54,7 @@ class Scenario:
 
     # Technology degradation (compound per year, applied from year 1 onward)
     pv_degradation_rate: float = 0.005    # 0.5%/yr — industry standard for crystalline Si
-    wind_degradation_rate: float = 0.005  # 0.5%/yr
+    wind_degradation_rate: float = 0.002  # 0.2%/yr
     bess_degradation_rate: float = 0.020  # 2.0%/yr usable capacity fade
 
     # European location (lat/lon for renewables.ninja CF downloads)

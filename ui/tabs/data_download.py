@@ -25,10 +25,8 @@ def _save_token(name: str, value: str) -> None:
 def render() -> None:
     st.title("📡 Download Data")
     st.markdown(
-        "Download European market prices (from ENTSO-E Transparency Platform, "
-        "https://transparency.entsoe.eu/) and wind/solar hourly profiles "
-        "(from https://renewables.ninja) for the location defined in your active "
-        "scenario. Data is cached locally — downloads only happen once per location."
+        "Download market prices and wind/solar hourly profiles for the location defined in "
+        "your active scenario. Data is cached locally — downloads only happen once per location."
     )
 
     # ── Active location ───────────────────────────────────────────────────────
@@ -42,15 +40,15 @@ def render() -> None:
     cols = st.columns([2, 2])
     with cols[0]:
         st.subheader("Active scenario location")
-        st.markdown(f"**{lat:.2f}°N, {lon:.2f}°E**")
+        st.markdown(f"Location 1: **{lat:.2f}°N, {lon:.2f}°E**")
         st.info(
-            "**Hint**: Change the location in the *Project Location* section of the "
-            "**Case Study Definition** tab: Customise parameters → Project Location."
+            "To change location see **Case Study Definition** tab: "
+            "see *Customise parameters* → *Project Location*."
         )
     with cols[1]:
-        st.map(pd.DataFrame({"lat": [lat], "lon": [lon]}), zoom=4, height=300)
+        st.map(pd.DataFrame({"lat": [lat], "lon": [lon]}), zoom=6, height=300)
 
-    st.markdown("---")
+    #st.markdown("---")
 
     # ── API tokens ────────────────────────────────────────────────────────────
     st.subheader("API tokens")
@@ -58,7 +56,7 @@ def render() -> None:
 
     with cols[0]:
         st.markdown("**ENTSO-E Transparency Platform**")
-        st.caption("Free — register at transparency.entsoe.eu")
+        st.caption("Free registration: [ENTSO-E's Transparency Platform](https://transparency.entsoe.eu/)")
 
     with cols[1]:
         entsoe_token = st.text_input(
@@ -72,7 +70,7 @@ def render() -> None:
 
     with cols[2]:
         st.markdown("**Renewables.ninja**")
-        st.caption("Free — register at renewables.ninja")
+        st.caption("Free registration: [Renewables.ninja](https://www.renewables.ninja/register)")
 
     with cols[3]:
         ninja_token = st.text_input(
@@ -80,12 +78,11 @@ def render() -> None:
             value=_get_token("ninja"),
             type="password",
             key="dd_ninja_token",
-            placeholder="your-ninja-api-token",
+            placeholder="xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
         )
         _save_token("ninja", ninja_token)
 
     # ── Data status ───────────────────────────────────────────────────────────
-    st.markdown("---")
     st.subheader("Cache status")
 
     from ppa.data.entsoe_client import list_cached_years as list_cached_price_years, AVAILABLE_YEARS as PRICE_YEARS
@@ -110,7 +107,7 @@ def render() -> None:
             st.warning(f"No years cached. Will download: {PRICE_YEARS}")
 
     with cols[2]:
-        st.markdown(f"**Renewables.ninja renewable profiles**")
+        st.markdown(f"**Renewables.ninja normalized renewable profiles**")
 
     with cols[3]:
         if not missing_cf:
@@ -122,8 +119,6 @@ def render() -> None:
             st.warning(f"No years cached for this location. Will download: {AVAILABLE_YEARS}")
 
     # ── Download button ───────────────────────────────────────────────────────
-    st.markdown("---")
-
     needs_download = bool(missing_prices) or bool(missing_cf)
     tokens_present = bool(entsoe_token) and bool(ninja_token)
 
