@@ -193,11 +193,24 @@ def _render_eu_results(fin, n_years: int) -> None:
         )
         return
 
-    tab_charts, tab_table = st.tabs(["Charts", "Year-by-Year Table"])
+    st.markdown("---")
+    tab_charts, tab_table = st.tabs([
+        "Charts", 
+        "Year-by-Year Table"
+    ])
     with tab_charts:
-        _render_npv_chart(fin)
-        _render_revenue_chart(fin)
-        _render_delivery_chart(fin)
+        tab_chart1, tab_chart2, tab_chart3 = st.tabs([
+            "Cumulative NPV", 
+            "Annual Revenue Breakdown", 
+            "PPA Delivery Rate"
+        ])
+        with tab_chart1:
+            _render_npv_chart(fin)
+        with tab_chart2:
+            _render_revenue_chart(fin)
+        with tab_chart3:
+            _render_delivery_chart(fin)
+
     with tab_table:
         _render_yearly_table(fin)
 

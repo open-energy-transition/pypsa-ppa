@@ -108,7 +108,7 @@ def make_supply_mix_day_chart(
     return _dual_axis_supply_mix(
         df,
         x_col="time",
-        title=f"Actual hourly supply mix — {chosen_day}",
+        title=f"Dispatch — {chosen_day}",
         ppaload_mw=ppaload_mw,
     )
 

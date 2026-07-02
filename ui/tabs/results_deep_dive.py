@@ -26,19 +26,26 @@ def _fmt_m(v: float) -> str:
 def _render_dispatch_section(result, s, chosen_day: str) -> None:
     supply_mix = build_supply_mix_df(result.dispatch)
     day_mix = supply_mix[supply_mix.index.strftime("%Y-%m-%d") == chosen_day]
-    fig = make_supply_mix_day_chart(day_mix, s.ppaload_mw, chosen_day)
-    st.plotly_chart(fig, width="stretch", height=500)
 
-    if s.include_bess and s.effective_bess_mwh > 0:
-        st.subheader("BESS state of charge")
-        fig_soc = make_soc_chart(result.dispatch.soc, s.effective_bess_mwh)
-        st.plotly_chart(fig_soc, width="stretch", height=400)
-
-    if getattr(result, "market_prices", None) is not None:
-        st.subheader("Market spot price")
-        price_day = result.market_prices[result.market_prices.index.strftime("%Y-%m-%d") == chosen_day]
-        fig_price = make_price_series_chart(price_day, title=f"Day-ahead price — {chosen_day}")
-        st.plotly_chart(fig_price, width="stretch", height=300)
+    tab_chart1, tab_chart2, tab_chart3 = st.tabs([
+        "Actual hourly supply mix", 
+        "BESS SoC", 
+        "Market spot price",
+    ])
+    with tab_chart1:
+        fig = make_supply_mix_day_chart(day_mix, s.ppaload_mw, chosen_day)
+        st.plotly_chart(fig, width="stretch", height=500)
+    with tab_chart2:
+        if s.include_bess and s.effective_bess_mwh > 0:
+            #st.subheader("BESS state of charge")
+            fig_soc = make_soc_chart(result.dispatch.soc, s.effective_bess_mwh)
+            st.plotly_chart(fig_soc, width="stretch", height=400)
+    with tab_chart3:
+        if getattr(result, "market_prices", None) is not None:
+            # st.subheader("Market spot price")
+            price_day = result.market_prices[result.market_prices.index.strftime("%Y-%m-%d") == chosen_day]
+            fig_price = make_price_series_chart(price_day, title=f"Day-ahead price — {chosen_day}")
+            st.plotly_chart(fig_price, width="stretch", height=300)
 
 
 def _render_gen_stats(result, s) -> None:
@@ -69,8 +76,6 @@ def _render_multi_year_counterfactuals(results, fin, s) -> None:
     if not any(getattr(r, "market_prices", None) is not None for r in results):
         return
 
-    st.markdown("---")
-    st.subheader("Counterfactual procurement comparison")
     st.caption(
         "Compares the offtaker's all-in cost under the PPA versus alternative sourcing strategies. "
         "CAL Y+1 price is escalated year-on-year at the same rate as market prices."
@@ -187,16 +192,25 @@ def _render_multi_year_deep_dive() -> None:
 
     # ── Daily dispatch ────────────────────────────────────────────────────────
     st.markdown("---")
-    st.subheader(f"Hourly dispatch — {chosen_day}")
-    _render_dispatch_section(result, result.scenario, chosen_day)
+    tab_chart1, tab_chart2, tab_chart3 = st.tabs([
+        "Hourly dispatch", 
+        "Generation statistics", 
+        "Counterfactual procurement comparison",
+    ])
+    with tab_chart1:
+        # st.subheader(f"Hourly dispatch — {chosen_day}")
+        _render_dispatch_section(result, result.scenario, chosen_day)
+    with tab_chart2:
+        # ── Generation statistics ─────────────────────────────────────────────────
+        st.subheader(f"{selected_year}")
+        _render_gen_stats(result, result.scenario)
+    with tab_chart3:
+        # ── Counterfactual procurement comparison ─────────────────────────────────
+        # st.subheader("Counterfactual procurement comparison")
+        _render_multi_year_counterfactuals(results, fin, s)
 
-    # ── Generation statistics ─────────────────────────────────────────────────
-    st.markdown("---")
-    st.subheader(f"Generation statistics — {selected_year}")
-    _render_gen_stats(result, result.scenario)
 
-    # ── Counterfactual procurement comparison ─────────────────────────────────
-    _render_multi_year_counterfactuals(results, fin, s)
+
 
 
 def _render_single_day_deep_dive() -> None:
