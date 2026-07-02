@@ -30,59 +30,58 @@ def _get_timeseries():
 # ── scenario summary ──────────────────────────────────────────────────────────
 
 def _render_scenario_summary(s) -> None:
-    st.subheader("Scenario summary")
+    with st.expander("Scenario summary", expanded=False):
+        cols = st.columns(4)
+        with cols[0]:
+            st.markdown("**Portfolio**")
+            st.markdown(f"- Wind: **{s.onsw_mw:.0f} MW**")
+            st.markdown(f"- Solar: **{s.pv_mw:.0f} MWac**")
+            if s.include_bess:
+                st.markdown(f"- BESS: **{s.effective_bess_mw:.0f} MW / {s.effective_bess_mwh:.0f} MWh**")
+            else:
+                st.markdown("- BESS: *disabled*")
 
-    cols = st.columns(4)
-    with cols[0]:
-        st.markdown("**Portfolio**")
-        st.markdown(f"- Wind: **{s.onsw_mw:.0f} MW**")
-        st.markdown(f"- Solar: **{s.pv_mw:.0f} MWac**")
-        if s.include_bess:
-            st.markdown(f"- BESS: **{s.effective_bess_mw:.0f} MW / {s.effective_bess_mwh:.0f} MWh**")
-        else:
-            st.markdown("- BESS: *disabled*")
+        with cols[1]:
+            st.markdown("**PPA contract**")
+            st.markdown(f"- Offtake: **{s.ppaload_mw:.0f} MW** flat")
+            st.markdown(f"- Tariff: **€{s.ppa_price:.0f}/MWh**")
+            st.markdown(f"- Required delivery: **{s.required_delivery_share:.0%}**")
+            if s.enable_penalty:
+                st.markdown(f"- Penalty: **{s.pen_mult:.1f}×** = €{s.penalty_price:.0f}/MWh")
+            else:
+                st.markdown("- Penalty: *disabled*")
 
-    with cols[1]:
-        st.markdown("**PPA contract**")
-        st.markdown(f"- Offtake: **{s.ppaload_mw:.0f} MW** flat")
-        st.markdown(f"- Tariff: **€{s.ppa_price:.0f}/MWh**")
-        st.markdown(f"- Required delivery: **{s.required_delivery_share:.0%}**")
-        if s.enable_penalty:
-            st.markdown(f"- Penalty: **{s.pen_mult:.1f}×** = €{s.penalty_price:.0f}/MWh")
-        else:
-            st.markdown("- Penalty: *disabled*")
+        with cols[2]:
+            st.markdown("**Market interaction**")
+            if s.enable_market_buy:
+                st.markdown(f"- Buy cap: **{s.market_buy_share:.0%}** of delivery")
+            else:
+                st.markdown("- Market buy: *disabled*")
+            if s.enable_market_sell:
+                st.markdown(f"- Sell: enabled (max {s.maxsell_mw:.0f} MW)")
+            else:
+                st.markdown("- Market sell: *disabled*")
+            if s.enable_shortfall:
+                st.markdown(f"- Shortfall: **{s.allowed_shortfall_share:.0%}** of load")
+            else:
+                st.markdown("- Shortfall: *disabled*")
 
-    with cols[2]:
-        st.markdown("**Market interaction**")
-        if s.enable_market_buy:
-            st.markdown(f"- Buy cap: **{s.market_buy_share:.0%}** of delivery")
-        else:
-            st.markdown("- Market buy: *disabled*")
-        if s.enable_market_sell:
-            st.markdown(f"- Sell: enabled (max {s.maxsell_mw:.0f} MW)")
-        else:
-            st.markdown("- Market sell: *disabled*")
-        if s.enable_shortfall:
-            st.markdown(f"- Shortfall: **{s.allowed_shortfall_share:.0%}** of load")
-        else:
-            st.markdown("- Shortfall: *disabled*")
-
-    with cols[3]:
-        st.markdown("**Simulation**")
-        st.markdown(f"- Location: **{s.lat:.2f}°N, {s.lon:.2f}°E**")
-        if s.simulation_years == 1:
-            st.markdown(f"- Mode: **1-year** ({s.first_sim_year})")
-        else:
+        with cols[3]:
+            st.markdown("**Simulation**")
+            st.markdown(f"- Location: **{s.lat:.2f}°N, {s.lon:.2f}°E**")
+            if s.simulation_years == 1:
+                st.markdown(f"- Mode: **1-year** ({s.first_sim_year})")
+            else:
+                st.markdown(
+                    f"- Mode: **{s.simulation_years}-year** "
+                    f"({s.first_sim_year}–{s.first_sim_year + s.simulation_years - 1})"
+                )
+            st.markdown(f"- Price escalation: **{s.price_escalation_rate:.1%}/yr**")
             st.markdown(
-                f"- Mode: **{s.simulation_years}-year** "
-                f"({s.first_sim_year}–{s.first_sim_year + s.simulation_years - 1})"
+                f"- Degradation: PV {s.pv_degradation_rate:.1%} | "
+                f"Wind {s.wind_degradation_rate:.1%} | "
+                f"BESS {s.bess_degradation_rate:.1%}"
             )
-        st.markdown(f"- Price escalation: **{s.price_escalation_rate:.1%}/yr**")
-        st.markdown(
-            f"- Degradation: PV {s.pv_degradation_rate:.1%} | "
-            f"Wind {s.wind_degradation_rate:.1%} | "
-            f"BESS {s.bess_degradation_rate:.1%}"
-        )
 
 
 # ── data status (compact) ─────────────────────────────────────────────────────

@@ -34,18 +34,24 @@ def _render_dispatch_section(result, s, chosen_day: str) -> None:
     ])
     with tab_chart1:
         fig = make_supply_mix_day_chart(day_mix, s.ppaload_mw, chosen_day)
-        st.plotly_chart(fig, width="stretch", height=500)
+        st.plotly_chart(fig, width="stretch", height=400)
+
     with tab_chart2:
         if s.include_bess and s.effective_bess_mwh > 0:
             #st.subheader("BESS state of charge")
             fig_soc = make_soc_chart(result.dispatch.soc, s.effective_bess_mwh)
             st.plotly_chart(fig_soc, width="stretch", height=400)
+        else:
+            st.info("No BESS included in this scenario.")
+
     with tab_chart3:
         if getattr(result, "market_prices", None) is not None:
             # st.subheader("Market spot price")
             price_day = result.market_prices[result.market_prices.index.strftime("%Y-%m-%d") == chosen_day]
             fig_price = make_price_series_chart(price_day, title=f"Day-ahead price — {chosen_day}")
-            st.plotly_chart(fig_price, width="stretch", height=300)
+            st.plotly_chart(fig_price, width="stretch", height=400)
+        else:
+            st.info("No market price data available for this scenario.")
 
 
 def _render_gen_stats(result, s) -> None:
