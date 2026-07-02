@@ -2,7 +2,8 @@
 from __future__ import annotations
 
 import dataclasses
-from concurrent.futures import ThreadPoolExecutor, as_completed
+import multiprocessing
+from concurrent.futures import ProcessPoolExecutor, as_completed
 from typing import Callable
 
 import pandas as pd
@@ -97,8 +98,23 @@ def run_multi_year(
     results: list[OptimizationResult | None] = [None] * n_years
     completed = 0
 
-    # ThreadPoolExecutor: HiGHS releases the GIL during solve, so threads get real parallelism
-    with ThreadPoolExecutor(max_workers=max_workers) as executor:
+    # ProcessPoolExecutor, not threads: PyPSA/linopy/HiGHS run non-thread-safe C
+    # extensions (model build via pandas/xarray, then the HiGHS solver). Running
+    # them concurrently in one process corrupts the shared heap — manifesting as
+    # `free(): invalid next size` core dumps and stray ArrowStringArray errors.
+    # Separate processes = separate heaps = safe true parallelism. The years are
+    # independent and Scenario/DataFrame/OptimizationResult all pickle cleanly.
+    #
+    # "fork" specifically: spawn/forkserver re-import the __main__ module, which
+    # blows up under Streamlit (it runs the app script as __main__, so each worker
+    # would re-execute the whole app). fork inherits the interpreter as-is and
+    # still isolates each solve in its own process/heap. Windows has no fork, so
+    # fall back to spawn there (requires a `if __name__ == "__main__"` guard).
+    try:
+        mp_context = multiprocessing.get_context("fork")
+    except ValueError:  # pragma: no cover - Windows only
+        mp_context = multiprocessing.get_context("spawn")
+    with ProcessPoolExecutor(max_workers=max_workers, mp_context=mp_context) as executor:
         futures = {
             executor.submit(
                 _solve_one_year,
