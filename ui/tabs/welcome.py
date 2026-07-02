@@ -4,11 +4,8 @@ import streamlit as st
 
 
 def render() -> None:
-    cols = st.columns([3, 1])
-
-    with cols[0]:
-        st.markdown(
-            """
+    st.markdown(
+        """
 # 👋 Welcome to the PyPSA PPA Toolkit!
 
 **Interactive, full flexible and open-source toolkit** for modelling renewable portfolios under different 
@@ -41,23 +38,18 @@ Navigate through the tabs to manage different aspects of your project (economic 
 6. 📊 **Sensitivity Analysis** — understand the impact of individual parameters on the overall economics.
 
 7. 📖 **HELP** — introduce key concepts and terminology for newbies in the world of PPA and PyPSA.
-            """
-        )
+        """
+    )
 
-    with cols[1]:
+    with st.expander("Main packages and data sources", expanded=False):
         st.markdown(
             """
-### Built with
-
 - [PyPSA](https://pypsa.readthedocs.io) — energy system modelling
 - [HiGHS](https://highs.dev) — LP solver
 - [Streamlit](https://streamlit.io) — web UI
 - [Plotly](https://plotly.com) — interactive charts
-
-### Data
-Historical hourly **European** data:
-
-- Wind & solar capacity factors — [renewables.ninja](https://renewables.ninja)
-- Day-ahead spot prices: [ENTSO-E](https://transparency.entsoe.eu)
+- and using *historical* data from
+  - [renewables.ninja](https://renewables.ninja) for wind & solar hourly profiles, and
+  - [ENTSO-E](https://transparency.entsoe.eu) for day-ahead spot prices for Europe.
             """
         )

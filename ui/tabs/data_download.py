@@ -26,7 +26,8 @@ def render() -> None:
     st.title("📡 Download Data")
     st.markdown(
         "Download market prices and wind/solar hourly profiles for the location defined in "
-        "your active scenario. Data is cached locally — downloads only happen once per location."
+        "your active scenario. Data is cached locally — downloads only happen once per location. "
+        "**Currently supported locations are in Europe only and cover the years 2018 until 2023.**"
     )
 
     # ── Active location ───────────────────────────────────────────────────────

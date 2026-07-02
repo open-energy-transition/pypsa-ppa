@@ -115,6 +115,7 @@ class CaseStudy:
     name: str
     subtitle: str
     storyline: str
+    question: str
     icon: str
     overrides: dict = field(default_factory=dict)
 
@@ -129,8 +130,11 @@ CASE_STUDIES: list[CaseStudy] = [
             "A first-mover IPP signs a 10-year PPA with a cement plant at €90/MWh. "
             "The portfolio is wind-dominant with no storage and no market flexibility — a pure baseline "
             "to understand penalty exposure. The cement load runs near-continuous but drops sharply "
-            "during its Sunday maintenance window. Can onshore wind alone hit a 70% delivery obligation "
-            "against this near-baseload industrial demand in central Europe?"
+            "during its Sunday maintenance window."
+        ),
+        question=(
+            "Can onshore wind alone hit a 70% delivery obligation against this near-baseload industrial "
+            "demand in central Europe?"
         ),
         overrides={
             "name": "The Foundation Deal",
@@ -158,6 +162,8 @@ CASE_STUDIES: list[CaseStudy] = [
             "The electrolyser's flexible demand naturally aligns with solar generation — ramping up at midday "
             "and backing off during evening grid peaks — making it an ideal PPA offtaker for a solar-heavy portfolio. "
             "Market purchases are disabled to maintain renewable additionality. "
+        ),
+        question=(
             "Does the demand flexibility of the electrolyser help or hinder delivery obligations compared to flat load?"
         ),
         overrides={
@@ -185,6 +191,8 @@ CASE_STUDIES: list[CaseStudy] = [
             "and a generous 15% market buy allowance. The EAF's batch melting cycles create highly variable demand — "
             "spiking at ~95% during each heat then dropping to ~15% between charges. "
             "The penalty regime is strict at 2× the tariff. "
+        ),
+        question=(
             "Does the optimizer exploit the EAF's idle periods for market sales, and can BESS bridge the delivery gaps?"
         ),
         overrides={
@@ -213,6 +221,8 @@ CASE_STUDIES: list[CaseStudy] = [
             "A European corporation signs a 15-year virtual PPA for its data-centre fleet at €105/MWh. "
             "The data-centre load is near-flat with a modest business-hours peak — a demanding obligation "
             "for an RE portfolio. Market supplementation is capped at 1% to preserve additionality claims. "
+        ),
+        question=(
             "Can a balanced wind + solar + BESS portfolio hit a 90% SLA against a near-constant high load "
             "with almost no market flexibility?"
         ),
