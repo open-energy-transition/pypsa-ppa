@@ -106,25 +106,31 @@ def run_tornado(
     base_finance: ProjectFinanceInputs,
     params: list[SensParam] | None = None,
     metric: str = "project_irr",
-) -> tuple[list[TornadoRow], float]:
+    min_swing_fraction: float = 0.001,
+) -> tuple[list[TornadoRow], float, list[TornadoRow]]:
     """Vary each parameter independently and collect *metric* at low and high.
 
     For each param the range is ``base_value ± param.pct%``.
-    Returns ``(rows, base_metric)`` with rows sorted by swing descending.
+
+    Returns ``(active_rows, base_metric, zero_swing_rows)`` where:
+    - *active_rows*: sorted by swing descending, swing >= min_swing_fraction * base
+    - *zero_swing_rows*: params with negligible swing (wrong metric or constraint not binding)
     """
     if params is None:
         params = PARAMS
 
     base_result = run_project_finance(base_finance, base_energy)
     base_val = float(getattr(base_result, metric))
+    threshold = abs(base_val) * min_swing_fraction
 
     rows: list[TornadoRow] = []
+    zero_rows: list[TornadoRow] = []
+
     for p in params:
         bv = float(getattr(base_finance, p.field))
         delta = bv * p.pct / 100.0
         lo = bv - delta
         hi = bv + delta
-        # Integer fields (e.g. debt_tenor) must stay integers
         field_type = type(getattr(base_finance, p.field))
         if field_type is int:
             lo = max(int(round(lo)), 1)
@@ -132,7 +138,7 @@ def run_tornado(
 
         r_lo = run_what_if(base_energy, base_finance, **{p.field: lo})
         r_hi = run_what_if(base_energy, base_finance, **{p.field: hi})
-        rows.append(TornadoRow(
+        row = TornadoRow(
             param=p.label,
             field=p.field,
             group=p.group,
@@ -141,10 +147,14 @@ def run_tornado(
             high_val=hi,
             low_metric=float(getattr(r_lo, metric)),
             high_metric=float(getattr(r_hi, metric)),
-        ))
+        )
+        if row.swing >= threshold:
+            rows.append(row)
+        else:
+            zero_rows.append(row)
 
     rows.sort(key=lambda r: r.swing, reverse=True)
-    return rows, base_val
+    return rows, base_val, zero_rows
 
 
 def tornado_to_dataframe(rows: list[TornadoRow], base_val: float, metric: str) -> pd.DataFrame:

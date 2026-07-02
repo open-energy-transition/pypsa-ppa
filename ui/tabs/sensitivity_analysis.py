@@ -207,23 +207,24 @@ def _tornado_panel(base_energy: EnergyInputs, base_finance: ProjectFinanceInputs
             format_func=lambda x: METRIC_OPTIONS[x],
             key="sa_t_metric",
         )
-        default_pct = st.number_input(
-            "Default range (±%)",
-            min_value=5, max_value=100, value=25, step=5,
-            key="sa_t_pct",
-            help="Applied to all parameters that don't have a custom range.",
-        )
         top_n = st.number_input(
             "Show top N parameters",
-            min_value=5, max_value=len(PARAMS), value=15, step=1,
+            min_value=3, max_value=len(PARAMS), value=12, step=1,
             key="sa_t_topn",
         )
 
-    # Build parameter list with overridden default pct
-    params_run = [dataclasses.replace(p, pct=default_pct) for p in PARAMS]
-
     with st.spinner("Computing sensitivity…"):
-        rows, base_val = run_tornado(base_energy, base_finance, params=params_run, metric=metric_key)
+        rows, base_val, zero_rows = run_tornado(
+            base_energy, base_finance, metric=metric_key
+        )
+
+    if zero_rows:
+        names = ", ".join(r.param for r in zero_rows)
+        st.caption(
+            f"**{len(zero_rows)} parameter(s) hidden** — negligible effect on "
+            f"{METRIC_OPTIONS[metric_key]} in this scenario: {names}. "
+            f"Try a different metric (e.g. NPV for WACC, Equity IRR for debt tenor)."
+        )
 
     rows = rows[: int(top_n)]
     scale = _scale(metric_key)
