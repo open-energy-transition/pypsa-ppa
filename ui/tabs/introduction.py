@@ -18,7 +18,7 @@ def _load_ts():
 
 
 def render() -> None:
-    st.title("📖 Introduction to PPAs")
+    st.title("📖 Introduction to PPAs and PyPSA")
     st.markdown(
         "A primer on Power Purchase Agreements — what they are, how they work, and why energy "
         "system modelling adds value for both developers and offtakers."

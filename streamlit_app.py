@@ -24,71 +24,82 @@ from ui.tabs import (
 st.markdown(
     """
     # PyPSA-based PPA Explorer
-    Interactive and full flexible toolkit for modelling renewable portfolios under different Power Purchase Agreement (PPA) assumptions.
     """
 )
-
-tabs = st.tabs([
-    "🏠 Welcome",
-    "📖 Introduction to PPAs",
-    "🔬 Case Study Definition",
-    "📡 Download Data",
-    "⚙️ Optimization",
-    "📊 Results Overview",
-    "🔍 Results Deep Dive",
-    "Sensitivity Analysis",
-    "Scenario Analysis",
-    "🏦 Financial Model",
-    "Excel Import",
-], on_change="rerun")
-
-if tabs[0].open:
-    with tabs[0]:
-        welcome.render()
-
-if tabs[1].open:
-    with tabs[1]:
-        introduction.render()
-
-if tabs[2].open:
-    with tabs[2]:
-        case_study.render()
-
-if tabs[3].open:
-    with tabs[3]:
-        data_download.render()
-
-if tabs[4].open:
-    with tabs[4]:
-        optimization.render()
-
-if tabs[5].open:
-    with tabs[5]:
-        results_overview.render()
-
-if tabs[6].open:
-    with tabs[6]:
-        results_deep_dive.render()
-
-if tabs[7].open:
-    with tabs[7]:
-        sensitivity_analysis.render()
-
-if tabs[8].open:
-    with tabs[8]:
-        scenario_analysis.render()
-
-if tabs[9].open:
-    with tabs[9]:
-        financial_model.render()
-
-if tabs[10].open:
-    with tabs[10]:
-        excel_import.render()
-
 with st.popover("Disclaimer", width="stretch", icon="⚠️"):
-    st.write("""
-        The content of this document/web page is intended for the exclusive use of **Open Energy Transition**'s client and other contractually agreed recipients.
+    st.write(
+        """
+        The content of this document/web page is intended for the exclusive use of **Open Energy Transition (OET)**'s client and other contractually agreed recipients.
         It may only be made available in whole or in part to third parties with the client's consent and on a non-reliance basis.
         **Open Energy Transition** is not liable to third parties for the completeness and accuracy of the information provided therein.
-        """)
+        """
+    )
+
+tabs = st.tabs([
+    "| 👋 Welcome",
+    "| 1. 🔬 Case Setup",
+    "| 2.📡 Get Data",
+    "| 3. ⚙️ Optimization",
+    "| 4. 🔍 Results",
+    "| 5. 🏦 Financial Model",
+    "| 6. 📊 Sensitivity Analysis",
+    "| 7. 📖 HELP",
+    # "📊 Results Overview",
+    # "Scenario Analysis",
+    # "Excel Import",
+], on_change="rerun")
+
+i = 0
+if tabs[i].open:
+    with tabs[i]:
+        welcome.render()
+
+i += 1
+if tabs[i].open:
+    with tabs[i]:
+        case_study.render()
+
+i += 1
+if tabs[i].open:
+    with tabs[i]:
+        data_download.render()
+
+i += 1
+if tabs[i].open:
+    with tabs[i]:
+        optimization.render()
+
+i += 1
+if tabs[i].open:
+    with tabs[i]:
+        results_deep_dive.render()
+
+i += 1
+if tabs[i].open:
+    with tabs[i]:
+        financial_model.render()
+
+i += 1
+if tabs[i].open:
+    with tabs[i]:
+        sensitivity_analysis.render()
+
+i += 1
+if tabs[i].open:
+    with tabs[i]:
+        introduction.render()
+
+#i += 1
+#if tabs[i].open:
+#    with tabs[i]:
+#        scenario_analysis.render()
+
+#i += 1
+#if tabs[i].open:
+#    with tabs[i]:
+#        excel_import.render()
+
+#i += 1
+#if tabs[i].open:
+#    with tabs[i]:
+#        results_overview.render()
