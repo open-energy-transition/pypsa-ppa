@@ -132,13 +132,13 @@ def _render_multi_year_deep_dive() -> None:
 
     # ── Year + day selectors ──────────────────────────────────────────────────
     year_options = [y.year for y in fin.yearly]
-    cols = st.columns(2)
+    cols = st.columns(4)
     selected_year = cols[0].selectbox("Simulation year", year_options, key="dd_year")
     year_idx = year_options.index(selected_year)
     result = results[year_idx]
 
     available_days = sorted(result.dispatch.wind_gen.index.normalize().unique().strftime("%Y-%m-%d"))
-    chosen_day = cols[1].selectbox("Day to inspect", available_days, index=0, key="dd_chosen_day1")
+    chosen_day = cols[2].selectbox("Day to inspect", available_days, index=0, key="dd_chosen_day1")
 
     # ── Financial summary for selected year ───────────────────────────────────
     st.markdown("---")

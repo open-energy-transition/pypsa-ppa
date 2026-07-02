@@ -20,6 +20,7 @@ def _render_case_study_card(cs, is_active: bool) -> bool:
   <div style="font-weight: 700; font-size: 1.05rem; color: #1A237E;">{cs.name}{badge}</div>
   <div style="font-size: 0.85rem; color: #546E7A; margin-bottom: 8px;">{cs.subtitle}</div>
   <div style="font-size: 0.88rem; color: #424242; line-height: 1.5;">{cs.storyline}</div>
+  <div style="font-size: 0.90rem; color: #424242; line-height: 1.5;"><br/><b>{cs.question}</b></div>
 </div>
 """,
         unsafe_allow_html=True,

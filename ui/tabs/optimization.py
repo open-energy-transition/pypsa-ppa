@@ -296,7 +296,7 @@ def render() -> None:
         )
     with cols[1]:
         max_workers = st.selectbox(
-            "Parallel workers", [1, 2, 4, 5, 6, 7, 8, 9, 10, 20, 25], index=2, key="opt_max_workers",
+            "Parallel workers", [1, 2, 4, 5], index=2, key="opt_max_workers",
             help="Threads used for multi-year solving. Ignored for single-year runs.",
         )
     with cols[2]:
