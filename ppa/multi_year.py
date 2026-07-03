@@ -129,15 +129,9 @@ def _solve_one_year(
     class held by a session_state Scenario no longer matches sys.modules and
     pickling dies with "it is not the same object as ppa.scenario.Scenario". A
     dict is a builtin type with no such identity check; rebuilding from the
-    worker's own Scenario class sidesteps the whole problem.
-
-    The `from ... import` is deliberately local: it binds the class currently in
-    sys.modules (what pickle resolves against), so the Scenario embedded in the
-    returned OptimizationResult also pickles cleanly on the way back.
+    module-level Scenario class sidesteps the whole problem.
     """
-    from ppa.scenario import Scenario as _Scenario
-
-    scenario = _Scenario(**scenario_fields)
+    scenario = Scenario(**scenario_fields)
     n = build_network(ts, scenario)
     status, condition = solve(n, scenario, ts)
     result = extract_results(n, scenario, ts, status, condition)
