@@ -298,31 +298,31 @@ def render() -> None:
         prices_ok, cf_ok = _render_data_status(s.lat, s.lon)
         data_ready = prices_ok and cf_ok
 
-    cols = st.columns([1, 1, 2], vertical_alignment="bottom")
-    with cols[0]:
-        model_run = st.button(
-            "▶ Run Optimization",
-            type="primary",
-            width="stretch",
-            key="opt_run_eu",
-            disabled=not data_ready,
-        )
-    with cols[1]:
-        max_workers = st.selectbox(
-            "Parallel workers", [1, 2, 4, 8, 16, 24, 30], index=2, key="opt_max_workers",
-            help=(
-                "Max parallel year-solves. Automatically capped to the available "
-                "CPU and RAM (~0.9 GB per worker), so memory-limited hosts like "
-                "Streamlit Cloud fall back to serial regardless of this value. "
-                "Ignored for single-year runs."
-            ),
-        )
-    with cols[2]:
-        if not data_ready:
-            st.warning("Download data first (see **Get Data** tab).")
-        elif state.has_multi_year_results():
-            n_done = len(state.get_multi_year_results())
-            st.success(f"Last run: {n_done} year(s) solved.")
+        cols = st.columns([1, 1, 2], vertical_alignment="bottom")
+        with cols[0]:
+            model_run = st.button(
+                "▶ Run Optimization",
+                type="primary",
+                width="stretch",
+                key="opt_run_eu",
+                disabled=not data_ready,
+            )
+        with cols[1]:
+            max_workers = st.selectbox(
+                "Parallel workers", [1, 2, 4, 8, 16, 24, 30], index=2, key="opt_max_workers",
+                help=(
+                    "Max parallel year-solves. Automatically capped to the available "
+                    "CPU and RAM (~0.9 GB per worker), so memory-limited hosts like "
+                    "Streamlit Cloud fall back to serial regardless of this value. "
+                    "Ignored for single-year runs."
+                ),
+            )
+        with cols[2]:
+            if not data_ready:
+                st.warning("Download data first (see **Get Data** tab).")
+            elif state.has_multi_year_results():
+                n_done = len(state.get_multi_year_results())
+                st.success(f"Last run: {n_done} year(s) solved.")
 
     if model_run and data_ready:
         try:
