@@ -153,7 +153,7 @@ def _render_multi_year_deep_dive() -> None:
 
     # ── Financial summary for selected year ───────────────────────────────────
     # st.markdown("---")
-    with st.expander(f"Year {selected_year} — financial summary", expanded=True):
+    with st.expander(f"Financial summary for {selected_year}", expanded=True):
         yf = fin.yearly[year_idx]
         cols = st.columns(5)
         cols[0].metric("PPA Revenue", f"€{yf.ppa_revenue / 1e6:.2f}M")
@@ -208,7 +208,7 @@ def _render_multi_year_deep_dive() -> None:
         _render_dispatch_section(result, result.scenario, chosen_day)
     with tab_chart2:
         # ── Generation statistics ─────────────────────────────────────────────────
-        st.subheader(f"{selected_year}")
+        st.caption(f"High-level generation statistics for {selected_year}")
         _render_gen_stats(result, result.scenario)
     with tab_chart3:
         # ── Counterfactual procurement comparison ─────────────────────────────────

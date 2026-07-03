@@ -15,6 +15,8 @@ from ppa.results import OptimizationResult, extract_results
 from ppa.scenario import Scenario
 from ppa.solver import solve
 
+import streamlit as st
+
 # Peak RSS of a single full-year EU solve, measured at ~735 MB with io_api="direct".
 # Each parallel worker is its own process and pays this in full, so we budget one
 # worker per this much *available* RAM. Override via PPA_WORKER_MEM_MB for other
@@ -193,6 +195,7 @@ def run_multi_year(
             progress_callback(completed, n_years, first_sim_year + year_idx)
 
     workers = _safe_worker_count(max_workers, n_years)
+    st.caption(f"Based on available RAM running {n_years} year-simulations with {workers} parallel worker(s) ...")
 
     if workers <= 1:
         # Serial, in-process. Required on memory-constrained hosts (e.g. Streamlit

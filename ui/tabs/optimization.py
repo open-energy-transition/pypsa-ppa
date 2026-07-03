@@ -300,7 +300,7 @@ def render() -> None:
 
     cols = st.columns([1, 1, 2], vertical_alignment="bottom")
     with cols[0]:
-        eu_run = st.button(
+        model_run = st.button(
             "▶ Run Optimization",
             type="primary",
             width="stretch",
@@ -309,7 +309,7 @@ def render() -> None:
         )
     with cols[1]:
         max_workers = st.selectbox(
-            "Parallel workers", [1, 2, 4, 5], index=2, key="opt_max_workers",
+            "Parallel workers", [1, 2, 4, 8, 16, 24, 30], index=2, key="opt_max_workers",
             help=(
                 "Max parallel year-solves. Automatically capped to the available "
                 "CPU and RAM (~0.9 GB per worker), so memory-limited hosts like "
