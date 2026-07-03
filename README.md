@@ -107,7 +107,7 @@ pypsa-ppa/
 
 Market prices and renewable capacity factors are sourced from ENTSO-E (day-ahead prices) and [renewables.ninja](https://renewables.ninja) (wind/solar profiles for a user-specified location).
 
-### Industrial load profiles
+git c### Industrial load profiles
 
 Offtaker demand shapes for **cement** and **steel** are derived from real measured hourly profiles published by the [Forschungsstelle für Energiewirtschaft (FfE)](https://www.ffe.de) via their open data API (`id_opendata=59`), following the approach of [PyPSA-EUR PR #1875](https://github.com/PyPSA/pypsa-eur/pull/1875). The 2017 reference year data is bundled at `ppa/data/ffe_profiles.json` and mapped to any simulation year by averaging over (month, day-of-week, hour) triplets to preserve seasonal and weekday patterns.
 
