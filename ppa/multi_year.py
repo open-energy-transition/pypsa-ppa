@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import dataclasses
 import multiprocessing
+import os
 from concurrent.futures import ProcessPoolExecutor, as_completed
 from typing import Callable
 
@@ -13,6 +14,82 @@ from ppa.network import build_network
 from ppa.results import OptimizationResult, extract_results
 from ppa.scenario import Scenario
 from ppa.solver import solve
+
+# Peak RSS of a single full-year EU solve, measured at ~735 MB with io_api="direct".
+# Each parallel worker is its own process and pays this in full, so we budget one
+# worker per this much *available* RAM. Override via PPA_WORKER_MEM_MB for other
+# model sizes.
+_PER_WORKER_MEM_MB = int(os.environ.get("PPA_WORKER_MEM_MB", "900"))
+
+
+def _available_memory_mb() -> float | None:
+    """Best-effort RAM headroom in MB, honouring cgroup limits (containers).
+
+    Returns the min of the cgroup memory headroom and host MemAvailable, or None
+    if nothing could be read. Streamlit Community Cloud caps memory via cgroups at
+    ~1 GB, well below the host's reported free memory, so cgroup awareness is what
+    makes the cloud fall back to serial.
+    """
+    candidates: list[float] = []
+
+    # cgroup v2 (Streamlit Cloud, most modern containers)
+    try:
+        with open("/sys/fs/cgroup/memory.max") as fh:
+            raw = fh.read().strip()
+        if raw != "max":
+            limit = int(raw)
+            with open("/sys/fs/cgroup/memory.current") as fh:
+                used = int(fh.read().strip())
+            candidates.append((limit - used) / 1024 / 1024)
+    except (OSError, ValueError):
+        pass
+
+    # cgroup v1 fallback
+    try:
+        with open("/sys/fs/cgroup/memory/memory.limit_in_bytes") as fh:
+            limit = int(fh.read().strip())
+        with open("/sys/fs/cgroup/memory/memory.usage_in_bytes") as fh:
+            used = int(fh.read().strip())
+        if limit < (1 << 62):  # sentinel "unlimited" values are huge
+            candidates.append((limit - used) / 1024 / 1024)
+    except (OSError, ValueError):
+        pass
+
+    # Host-level available memory
+    try:
+        with open("/proc/meminfo") as fh:
+            for line in fh:
+                if line.startswith("MemAvailable:"):
+                    candidates.append(int(line.split()[1]) / 1024)  # kB → MB
+                    break
+    except OSError:
+        pass
+
+    return min(candidates) if candidates else None
+
+
+def _usable_cpu_count() -> int:
+    """CPU count honouring cgroup/affinity limits, falling back to os.cpu_count()."""
+    try:
+        return max(1, len(os.sched_getaffinity(0)))  # respects cpuset affinity
+    except AttributeError:  # pragma: no cover - non-Linux
+        return max(1, os.cpu_count() or 1)
+
+
+def _safe_worker_count(requested: int, n_years: int) -> int:
+    """Clamp the requested worker count to what this machine can actually run.
+
+    Bounded by: years to solve, usable CPUs, and (crucially) available RAM at
+    ~0.9 GB/worker. On a memory-constrained host (e.g. Streamlit Community Cloud)
+    this collapses to 1, forcing the memory-safe serial path.
+    """
+    workers = max(1, min(requested, n_years, _usable_cpu_count()))
+
+    mem_mb = _available_memory_mb()
+    if mem_mb is not None:
+        mem_cap = max(1, int(mem_mb // _PER_WORKER_MEM_MB))
+        workers = min(workers, mem_cap)
+    return workers
 
 
 def _degraded_scenario(scenario: Scenario, year_idx: int) -> Scenario:
@@ -114,6 +191,32 @@ def run_multi_year(
     results: list[OptimizationResult | None] = [None] * n_years
     completed = 0
 
+    def _record(year_idx: int, result: OptimizationResult) -> None:
+        nonlocal completed
+        results[year_idx] = result
+        completed += 1
+        if progress_callback is not None:
+            progress_callback(completed, n_years, first_sim_year + year_idx)
+
+    workers = _safe_worker_count(max_workers, n_years)
+
+    if workers <= 1:
+        # Serial, in-process. Required on memory-constrained hosts (e.g. Streamlit
+        # Community Cloud, ~1 GB): a single solve peaks ~735 MB, so two would not
+        # fit and even one *forked* worker would cost parent + child RAM at once
+        # and OOM (the "Oh no. Error running app." crash). Running in-process
+        # reuses the parent's memory, and single-threaded execution has no
+        # shared-heap corruption.
+        for idx in range(n_years):
+            year_idx, result = _solve_one_year(
+                idx,
+                first_sim_year + idx,
+                timeseries_by_idx[idx],
+                dataclasses.asdict(scenario_by_idx[idx]),
+            )
+            _record(year_idx, result)
+        return results  # type: ignore[return-value]
+
     # ProcessPoolExecutor, not threads: PyPSA/linopy/HiGHS run non-thread-safe C
     # extensions (model build via pandas/xarray, then the HiGHS solver). Running
     # them concurrently in one process corrupts the shared heap — manifesting as
@@ -131,7 +234,7 @@ def run_multi_year(
         mp_context = multiprocessing.get_context("fork")
     except ValueError:  # pragma: no cover - Windows only
         mp_context = multiprocessing.get_context("spawn")
-    with ProcessPoolExecutor(max_workers=max_workers, mp_context=mp_context) as executor:
+    with ProcessPoolExecutor(max_workers=workers, mp_context=mp_context) as executor:
         futures = {
             executor.submit(
                 _solve_one_year,
@@ -144,12 +247,7 @@ def run_multi_year(
         }
 
         for future in as_completed(futures):
-            idx = futures[future]
-            sim_year = first_sim_year + idx
             year_idx, result = future.result()  # propagates exceptions
-            results[year_idx] = result
-            completed += 1
-            if progress_callback is not None:
-                progress_callback(completed, n_years, sim_year)
+            _record(year_idx, result)
 
     return results  # type: ignore[return-value]
