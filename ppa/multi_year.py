@@ -42,9 +42,25 @@ def _solve_one_year(
     sim_year_idx: int,
     sim_year: int,
     ts: pd.DataFrame,
-    scenario: Scenario,
+    scenario_fields: dict,
 ) -> tuple[int, OptimizationResult]:
-    """Solve a single year's LP. Returns (sim_year_idx, result)."""
+    """Solve a single year's LP. Returns (sim_year_idx, result).
+
+    Takes the scenario as a plain dict, not a Scenario instance, and rebuilds it
+    here. Sending a Scenario across the process boundary pickles the class *by
+    reference*; if Streamlit's file watcher has reloaded ppa.scenario, the stale
+    class held by a session_state Scenario no longer matches sys.modules and
+    pickling dies with "it is not the same object as ppa.scenario.Scenario". A
+    dict is a builtin type with no such identity check; rebuilding from the
+    worker's own Scenario class sidesteps the whole problem.
+
+    The `from ... import` is deliberately local: it binds the class currently in
+    sys.modules (what pickle resolves against), so the Scenario embedded in the
+    returned OptimizationResult also pickles cleanly on the way back.
+    """
+    from ppa.scenario import Scenario as _Scenario
+
+    scenario = _Scenario(**scenario_fields)
     n = build_network(ts, scenario)
     status, condition = solve(n, scenario, ts)
     result = extract_results(n, scenario, ts, status, condition)
@@ -103,7 +119,8 @@ def run_multi_year(
     # them concurrently in one process corrupts the shared heap — manifesting as
     # `free(): invalid next size` core dumps and stray ArrowStringArray errors.
     # Separate processes = separate heaps = safe true parallelism. The years are
-    # independent and Scenario/DataFrame/OptimizationResult all pickle cleanly.
+    # independent; the scenario crosses as a plain dict (see _solve_one_year) and
+    # the DataFrame/OptimizationResult pickle cleanly.
     #
     # "fork" specifically: spawn/forkserver re-import the __main__ module, which
     # blows up under Streamlit (it runs the app script as __main__, so each worker
@@ -121,7 +138,7 @@ def run_multi_year(
                 idx,
                 first_sim_year + idx,
                 timeseries_by_idx[idx],
-                scenario_by_idx[idx],
+                dataclasses.asdict(scenario_by_idx[idx]),
             ): idx
             for idx in range(n_years)
         }
