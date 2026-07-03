@@ -22,7 +22,7 @@ Navigate through the tabs to manage different aspects of your project (economic 
     * *PPA contract encoding*: Flat offtake loads, delivery obligations, shortfall caps, penalty multipliers.
     * *Market interaction*: Spot market buy/sell with configurable caps and bid-offer spreads.
     * *Financial assumptions*: CAPEX, LCOE, IRR, NPV, and breakeven PPA price discovery.
-    * *Simulation details:* Years of simulation, price escalation, and technology degradation.
+    * *Optimization details:* Years of optimization, price escalation, and technology degradation.
 
 2. 📡 **Get Data** — download the necessary data.
 

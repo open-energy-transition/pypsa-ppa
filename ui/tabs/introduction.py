@@ -20,10 +20,11 @@ def _load_ts():
 def render() -> None:
     st.title("📖 Introduction to PPAs and PyPSA")
     st.markdown(
-        "A primer on Power Purchase Agreements — what they are, how they work, and why energy "
-        "system modelling adds value for both developers and offtakers."
+        "A primer on **Power Purchase Agreements** (PPAs) — what they are, how they work, and why energy "
+        "system modelling adds value for both developers and offtakers — and **Python for Power "
+        "System Analysis** ([PyPSA](https://pypsa.org/)) — what it can do and how to use it within this project."
     )
-    st.markdown("---")
+    # st.markdown("---")
 
     # ── What is a PPA ─────────────────────────────────────────────────────────
     st.header("What is a Power Purchase Agreement?")
@@ -103,10 +104,10 @@ PPAs have become a central instrument in the global energy transition:
         f"(€{s.ppa_price * s.pen_mult:.0f}/MWh)."
     )
 
-    st.markdown("---")
+    # st.markdown("---")
 
     # ── Key terms ─────────────────────────────────────────────────────────────
-    st.header("Key terms")
+    st.subheader("Key terms")
     st.markdown(
         """
 | Term | Meaning |
@@ -128,13 +129,13 @@ PPAs have become a central instrument in the global energy transition:
         """
     )
 
-    st.markdown("---")
+    # st.markdown("---")
 
     # ── Why model ─────────────────────────────────────────────────────────────
     st.header("Why model a PPA with PyPSA?")
     st.markdown(
         """
-PyPSA is often used to model entire energy grids, but it can also model **how particular plants
+[PyPSA](https://pypsa.org/) is often used to model entire energy grids, but it can also model **how particular plants
 operate under PPAs**. In this framing, we model the *commercial flows of power* — dispatch is
 optimised against the conditions of the offtake contract.
 
@@ -164,10 +165,10 @@ to sell power under an offtake agreement. PyPSA modelling can be used to:
             "discharge it during the early-evening demand window when solar has dropped off."
         )
 
-    st.markdown("---")
+    # st.markdown("---")
 
     # ── PyPSA components ──────────────────────────────────────────────────────
-    st.header("PyPSA modelling components")
+    st.subheader("PyPSA modelling components")
     st.markdown(
         """
 The network in this app represents **commercial energy flows**, not physical grid connections.
@@ -188,10 +189,10 @@ delivery link makes the model treat delivery as commercially valuable — the co
         """
     )
 
-    st.markdown("---")
+    # st.markdown("---")
 
     # ── Network structure ─────────────────────────────────────────────────────
-    st.header("Network structure")
+    st.subheader("Network structure")
     st.markdown(
         "The six-bus commercial network used in this app connects physical generation assets "
         "to contractual outcomes through a central IPP aggregation point. "

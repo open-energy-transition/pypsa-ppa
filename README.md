@@ -36,12 +36,14 @@ pixi run app
 
 The app opens at `http://localhost:8501`. Navigate through the tabs:
 
-1. **Welcome** — capabilities overview and navigation guide
-2. **Introduction to PPAs** — key concepts and terminology
-3. **Case Study Definition** — select a predefined case study and customise parameters
-4. **Optimization** — review the scenario and click *Run Optimization*
-5. **Results Overview** — KPIs, supply mix chart, revenue breakdown
-6. **Results Deep Dive** — financial analysis (LCOE, IRR, NPV), daily dispatch detail
+. **Welcome** — capabilities overview and navigation guide
+1. **Case Setup** — select a predefined case study and customise parameters
+2. **Get Data** — download necessary time series data
+3. **Optimization** — review the scenario and click *Run Optimization*
+4. **Results** — financial analysis (LCOE, IRR, NPV), daily dispatch detail
+5. **Financial model** — project-finance appraisal layered on the energy-model results
+6. **Sensitivity analysis** — financial-parameter sensitivity
+7. **HELP** — PPA key concepts and terminology
 
 ### 4. Run the Jupyter notebook (worked example)
 
@@ -55,29 +57,42 @@ Opens the original worked example notebook at `notebooks/pypsa_ppa_example_v1.ip
 
 ```
 pypsa-ppa/
-├── streamlit_app.py          # App entry point (pixi run app)
-├── pixi.toml                 # Environment definition
-├── pixi.lock                 # Pinned dependency lockfile
-├── ppa/                      # Core library — no Streamlit dependency
-│   ├── scenario.py           # Scenario dataclass + 4 predefined case studies
-│   ├── data_loader.py        # CSV loading and timeseries preparation
-│   ├── network.py            # PyPSA network builder
-│   ├── solver.py             # Linopy constraints + HiGHS solve
-│   ├── results.py            # Result extraction into typed dataclasses
-│   └── financials.py         # CAPEX / LCOE / IRR / NPV / breakeven price
-├── ui/                       # Streamlit UI layer
-│   ├── state.py              # Session state accessors
-│   ├── charts.py             # Plotly figure builders
-│   ├── scenario_form.py      # Interactive parameter form
-│   └── tabs/                 # One module per tab
-├── data/
-│   ├── march_2025_pypsa_timeseries.csv   # Real NEM hourly data (March 2025, NSW)
-│   └── PPA_scenario_definition.xlsx      # Excel-based scenario config (notebook use)
+├── streamlit_app.py             # App entry point (pixi run app)
+├── pixi.toml                    # Environment definition
+├── pixi.lock                    # Pinned dependency lockfile
+├── data/                        # Data
+│   ├── Scenario_definition.xls  # Template to define a scenario via Excel
+│   └── cache                    # Cached data
+│       ├── entsoe               # Cached day-ahead data
+│       └── renewables_ninja     # Cached renewable profiles
+├── ppa/                         # Core library — no Streamlit dependency
+│   ├── counterfactuals.py       # Counterfactual comparison of PPA
+│   ├── data_loader.py           # CSV loading and timeseries preparation
+│   ├── financial_model_excel.py # Excel export of the Financial model
+│   ├── financial_model.py       # Financial model within the UI
+│   ├── financials.py            # CAPEX / LCOE / IRR / NPV / breakeven price
+│   ├── industrial_profiles.py   # Reference industrial load profiles
+│   ├── multi_year.py            # Simulation runner
+│   ├── network.py               # PyPSA network builder
+│   ├── results.py               # Result extraction into typed dataclasses
+│   ├── scenario.py              # Scenario dataclass + 4 predefined case studies
+│   ├── sensitivity.py           # Sensitivity analysis helpers
+│   ├── solver.py                # Linopy constraints + HiGHS solve
+│   └── data                     # Data handling libraries
+│       ├── entsoe_client.py     # ENTSO-E support functions
+│       ├── european_data.py     # Collect necessary data
+│       ├── ffe_profiles.py      # Industrial default profiles
+│       └── renewables_ninja.py  # Global renewable profiles
+├── ui/                          # Streamlit UI layer
+│   ├── charts.py                # Plotly figure builders
+│   ├── scenario_form.py         # Interactive parameter form
+│   ├── state.py                 # Session state accessors
+│   └── tabs/                    # One module per tab
 └── notebooks/
     └── pypsa_ppa_example_v1.ipynb        # Original worked example
 ```
 
-## Case studies
+## Predefined case studies
 
 | Case study | Portfolio | Key feature |
 |---|---|---|
@@ -90,9 +105,9 @@ pypsa-ppa/
 
 ### Renewable & price timeseries
 
-Market prices and renewable capacity factors are sourced from ENTSO-E (DE-LU day-ahead prices) and [renewables.ninja](https://renewables.ninja) (wind/solar CFs for a user-specified European location).
+Market prices and renewable capacity factors are sourced from ENTSO-E (day-ahead prices) and [renewables.ninja](https://renewables.ninja) (wind/solar profiles for a user-specified location).
 
-### Industrial load profiles
+git c### Industrial load profiles
 
 Offtaker demand shapes for **cement** and **steel** are derived from real measured hourly profiles published by the [Forschungsstelle für Energiewirtschaft (FfE)](https://www.ffe.de) via their open data API (`id_opendata=59`), following the approach of [PyPSA-EUR PR #1875](https://github.com/PyPSA/pypsa-eur/pull/1875). The 2017 reference year data is bundled at `ppa/data/ffe_profiles.json` and mapped to any simulation year by averaging over (month, day-of-week, hour) triplets to preserve seasonal and weekday patterns.
 

@@ -49,5 +49,10 @@ def solve(
     status, condition = n.optimize.solve_model(
         solver_name=solver_name,
         io_api="direct",
+        solver_options = {
+            # general solver settings
+            "output_flag": False,
+            "log_to_console": False,
+        }
     )
     return status, condition

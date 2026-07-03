@@ -28,9 +28,9 @@ def _render_dispatch_section(result, s, chosen_day: str) -> None:
     day_mix = supply_mix[supply_mix.index.strftime("%Y-%m-%d") == chosen_day]
 
     tab_chart1, tab_chart2, tab_chart3 = st.tabs([
-        "Actual hourly supply mix", 
-        "BESS SoC", 
-        "Market spot price",
+        "| Actual hourly supply mix", 
+        "| BESS SoC", 
+        "| Market spot price",
     ])
     with tab_chart1:
         fig = make_supply_mix_day_chart(day_mix, s.ppaload_mw, chosen_day)
@@ -100,7 +100,7 @@ def _render_multi_year_counterfactuals(results, fin, s) -> None:
         yearly_cfs.append((yf.year, cf, cal_price))
 
     if not yearly_cfs:
-        st.info("Re-run the European simulation to see counterfactual data.")
+        st.info("Re-run the optimization to see counterfactual data.")
         return
 
     years = [y for y, _, _ in yearly_cfs]
@@ -144,7 +144,7 @@ def _render_multi_year_deep_dive() -> None:
     # ── Year + day selectors ──────────────────────────────────────────────────
     year_options = [y.year for y in fin.yearly]
     cols = st.columns(4)
-    selected_year = cols[0].selectbox("Simulation year", year_options, key="dd_year")
+    selected_year = cols[0].selectbox("Optimization year", year_options, key="dd_year")
     year_idx = year_options.index(selected_year)
     result = results[year_idx]
 
@@ -152,15 +152,15 @@ def _render_multi_year_deep_dive() -> None:
     chosen_day = cols[2].selectbox("Day to inspect", available_days, index=0, key="dd_chosen_day1")
 
     # ── Financial summary for selected year ───────────────────────────────────
-    st.markdown("---")
-    st.subheader(f"Year {selected_year} — financial summary")
-    yf = fin.yearly[year_idx]
-    cols = st.columns(5)
-    cols[0].metric("PPA Revenue", f"€{yf.ppa_revenue / 1e6:.2f}M")
-    cols[1].metric("Merchant Revenue", f"€{yf.merch_revenue / 1e6:.2f}M")
-    cols[2].metric("Net Cash Flow", f"€{yf.net_cashflow / 1e6:.2f}M")
-    cols[3].metric("Delivery Rate", f"{yf.fulfilled_share:.1%}")
-    cols[4].metric("Wind+PV Gen", f"{(yf.wind_gen_mwh + yf.pv_gen_mwh) / 1e3:.0f} GWh")
+    # st.markdown("---")
+    with st.expander(f"Year {selected_year} — financial summary", expanded=True):
+        yf = fin.yearly[year_idx]
+        cols = st.columns(5)
+        cols[0].metric("PPA Revenue", f"€{yf.ppa_revenue / 1e6:.2f}M")
+        cols[1].metric("Merchant Revenue", f"€{yf.merch_revenue / 1e6:.2f}M")
+        cols[2].metric("Net Cash Flow", f"€{yf.net_cashflow / 1e6:.2f}M")
+        cols[3].metric("Delivery Rate", f"{yf.fulfilled_share:.1%}")
+        cols[4].metric("Wind+PV Gen", f"{(yf.wind_gen_mwh + yf.pv_gen_mwh) / 1e3:.0f} GWh")
 
     # ── Lifetime project economics ────────────────────────────────────────────
     with st.expander("Lifetime project economics", expanded=False):
@@ -197,11 +197,11 @@ def _render_multi_year_deep_dive() -> None:
             st.dataframe(econ_df, hide_index=True, width="stretch")
 
     # ── Daily dispatch ────────────────────────────────────────────────────────
-    st.markdown("---")
+    # st.markdown("---")
     tab_chart1, tab_chart2, tab_chart3 = st.tabs([
-        "Hourly dispatch", 
-        "Generation statistics", 
-        "Counterfactual procurement comparison",
+        "| Hourly dispatch", 
+        "| Generation statistics", 
+        "| Counterfactual procurement comparison",
     ])
     with tab_chart1:
         # st.subheader(f"Hourly dispatch — {chosen_day}")
@@ -214,9 +214,6 @@ def _render_multi_year_deep_dive() -> None:
         # ── Counterfactual procurement comparison ─────────────────────────────────
         # st.subheader("Counterfactual procurement comparison")
         _render_multi_year_counterfactuals(results, fin, s)
-
-
-
 
 
 def _render_single_day_deep_dive() -> None:
@@ -248,7 +245,7 @@ def _render_single_day_deep_dive() -> None:
                 ],
                 columns=["Component", "Value", "Basis"],
             )
-            st.dataframe(capex_df, hide_index=True, width="stretch")
+            st.dataframe(capex_df, hide_index=True, width="stretch", height="content")
 
         with cols[1]:
             st.markdown("**Project economics**")
@@ -273,10 +270,10 @@ def _render_single_day_deep_dive() -> None:
                 ],
                 columns=["Metric", "Value", "Note"],
             )
-            st.dataframe(econ_df, hide_index=True, width="stretch", height=500)
+            st.dataframe(econ_df, hide_index=True, width="stretch", height="content")
 
     # ── Dispatch detail ────────────────────────────────────────────────────────
-    st.markdown("---")
+    # st.markdown("---")
     st.subheader("Daily dispatch detail")
 
     if ts is not None:
@@ -296,14 +293,14 @@ def _render_single_day_deep_dive() -> None:
         st.plotly_chart(fig_price, width="stretch", height=400)
 
     # ── Generation statistics ──────────────────────────────────────────────────
-    st.markdown("---")
+    # st.markdown("---")
     st.subheader("Generation statistics")
     _render_gen_stats(result, s)
 
     # ── Counterfactual procurement comparison ──────────────────────────────────
     if state.has_counterfactual():
         cf = state.get_counterfactual()
-        st.markdown("---")
+        # st.markdown("---")
         st.subheader("Counterfactual procurement comparison")
         st.markdown(
             "How does the PPA cost compare to what the offtaker would have paid "
@@ -339,11 +336,11 @@ def render() -> None:
 
     if state.has_multi_year_results() and state.has_multi_year_financial():
         n = len(state.get_multi_year_financial().yearly)
-        st.caption(f"Showing results from last European simulation run ({n} year(s)).")
+        st.caption(f"Showing results from last optimization run ({n} year(s)).")
         _render_multi_year_deep_dive()
 
         if state.has_result():
-            st.markdown("---")
+            # st.markdown("---")
             with st.expander("Single-day reference deep dive", expanded=False):
                 _render_single_day_deep_dive()
 
@@ -353,7 +350,7 @@ def render() -> None:
 
     else:
         st.info(
-            "No results yet. Run the **European simulation** in the **Optimization** tab "
+            "No results yet. Run the **Run optimization** in the **Optimization** tab "
             "to explore hourly dispatch for any day in any simulated year.",
             icon="⚙️",
         )

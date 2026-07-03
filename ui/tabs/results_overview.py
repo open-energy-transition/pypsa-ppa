@@ -30,7 +30,7 @@ def _render_multi_year_overview(fin) -> None:
     cols[4].metric("Lifetime Net Revenue", f"€{fin.total_lifetime_revenue / 1e6:.1f}M")
 
     # ── CAPEX breakdown ───────────────────────────────────────────────────────
-    st.markdown("---")
+    # st.markdown("---")
     st.subheader("CAPEX & OPEX")
     cols = st.columns(2)
     with cols[0]:
@@ -64,7 +64,7 @@ def _render_multi_year_overview(fin) -> None:
         )
 
     # ── Cumulative NPV chart ──────────────────────────────────────────────────
-    st.markdown("---")
+    # st.markdown("---")
     st.subheader("Cumulative NPV")
     years = [y.year for y in fin.yearly]
     fig = go.Figure()
@@ -77,13 +77,13 @@ def _render_multi_year_overview(fin) -> None:
     ))
     fig.add_hline(y=0, line_dash="dash", line_color="gray")
     fig.update_layout(
-        xaxis_title="Year", yaxis_title="NPV (€M)", height=320,
+        xaxis_title="Year", yaxis_title="NPV (€M)", height=400,
         margin=dict(t=10, b=40),
     )
     st.plotly_chart(fig, width="stretch")
 
     # ── Year-by-year table ────────────────────────────────────────────────────
-    st.markdown("---")
+    # st.markdown("---")
     st.subheader("Year-by-year results")
     rows = [
         {
@@ -159,7 +159,7 @@ def _render_single_day_overview() -> None:
     # ── Offtaker procurement comparison ───────────────────────────────────────
     if state.has_counterfactual():
         cf = state.get_counterfactual()
-        st.markdown("---")
+        # st.markdown("---")
         st.subheader("Offtaker procurement comparison")
         st.caption(
             "How much would the offtaker have paid under alternative sourcing strategies? "
@@ -193,7 +193,7 @@ def _render_single_day_overview() -> None:
             help=f"{s.cal_hedge_fraction:.0%} of load at CAL Y+1 forward + remainder at spot.",
         )
 
-    st.markdown("---")
+    # st.markdown("---")
 
     # ── Constraint compliance ──────────────────────────────────────────────────
     st.subheader("Constraint compliance")
@@ -267,7 +267,7 @@ def _render_single_day_overview() -> None:
         }
         st.dataframe(pd.DataFrame(rev_data), hide_index=True, width="stretch")
 
-    st.markdown("---")
+    # st.markdown("---")
 
     # ── Charts ─────────────────────────────────────────────────────────────────
     ts = state.get_timeseries()
@@ -294,12 +294,12 @@ def render() -> None:
 
     if state.has_multi_year_financial():
         n = len(state.get_multi_year_financial().yearly)
-        mode = f"{n}-year European simulation"
+        mode = f"{n}-year optimization" if n > 1 else "single-year optimization"
         st.caption(f"Showing results from last run: **{mode}**.")
         _render_multi_year_overview(state.get_multi_year_financial())
 
         if state.has_result():
-            st.markdown("---")
+            # st.markdown("---")
             with st.expander("Single-day reference results", expanded=False):
                 _render_single_day_overview()
 
@@ -309,7 +309,7 @@ def render() -> None:
 
     else:
         st.info(
-            "No results yet. Run the **Simulation** in the **Optimization** tab "
+            "No results yet. Do **Run optimization** in the **Optimization** tab "
             "to see lifetime financial results here.",
             icon="⚙️",
         )
