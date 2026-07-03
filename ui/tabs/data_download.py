@@ -38,54 +38,6 @@ def render() -> None:
 
     lat, lon = scenario.lat, scenario.lon
 
-    cols = st.columns([2, 2])
-    with cols[0]:
-        st.subheader("Active scenario location")
-        st.markdown(f"Location 1: **{lat:.2f}°N, {lon:.2f}°E**")
-        st.info(
-            "To change location see **Case Study Definition** tab: "
-            "see *Customise parameters* → *Project Location*."
-        )
-    with cols[1]:
-        st.map(pd.DataFrame({"lat": [lat], "lon": [lon]}), zoom=6, height=300)
-
-    #st.markdown("---")
-
-    # ── API tokens ────────────────────────────────────────────────────────────
-    st.subheader("API tokens")
-    cols = st.columns(4)
-
-    with cols[0]:
-        st.markdown("**ENTSO-E Transparency Platform**")
-        st.caption("Free registration: [ENTSO-E's Transparency Platform](https://transparency.entsoe.eu/)")
-
-    with cols[1]:
-        entsoe_token = st.text_input(
-            "ENTSO-E token",
-            value=_get_token("entsoe"),
-            type="password",
-            key="dd_entsoe_token",
-            placeholder="xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx",
-        )
-        _save_token("entsoe", entsoe_token)
-
-    with cols[2]:
-        st.markdown("**Renewables.ninja**")
-        st.caption("Free registration: [Renewables.ninja](https://www.renewables.ninja/register)")
-
-    with cols[3]:
-        ninja_token = st.text_input(
-            "Renewables.ninja token",
-            value=_get_token("ninja"),
-            type="password",
-            key="dd_ninja_token",
-            placeholder="xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
-        )
-        _save_token("ninja", ninja_token)
-
-    # ── Data status ───────────────────────────────────────────────────────────
-    st.subheader("Cache status")
-
     from ppa.data.entsoe_client import list_cached_years as list_cached_price_years, AVAILABLE_YEARS as PRICE_YEARS
     from ppa.data.renewables_ninja import list_cached_years, AVAILABLE_YEARS
 
@@ -93,36 +45,89 @@ def render() -> None:
     missing_prices = [y for y in PRICE_YEARS if y not in cached_price_years]
     cached_cf_years = list_cached_years(lat=lat, lon=lon)
     missing_cf = [y for y in AVAILABLE_YEARS if y not in cached_cf_years]
-
-    cols = st.columns(4)
-    with cols[0]:
-        st.markdown("**ENTSO-E day-ahead (DA) prices**")
-
-    with cols[1]:
-        if not missing_prices:
-            st.success(f"All {len(PRICE_YEARS)} years cached ✓ ")
-            st.caption(f"Available: {', '.join(str(y) for y in cached_price_years)}")
-        elif cached_price_years:
-            st.warning(f"{len(cached_price_years)}/{len(PRICE_YEARS)} years cached. Missing: {missing_prices}")
-        else:
-            st.warning(f"No years cached. Will download: {PRICE_YEARS}")
-
-    with cols[2]:
-        st.markdown(f"**Renewables.ninja normalized renewable profiles**")
-
-    with cols[3]:
-        if not missing_cf:
-            st.success(f"All {len(AVAILABLE_YEARS)} years cached ✓ ")
-            st.caption(f"Available: {', '.join(str(y) for y in cached_cf_years)}")
-        elif cached_cf_years:
-            st.warning(f"{len(cached_cf_years)}/{len(AVAILABLE_YEARS)} years cached. Missing: {missing_cf}")
-        else:
-            st.warning(f"No years cached for this location. Will download: {AVAILABLE_YEARS}")
-
-    # ── Download button ───────────────────────────────────────────────────────
     needs_download = bool(missing_prices) or bool(missing_cf)
+
+    with st.expander("**Scenario location**", expanded=False):
+        cols = st.columns([2, 2])
+        with cols[0]:
+            # st.subheader("Active scenario location")
+            st.markdown(f"Location 1: **{lat:.2f}°N, {lon:.2f}°E**")
+            st.info(
+                "To change location see **Case Setup** tab: "
+                "see *Customise parameters* → *Project Location*."
+            )
+        with cols[1]:
+            st.map(pd.DataFrame({"lat": [lat], "lon": [lon]}), zoom=6, height=400)
+
+    #st.markdown("---")
+
+    # ── API tokens ────────────────────────────────────────────────────────────
+    expanded_status = True if needs_download else False
+    with st.expander("**API tokens**", expanded=expanded_status):
+        # st.subheader("API tokens")
+        cols = st.columns(4)
+
+        with cols[0]:
+            st.markdown("**ENTSO-E Transparency Platform**")
+            st.caption("Free registration: [ENTSO-E's Transparency Platform](https://transparency.entsoe.eu/)")
+
+        with cols[1]:
+            entsoe_token = st.text_input(
+                "ENTSO-E token",
+                value=_get_token("entsoe"),
+                type="password",
+                key="dd_entsoe_token",
+                placeholder="xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx",
+            )
+            _save_token("entsoe", entsoe_token)
+
+        with cols[2]:
+            st.markdown("**Renewables.ninja**")
+            st.caption("Free registration: [Renewables.ninja](https://www.renewables.ninja/register)")
+
+        with cols[3]:
+            ninja_token = st.text_input(
+                "Renewables.ninja token",
+                value=_get_token("ninja"),
+                type="password",
+                key="dd_ninja_token",
+                placeholder="xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+            )
+            _save_token("ninja", ninja_token)
+
     tokens_present = bool(entsoe_token) and bool(ninja_token)
 
+    # ── Data status ───────────────────────────────────────────────────────────
+    expanded_status = True if needs_download else False
+    with st.expander("**Cache status**", expanded=expanded_status):
+        # st.subheader("Cache status")
+
+        cols = st.columns(4)
+        with cols[0]:
+            st.markdown("**ENTSO-E day-ahead (DA) prices**")
+
+        with cols[1]:
+            if not missing_prices:
+                st.success(f"All {len(PRICE_YEARS)} years cached ✓ ")
+                st.caption(f"Available: {', '.join(str(y) for y in cached_price_years)}")
+            elif cached_price_years:
+                st.warning(f"{len(cached_price_years)}/{len(PRICE_YEARS)} years cached. Missing: {missing_prices}")
+            else:
+                st.warning(f"No years cached. Will download: {PRICE_YEARS}")
+
+        with cols[2]:
+            st.markdown(f"**Renewables.ninja normalized renewable profiles**")
+
+        with cols[3]:
+            if not missing_cf:
+                st.success(f"All {len(AVAILABLE_YEARS)} years cached ✓ ")
+                st.caption(f"Available: {', '.join(str(y) for y in cached_cf_years)}")
+            elif cached_cf_years:
+                st.warning(f"{len(cached_cf_years)}/{len(AVAILABLE_YEARS)} years cached. Missing: {missing_cf}")
+            else:
+                st.warning(f"No years cached for this location. Will download: {AVAILABLE_YEARS}")
+
+    # ── Download button ───────────────────────────────────────────────────────
     if not needs_download:
         st.success("All data already cached — nothing to download.")
         return

@@ -174,30 +174,35 @@ def _what_if_panel(base_energy: EnergyInputs, base_finance: ProjectFinanceInputs
     base_result = run_project_finance(base_finance, base_energy)
     wi_result   = run_project_finance(wi_finance,   base_energy)
 
-    st.markdown("#### Base results")
-    cols = st.columns(6)
-    kpis = [
-        ("Project IRR", "project_irr", True),
-        ("Equity IRR",  "equity_irr",  True),
-        ("Gearing",     "gearing",     True),
-        ("NPV (€m)",    "npv_project", False),
-        ("Total capex (€m)", "total_capex", False),
-        ("Min DSCR",    "min_dscr",    False),
-    ]
-    for col, (label, attr, is_pct) in zip(cols, kpis):
-        bv = getattr(base_result, attr)
-        wv = getattr(wi_result,   attr)
-        if is_pct:
-            col.metric(label, f"{wv:.2%}") # , delta=f"{(wv - bv) * 100:+.2f} pp")
-        else:
-            col.metric(label, f"{wv:,.2f}") # , delta=f"{wv - bv:+,.2f}")
+    with st.expander("Base results", expanded=True):
+        cols = st.columns(6)
+        kpis = [
+            ("Project IRR", "project_irr", True),
+            ("Equity IRR",  "equity_irr",  True),
+            ("Gearing",     "gearing",     True),
+            ("NPV (€m)",    "npv_project", False),
+            ("Total capex (€m)", "total_capex", False),
+            ("Min DSCR",    "min_dscr",    False),
+        ]
+        for col, (label, attr, is_pct) in zip(cols, kpis):
+            bv = getattr(base_result, attr)
+            wv = getattr(wi_result,   attr)
+            if is_pct:
+                col.metric(label, f"{wv:.2%}") # , delta=f"{(wv - bv) * 100:+.2f} pp")
+            else:
+                col.metric(label, f"{wv:,.2f}") # , delta=f"{wv - bv:+,.2f}")
 
 
 # ── Tornado chart ──────────────────────────────────────────────────────────────
 
 
 def _tornado_panel(base_energy: EnergyInputs, base_finance: ProjectFinanceInputs) -> None:
-    with st.expander("Tornado chart — one-at-a-time sensitivity", expanded=True):
+    tab_chart1, tab_chart2 = st.tabs([
+        "| Tornado chart — one-at-a-time sensitivity", 
+        "| Data table",
+    ])
+    with tab_chart1:
+    # with st.expander("Tornado chart — one-at-a-time sensitivity", expanded=True):
         cols = st.columns([3, 1])
         with cols[1]:
             metric_key = st.selectbox(
@@ -292,7 +297,7 @@ def _tornado_panel(base_energy: EnergyInputs, base_finance: ProjectFinanceInputs
 
         fig.update_layout(
             barmode="overlay",
-            height=max(350, len(rows) * 52 + 80),
+            height=max(350, len(rows) * 32 + 80),
             margin=dict(t=40, b=50, l=10, r=40),
             xaxis_title=metric_label,
             yaxis=dict(automargin=True),
@@ -302,9 +307,10 @@ def _tornado_panel(base_energy: EnergyInputs, base_finance: ProjectFinanceInputs
         with cols[0]:
             st.plotly_chart(fig, width='stretch')
 
-    with st.expander("Data table", expanded=False):
+    with tab_chart2:
+    # with st.expander("Data table", expanded=False):
         df = tornado_to_dataframe(rows, base_val, metric_key)
-        st.dataframe(df.set_index("Parameter"), width='stretch')
+        st.dataframe(df.set_index("Parameter"), width='stretch', height="content")
 
 
 # ── Tab entry point ────────────────────────────────────────────────────────────
@@ -328,5 +334,5 @@ def render() -> None:
         return
 
     _what_if_panel(base_energy, base_finance)
-    st.markdown("---")
+    # st.markdown("---")
     _tornado_panel(base_energy, base_finance)

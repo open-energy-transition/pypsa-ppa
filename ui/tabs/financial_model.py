@@ -178,7 +178,7 @@ def _collect_inputs(seed: ProjectFinanceInputs, multi_year: bool) -> ProjectFina
             "Escalate merchant prices over the project life",
             key=esc_key,
             help=(
-                "Leave OFF when the energy inputs come from a multi-year simulation that "
+                "Leave OFF when the energy inputs come from a multi-year optimization that "
                 "already escalates market prices each year (avoids double-counting price "
                 "growth). Turn ON for a single base-year snapshot. The solar-hour / non-solar "
                 "price inflation rates above only apply when this is ON."
@@ -236,30 +236,36 @@ def _collect_inputs(seed: ProjectFinanceInputs, multi_year: bool) -> ProjectFina
 
 
 def _render_results(r) -> None:
-    st.subheader("Key results")
-    cols = st.columns(4)
-    irr = lambda v: f"{v:.1%}" if v == v else "n/a"
-    cols[0].metric("Project IRR", irr(r.project_irr), help="Unlevered FCFF return")
-    cols[1].metric("Equity IRR", irr(r.equity_irr), help="Levered FCFE return")
-    cols[2].metric("Gearing", f"{r.gearing:.1%}")
-    cols[3].metric("NPV @ WACC", f"€{r.npv_project:,.0f}m")
+    with st.expander("**Key results**", expanded=True):
+        cols = st.columns(4)
+        irr = lambda v: f"{v:.1%}" if v == v else "n/a"
+        cols[0].metric("Project IRR", irr(r.project_irr), help="Unlevered FCFF return")
+        cols[1].metric("Equity IRR", irr(r.equity_irr), help="Levered FCFE return")
+        cols[2].metric("Gearing", f"{r.gearing:.1%}")
+        cols[3].metric("NPV @ WACC", f"€{r.npv_project:,.0f}m")
 
-    cols = st.columns(4)
-    cols[0].metric("Total funding (incl. IDC)", f"€{r.total_capex:,.0f}m")
-    cols[1].metric("Debt / Equity", f"€{r.total_debt:,.0f}m / €{r.total_equity:,.0f}m")
-    cols[2].metric("Min / Avg DSCR", f"{r.min_dscr:.2f} / {r.avg_dscr:.2f}")
-    pb = f"{r.payback_years:.1f} yrs" if r.payback_years < 1e8 else "n/a"
-    cols[3].metric("Equity payback / LCOE", f"{pb} · €{r.lcoe:,.0f}/MWh")
+        cols = st.columns(4)
+        cols[0].metric("Total funding (incl. IDC)", f"€{r.total_capex:,.0f}m")
+        cols[1].metric("Debt / Equity", f"€{r.total_debt:,.0f}m / €{r.total_equity:,.0f}m")
+        cols[2].metric("Min / Avg DSCR", f"{r.min_dscr:.2f} / {r.avg_dscr:.2f}")
+        pb = f"{r.payback_years:.1f} yrs" if r.payback_years < 1e8 else "n/a"
+        cols[3].metric("Equity payback / LCOE", f"{pb} · €{r.lcoe:,.0f}/MWh")
 
     sc = r.schedule
     periods = r.periods
     ops = sc["ops_flag"].astype(bool)
 
-    st.markdown("---")
+    # st.markdown("---")
     cols = st.columns(2)
 
-    # Cumulative equity cash flow
-    with cols[0]:
+    tab_chart1, tab_chart2, tab_chart3, tab_chart4 = st.tabs([
+        "| Cumulative equity cash flow (FCFE)", 
+        "| Revenue: contracted vs uncontracted", 
+        "| Debt service & DSCR",
+        "| Annual schedule table",
+    ])
+    with tab_chart1:
+        # Cumulative equity cash flow
         st.markdown("**Cumulative equity cash flow (FCFE)**")
         cum = np.cumsum(sc["fcfe"])
         fig = go.Figure()
@@ -267,39 +273,40 @@ def _render_results(r) -> None:
                                  line=dict(color="#2E7D32", width=2), fill="tozeroy",
                                  fillcolor="rgba(46,125,50,0.08)"))
         fig.add_hline(y=0, line_dash="dash", line_color="gray")
-        fig.update_layout(height=300, margin=dict(t=10, b=30), xaxis_title="Period",
+        fig.update_layout(height=400, margin=dict(t=10, b=30), xaxis_title="Period",
                           yaxis_title="€m")
         st.plotly_chart(fig, width="stretch")
 
-    # Revenue split
-    with cols[1]:
+    with tab_chart2:
+        # Revenue split
         st.markdown("**Revenue: contracted vs uncontracted**")
         fig = go.Figure()
         fig.add_trace(go.Bar(x=periods[ops], y=sc["net_contracted_rev"][ops],
                              name="Contracted", marker_color="#1565C0"))
         fig.add_trace(go.Bar(x=periods[ops], y=sc["net_uncontracted_rev"][ops],
                              name="Uncontracted (merchant + LGC)", marker_color="#90CAF9"))
-        fig.update_layout(barmode="stack", height=300, margin=dict(t=10, b=30),
+        fig.update_layout(barmode="stack", height=400, margin=dict(t=10, b=30),
                           xaxis_title="Period", yaxis_title="€m",
                           legend=dict(orientation="h", y=1.15))
         st.plotly_chart(fig, width="stretch")
 
-    # Debt balance & DSCR
-    st.markdown("**Debt service & DSCR**")
-    fig = go.Figure()
-    fig.add_trace(go.Bar(x=periods[ops], y=sc["interest"][ops], name="Interest", marker_color="#EF6C00"))
-    fig.add_trace(go.Bar(x=periods[ops], y=sc["loan_repay"][ops], name="Principal", marker_color="#FFB74D"))
-    dscr = sc["dscr"]
-    fig.add_trace(go.Scatter(x=periods[ops], y=dscr[ops], name="DSCR", yaxis="y2",
-                             mode="lines+markers", line=dict(color="#1B5E20", width=2)))
-    fig.update_layout(barmode="stack", height=320, margin=dict(t=10, b=30),
-                      xaxis_title="Period", yaxis_title="€m",
-                      yaxis2=dict(title="DSCR", overlaying="y", side="right", showgrid=False),
-                      legend=dict(orientation="h", y=1.15))
-    st.plotly_chart(fig, width="stretch")
+    with tab_chart3:
+        # Debt balance & DSCR
+        st.markdown("**Debt service & DSCR**")
+        fig = go.Figure()
+        fig.add_trace(go.Bar(x=periods[ops], y=sc["interest"][ops], name="Interest", marker_color="#EF6C00"))
+        fig.add_trace(go.Bar(x=periods[ops], y=sc["loan_repay"][ops], name="Principal", marker_color="#FFB74D"))
+        dscr = sc["dscr"]
+        fig.add_trace(go.Scatter(x=periods[ops], y=dscr[ops], name="DSCR", yaxis="y2",
+                                mode="lines+markers", line=dict(color="#1B5E20", width=2)))
+        fig.update_layout(barmode="stack", height=400, margin=dict(t=10, b=30),
+                        xaxis_title="Period", yaxis_title="€m",
+                        yaxis2=dict(title="DSCR", overlaying="y", side="right", showgrid=False),
+                        legend=dict(orientation="h", y=1.15))
+        st.plotly_chart(fig, width="stretch")
 
-    # Annual schedule table
-    with st.expander("📋 Full annual schedule", expanded=False):
+    with tab_chart4:
+        # Annual schedule table
         df = pd.DataFrame({
             "Period": periods.astype(int),
             "Net contracted rev": sc["net_contracted_rev"],
@@ -316,7 +323,7 @@ def _render_results(r) -> None:
             "DSCR": sc["dscr"],
         })
         df = df[(df["Period"] >= 1)].round(2)
-        st.dataframe(df.set_index("Period"), width="stretch", height=400)
+        st.dataframe(df.set_index("Period"), width="stretch", height="content")
 
 
 # ── Tab entry point ────────────────────────────────────────────────────────────
@@ -333,7 +340,7 @@ def render() -> None:
     energy, results_list, multi_year = _energy_source()
     if energy is None:
         st.info(
-            "No energy results yet. Run a simulation in the **Optimization** tab first — "
+            "No energy results yet. Run an optimization in the **Optimization** tab first — "
             "its generation, PPA delivery and merchant volumes feed this model.",
             icon="⚙️",
         )
@@ -392,32 +399,33 @@ def render() -> None:
         st.info("Set your assumptions above and click **Run financial model**.", icon="▶️")
         return
 
-    st.markdown("---")
+    # st.markdown("---")
     _render_results(result)
 
     # ── Export ────────────────────────────────────────────────────────────────
-    st.markdown("---")
-    st.subheader("Export")
-    n_years = len(results_list)
-    st.caption(
-        "Download a streamlined, **live** Excel workbook — one **Hourly** sheet per "
-        f"simulated year ({n_years}) with full hourly dispatch, the Energy totals rolled "
-        "up from those hours, and the revenue→tax→cash-flow chain and IRRs as formulas."
-    )
-    if n_years > 12:
+    # st.markdown("---")
+    with st.expander("⚡ Export financial model as Excel(R) file", expanded=True):
+        # st.subheader("Export")
+        n_years = len(results_list)
         st.caption(
-            f"⚠️ {n_years} years × 8 760 hours makes a large workbook — it may take a moment "
-            "to build and download."
+            "Download a streamlined, **live** Excel workbook — one **Hourly** sheet per "
+            f"simulated year ({n_years}) with full hourly dispatch, the Energy totals rolled "
+            "up from those hours, and the revenue→tax→cash-flow chain and IRRs as formulas."
         )
-    try:
-        xlsx = export_financial_model(result.inputs, result.energy, result, year_results=results_list)
-        fname = f"financial_model_{(result.energy.name or 'scenario').replace(' ', '_')}.xlsx"
-        st.download_button(
-            "⬇️ Export financial model to Excel",
-            data=xlsx,
-            file_name=fname,
-            mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-            width="stretch",
-        )
-    except Exception as exc:
-        st.error(f"Excel export failed: {exc}")
+        if n_years > 12:
+            st.caption(
+                f"⚠️ {n_years} years × 8 760 hours makes a quite large workbook — does take a moment "
+                "to build it to be available for download afterwards."
+            )
+        try:
+            xlsx = export_financial_model(result.inputs, result.energy, result, year_results=results_list)
+            fname = f"financial_model_{(result.energy.name or 'scenario').replace(' ', '_')}.xlsx"
+            st.download_button(
+                "⬇️ Download financial model",
+                data=xlsx,
+                file_name=fname,
+                mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                width="stretch",
+            )
+        except Exception as exc:
+            st.error(f"Excel export failed: {exc}")

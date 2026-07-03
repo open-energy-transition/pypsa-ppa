@@ -1,4 +1,4 @@
-"""Optimization tab — run European simulation or single-day reference optimization."""
+"""Optimization tab — run simulation or single-day reference optimization."""
 from __future__ import annotations
 
 import pandas as pd
@@ -102,7 +102,7 @@ def _render_data_status(lat: float, lon: float) -> tuple[bool, bool]:
             label = f"ENTSO-E prices: {len(cached_price_years)} / {len(PRICE_YEARS)} years cached"
             st.warning(f"{label} (missing: {missing})") if missing else st.success(f"{label} ✓")
         else:
-            st.warning("No ENTSO-E prices cached — go to **Download Data** tab")
+            st.warning("No ENTSO-E prices cached — go to **Get Data** tab")
 
     with cols[1]:
         if cf_ok:
@@ -115,9 +115,9 @@ def _render_data_status(lat: float, lon: float) -> tuple[bool, bool]:
     return prices_ok, cf_ok
 
 
-# ── European simulation runner ────────────────────────────────────────────────
+# ── Simulation runner ────────────────────────────────────────────────
 
-def _run_eu_simulation(scenario, max_workers: int) -> None:
+def _run_simulation(scenario, max_workers: int) -> None:
     from ppa.data import renewables_ninja as rn
     from ppa.data.entsoe_client import fetch_day_ahead_prices, list_cached_years as list_cached_price_years
     from ppa.multi_year import run_multi_year
@@ -138,9 +138,9 @@ def _run_eu_simulation(scenario, max_workers: int) -> None:
     # Fall back to any available price year if a CF year has no matching price year
     # (prices_by_year is cycled the same way as CF in pick_weather_year)
     if not prices_by_year:
-        raise RuntimeError("No ENTSO-E prices cached. Go to Download Data first.")
+        raise RuntimeError("No ENTSO-E prices cached. Go to **Get Data** tab first.")
 
-    progress_bar = st.progress(0, text="Starting simulation...")
+    progress_bar = st.progress(0, text="Starting optimization ...")
     status_text = st.empty()
 
     def _on_progress(done: int, total: int, sim_year: int) -> None:
@@ -163,69 +163,69 @@ def _run_eu_simulation(scenario, max_workers: int) -> None:
     )
     state.set_multi_year_financial(fin)
 
-    progress_bar.progress(1.0, text="Simulation complete!")
+    progress_bar.progress(1.0, text="Optimization complete!")
     status_text.success(f"Completed {scenario.simulation_years} year(s) successfully.")
 
 
 # ── multi-year results display ────────────────────────────────────────────────
 
-def _render_eu_results(fin, n_years: int) -> None:
-    st.subheader("Simulation results")
+def _render_results(fin, n_years: int) -> None:
+    with st.expander("Optimization results", expanded=True):
+        cols = st.columns(5)
+        irr_str = f"{fin.irr:.1%}" if fin.irr == fin.irr else "N/A"
+        lcoe_str = f"€{fin.lcoe:.1f}/MWh" if fin.lcoe == fin.lcoe else "N/A"
+        payback_str = f"{fin.simple_payback:.1f} yrs" if fin.simple_payback < 1e8 else "N/A"
+        cols[0].metric("NPV", f"€{fin.npv/1e6:.1f}M")
+        cols[1].metric("Project IRR", irr_str)
+        cols[2].metric("LCOE", lcoe_str)
+        cols[3].metric("Simple Payback", payback_str)
+        cols[4].metric("Lifetime Net Revenue", f"€{fin.total_lifetime_revenue/1e6:.1f}M")
 
-    cols = st.columns(5)
-    irr_str = f"{fin.irr:.1%}" if fin.irr == fin.irr else "N/A"
-    lcoe_str = f"€{fin.lcoe:.1f}/MWh" if fin.lcoe == fin.lcoe else "N/A"
-    payback_str = f"{fin.simple_payback:.1f} yrs" if fin.simple_payback < 1e8 else "N/A"
-    cols[0].metric("NPV", f"€{fin.npv/1e6:.1f}M")
-    cols[1].metric("Project IRR", irr_str)
-    cols[2].metric("LCOE", lcoe_str)
-    cols[3].metric("Simple Payback", payback_str)
-    cols[4].metric("Lifetime Net Revenue", f"€{fin.total_lifetime_revenue/1e6:.1f}M")
+        if n_years == 1:
+            y = fin.yearly[0]
+            st.caption(
+                f"Year {y.year} — PPA revenue €{y.ppa_revenue/1e6:.2f}M | "
+                f"Merchant €{y.merch_revenue/1e6:.2f}M | "
+                f"Delivery {y.fulfilled_share:.1%} | "
+                f"Net CF €{y.net_cashflow/1e6:.2f}M"
+            )
+            return
 
-    if n_years == 1:
-        y = fin.yearly[0]
-        st.caption(
-            f"Year {y.year} — PPA revenue €{y.ppa_revenue/1e6:.2f}M | "
-            f"Merchant €{y.merch_revenue/1e6:.2f}M | "
-            f"Delivery {y.fulfilled_share:.1%} | "
-            f"Net CF €{y.net_cashflow/1e6:.2f}M"
-        )
-        return
-
-    st.markdown("---")
-    tab_charts, tab_table = st.tabs([
-        "Charts", 
-        "Year-by-Year Table"
-    ])
-    with tab_charts:
-        tab_chart1, tab_chart2, tab_chart3 = st.tabs([
-            "Cumulative NPV", 
-            "Annual Revenue Breakdown", 
-            "PPA Delivery Rate"
+    # st.markdown("---")
+    with st.expander("Charts & data tables", expanded=True):
+        tab_charts, tab_table = st.tabs([
+            "| Charts", 
+            "| Year-by-Year Table"
         ])
-        with tab_chart1:
-            _render_npv_chart(fin)
-        with tab_chart2:
-            _render_revenue_chart(fin)
-        with tab_chart3:
-            _render_delivery_chart(fin)
+        with tab_charts:
+            tab_chart1, tab_chart2, tab_chart3 = st.tabs([
+                "| Cumulative NPV", 
+                "| Annual Revenue Breakdown", 
+                "| PPA Delivery Rate"
+            ])
+            with tab_chart1:
+                _render_npv_chart(fin)
+            with tab_chart2:
+                _render_revenue_chart(fin)
+            with tab_chart3:
+                _render_delivery_chart(fin)
 
-    with tab_table:
-        _render_yearly_table(fin)
+        with tab_table:
+            _render_yearly_table(fin)
 
 
 def _render_npv_chart(fin) -> None:
     years = [y.year for y in fin.yearly]
     fig = go.Figure()
     fig.add_trace(go.Scatter(
-        x=years, y=[v / 1e6 for v in fin.cumulative_npv],
+        x=years, y=[round(v / 1e6, 2) for v in fin.cumulative_npv],
         mode="lines+markers", name="Cumulative NPV",
         line=dict(color="#2196F3", width=2),
     ))
     fig.add_hline(y=0, line_dash="dash", line_color="gray")
     fig.update_layout(
         title="Cumulative NPV over Project Life",
-        xaxis_title="Year", yaxis_title="NPV (€M)", height=350,
+        xaxis_title="Year", yaxis_title="NPV (€M)", height=400,
     )
     st.plotly_chart(fig, width="stretch")
 
@@ -233,11 +233,11 @@ def _render_npv_chart(fin) -> None:
 def _render_revenue_chart(fin) -> None:
     years = [y.year for y in fin.yearly]
     fig = go.Figure()
-    fig.add_trace(go.Bar(x=years, y=[y.ppa_revenue / 1e6 for y in fin.yearly], name="PPA revenue"))
-    fig.add_trace(go.Bar(x=years, y=[y.merch_revenue / 1e6 for y in fin.yearly], name="Merchant revenue"))
-    fig.add_trace(go.Bar(x=years, y=[-y.market_buy_cost / 1e6 for y in fin.yearly], name="Market buy cost"))
-    fig.add_trace(go.Bar(x=years, y=[-y.penalty_cost / 1e6 for y in fin.yearly], name="Penalty cost"))
-    fig.add_trace(go.Bar(x=years, y=[-y.opex / 1e6 for y in fin.yearly], name="OPEX"))
+    fig.add_trace(go.Bar(x=years, y=[round(y.ppa_revenue / 1e6, 2) for y in fin.yearly], name="PPA revenue"))
+    fig.add_trace(go.Bar(x=years, y=[round(y.merch_revenue / 1e6, 2) for y in fin.yearly], name="Merchant revenue"))
+    fig.add_trace(go.Bar(x=years, y=[round(-y.market_buy_cost / 1e6, 2) for y in fin.yearly], name="Market buy cost"))
+    fig.add_trace(go.Bar(x=years, y=[round(-y.penalty_cost / 1e6, 2) for y in fin.yearly], name="Penalty cost"))
+    fig.add_trace(go.Bar(x=years, y=[round(-y.opex / 1e6, 2) for y in fin.yearly], name="OPEX"))
     fig.update_layout(
         barmode="relative", title="Annual Revenue Breakdown",
         xaxis_title="Year", yaxis_title="€M", height=400,
@@ -249,14 +249,14 @@ def _render_delivery_chart(fin) -> None:
     years = [y.year for y in fin.yearly]
     fig = go.Figure()
     fig.add_trace(go.Scatter(
-        x=years, y=[y.fulfilled_share * 100 for y in fin.yearly],
+        x=years, y=[round(y.fulfilled_share,3) * 100 for y in fin.yearly],
         mode="lines+markers", name="PPA Delivery Rate",
         line=dict(color="#4CAF50", width=2),
     ))
     fig.update_layout(
         title="PPA Delivery Rate by Year",
         xaxis_title="Year", yaxis_title="Delivery Rate (%)",
-        yaxis=dict(range=[0, 105]), height=300,
+        yaxis=dict(range=[0, 105]), height=400,
     )
     st.plotly_chart(fig, width="stretch")
 
@@ -277,7 +277,7 @@ def _render_yearly_table(fin) -> None:
         }
         for y in fin.yearly
     ]
-    st.dataframe(pd.DataFrame(rows).set_index("Year"), width="stretch")
+    st.dataframe(pd.DataFrame(rows).set_index("Year"), width="stretch", height="content")
 
 
 # ── main render ───────────────────────────────────────────────────────────────
@@ -290,53 +290,56 @@ def render() -> None:
     s = state.get_scenario()
 
     _render_scenario_summary(s)
-    st.markdown("---")
+    # st.markdown("---")
 
-    # ── European simulation ───────────────────────────────────────────────────
-    st.subheader("European simulation")
-    prices_ok, cf_ok = _render_data_status(s.lat, s.lon)
-    data_ready = prices_ok and cf_ok
+    # ── Simulation ───────────────────────────────────────────────────
+    # st.subheader("Optimization")
+    with st.expander("Optimization", expanded=True):
+        prices_ok, cf_ok = _render_data_status(s.lat, s.lon)
+        data_ready = prices_ok and cf_ok
 
-    cols = st.columns([1, 1, 2], vertical_alignment="bottom")
-    with cols[0]:
-        eu_run = st.button(
-            "▶ Run Simulation",
-            type="primary",
-            width="stretch",
-            key="opt_run_eu",
-            disabled=not data_ready,
-        )
-    with cols[1]:
-        max_workers = st.selectbox(
-            "Parallel workers", [1, 2, 4, 5], index=2, key="opt_max_workers",
-            help="Threads used for multi-year solving. Ignored for single-year runs.",
-        )
-    with cols[2]:
-        if not data_ready:
-            st.warning("Download data first (see **Download Data** tab).")
-        elif state.has_multi_year_results():
-            n_done = len(state.get_multi_year_results())
-            st.success(f"Last run: {n_done} year(s) solved.")
+        cols = st.columns([1, 1, 2], vertical_alignment="bottom")
+        with cols[0]:
+            model_run = st.button(
+                "▶ Run Optimization",
+                type="primary",
+                width="stretch",
+                key="opt_run_eu",
+                disabled=not data_ready,
+            )
+        with cols[1]:
+            default_workers = 8
+            workers = [1, 2, 4, 8, 12, 16, 20, 30]
+            max_workers = st.selectbox(
+                "Parallel workers", workers, index=0, key="opt_max_workers",
+                help="Threads used for multi-year solving. Ignored for single-year runs.",
+            )
+        with cols[2]:
+            if not data_ready:
+                st.warning("Download data first (see **Get Data** tab).")
+            elif state.has_multi_year_results():
+                n_done = len(state.get_multi_year_results())
+                st.success(f"Last run: {n_done} year(s) solved.")
 
-    if eu_run and data_ready:
+    if model_run and data_ready:
         try:
-            _run_eu_simulation(s, int(max_workers))
+            _run_simulation(s, int(max_workers))
         except Exception as exc:
-            st.error(f"Simulation failed: {exc}")
+            st.error(f"Optimization failed: {exc}")
         else:
             st.rerun()
 
     if state.has_multi_year_financial():
-        st.markdown("---")
-        _render_eu_results(state.get_multi_year_financial(), s.simulation_years)
+        # st.markdown("---")
+        _render_results(state.get_multi_year_financial(), s.simulation_years)
 
     # ── Single-day reference optimization (European reference month) ──────────
-    st.markdown("---")
+    # st.markdown("---")
     with st.expander("Single-day reference optimization (European reference month)", expanded=False):
         st.caption(
             "Runs the LP over a representative European month (German DE-LU prices + "
             "renewables.ninja capacity factors). Pick the day to inspect under **Reference "
-            "day selection**. Results feed the Results Overview, Results Deep Dive, and analysis tabs."
+            "day selection**. Results feed the Results, and Analysis tabs."
         )
         ts = _get_timeseries()
         if ts is None:
