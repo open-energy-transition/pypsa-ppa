@@ -1,4 +1,4 @@
-pypsa==1.2.1
+pypsa==1.2.4
 highspy==1.14.0
 linopy==0.7.0
 pandas==2.3.3

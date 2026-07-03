@@ -7,9 +7,9 @@ platforms = ["linux-64", "osx-64", "osx-arm64", "win-64"]
 
 [dependencies]
 python = ">=3.11,<3.13"
-pypsa = ">=0.31"
-highspy = ">=1.7"
-linopy = ">=0.3"
+pypsa = ">=1.2.4,<2"
+highspy = ">=1.14.0,<2"
+linopy = ">=0.7.0,<0.8"
 pandas = ">=2.0,<3.0"
 numpy = ">=1.26"
 pyarrow = ">=15"
