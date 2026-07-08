@@ -20,6 +20,7 @@ ACTIVE_CASE_STUDY_KEY = "active_case_study_id"
 MULTI_YEAR_RESULTS_KEY = "multi_year_results"
 MULTI_YEAR_FINANCIAL_KEY = "multi_year_financial"
 PROJECT_FINANCE_KEY = "project_finance_result"
+OPTIMIZED_SIZES_KEY = "optimized_sizes"
 
 
 def get_scenario() -> "Scenario | None":
@@ -38,6 +39,7 @@ _SCENARIO_FORM_KEYS = [
     "sf_lat", "sf_lon",
     "sf_sim_years", "sf_first_sim_year", "sf_escalation",
     "sf_pv_deg", "sf_wind_deg", "sf_bess_deg",
+    "sf_optimize_capacity", "sf_max_build_wind", "sf_max_build_pv", "sf_max_build_bess",
 ]
 
 
@@ -138,6 +140,18 @@ def set_multi_year_financial(fin: "MultiYearFinancialResult") -> None:
 
 def has_multi_year_financial() -> bool:
     return MULTI_YEAR_FINANCIAL_KEY in st.session_state
+
+
+def get_optimized_sizes() -> "object | None":
+    return st.session_state.get(OPTIMIZED_SIZES_KEY)
+
+
+def set_optimized_sizes(sized: "object") -> None:
+    st.session_state[OPTIMIZED_SIZES_KEY] = sized
+
+
+def has_optimized_sizes() -> bool:
+    return OPTIMIZED_SIZES_KEY in st.session_state
 
 
 def get_project_finance() -> "object | None":

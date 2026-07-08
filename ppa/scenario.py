@@ -27,6 +27,12 @@ class Scenario:
     cal_forward_price: float = 85.0
     cal_hedge_fraction: float = 0.80
 
+    # Capacity co-optimization (ignores the fixed MW values below when enabled)
+    optimize_capacity: bool = False
+    max_build_wind_mw: float = 1000.0
+    max_build_pv_mw: float = 1000.0
+    max_build_bess_mw: float = 1000.0
+
     # Portfolio sizing
     onsw_mw: float = 250.0
     pv_mw: float = 150.0
@@ -97,6 +103,12 @@ class Scenario:
     @property
     def maxsell_mw(self) -> float:
         return (self.onsw_mw + self.pv_mw + self.effective_bess_mw) if self.enable_market_sell else 0.0
+
+    @property
+    def crf(self) -> float:
+        """Capital recovery factor: annualizes overnight CAPEX over the project life."""
+        r, n = self.discount_rate, self.project_life_yrs
+        return r / (1 - (1 + r) ** -n) if r > 0 else 1.0 / n
 
     @property
     def penalty_price(self) -> float:
@@ -253,21 +265,28 @@ def load_case_study(cs: CaseStudy) -> Scenario:
 
 def validate_scenario(s: Scenario, available_days: list[str] | None = None) -> list[str]:
     errors: list[str] = []
-    if s.onsw_mw < 0:
-        errors.append("Onshore wind capacity must be ≥ 0 MW.")
-    if s.pv_mw < 0:
-        errors.append("Solar PV capacity must be ≥ 0 MW.")
-    if s.include_bess and s.bess_mw <= 0:
-        errors.append("BESS power capacity must be > 0 when BESS is enabled.")
-    if s.include_bess and s.bess_mwh <= 0:
-        errors.append("BESS energy capacity must be > 0 when BESS is enabled.")
+    if s.optimize_capacity:
+        # Fixed MW inputs are ignored; only the build caps matter.
+        if s.max_build_wind_mw < 0 or s.max_build_pv_mw < 0 or s.max_build_bess_mw < 0:
+            errors.append("Max build capacities must be ≥ 0 MW.")
+        if s.max_build_wind_mw == 0 and s.max_build_pv_mw == 0:
+            errors.append("At least one of wind/solar max build must be > 0 MW.")
+    else:
+        if s.onsw_mw < 0:
+            errors.append("Onshore wind capacity must be ≥ 0 MW.")
+        if s.pv_mw < 0:
+            errors.append("Solar PV capacity must be ≥ 0 MW.")
+        if s.include_bess and s.bess_mw <= 0:
+            errors.append("BESS power capacity must be > 0 when BESS is enabled.")
+        if s.include_bess and s.bess_mwh <= 0:
+            errors.append("BESS energy capacity must be > 0 when BESS is enabled.")
     if s.ppaload_mw <= 0:
         errors.append("PPA offtake load must be > 0 MW.")
     if s.ppa_price <= 0:
         errors.append("PPA price must be > 0 $/MWh.")
     if not (0.0 < s.required_delivery_share <= 1.0):
         errors.append("Required delivery share must be between 0 and 1.")
-    if s.onsw_mw == 0 and s.pv_mw == 0:
+    if not s.optimize_capacity and s.onsw_mw == 0 and s.pv_mw == 0:
         errors.append("At least one generation asset (wind or solar) must have capacity > 0.")
     if s.load_profile not in PROFILE_KEYS:
         errors.append(f"Unknown load profile '{s.load_profile}'. Valid options: {PROFILE_KEYS}")
