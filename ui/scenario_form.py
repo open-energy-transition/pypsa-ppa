@@ -193,6 +193,7 @@ def render_scenario_form(initial: Scenario) -> Scenario:
             )
         else:
             chosen_day = initial.chosen_day
+            st.write(f"Day: {chosen_day} (no timeseries loaded yet)")
 
     return dataclasses.replace(
         initial,

@@ -112,13 +112,13 @@ def _collect_inputs(seed: ProjectFinanceInputs, multi_year: bool) -> ProjectFina
         cols[0].markdown("**Fixed O&M** (€M/MW, €M/MWh p.a.)")
 
         with cols[1]:
-            onsw_om = _num("Onshore wind   ", f + "onsw_om", seed.onsw_fixed_om, step=0.005, fmt="%.4f", label_visibility="collapsed")
+            onsw_om = _num("Onshore wind   ", f + "onsw_om", seed.onsw_fixed_om, step=0.005, fmt="%.3f", label_visibility="collapsed")
 
         with cols[2]:
-            pv_om = _num("Solar PV   ", f + "pv_om", seed.pv_fixed_om, step=0.005, fmt="%.4f", label_visibility="collapsed")
+            pv_om = _num("Solar PV   ", f + "pv_om", seed.pv_fixed_om, step=0.005, fmt="%.3f", label_visibility="collapsed")
 
         with cols[3]:
-            bess_om = _num("BESS   ", f + "bess_om", seed.bess_fixed_om, step=0.005, fmt="%.4f", label_visibility="collapsed")
+            bess_om = _num("BESS   ", f + "bess_om", seed.bess_fixed_om, step=0.005, fmt="%.3f", label_visibility="collapsed")
 
         cols = st.columns(4)
         cols[0].markdown("**Ancillary** (% of revenue)")
