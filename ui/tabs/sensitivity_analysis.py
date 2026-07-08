@@ -92,15 +92,19 @@ def _unit(metric: str) -> str:
 # ── What-if panel ──────────────────────────────────────────────────────────────
 
 
-def _num(label: str, key: str, default: float, *, step: float | None = None, fmt: str | None = None):
+def _num(label: str, key: str, default: float, *, step: float | None = None, fmt: str | None = None, pct: bool = False):
+    """With ``pct=True`` the model value is a decimal fraction (e.g. 0.065) but is
+    displayed and edited in percent (6.5); ``step``/``fmt`` are in percent terms."""
+    scale = 100.0 if pct else 1.0
     if key not in st.session_state:
-        st.session_state[key] = float(default)
+        st.session_state[key] = float(default) * scale
     kw: dict = {}
     if step is not None:
         kw["step"] = step
     if fmt is not None:
         kw["format"] = fmt
-    return st.number_input(label, key=key, **kw)
+    val = st.number_input(label, key=key, **kw)
+    return val / scale if pct else val
 
 
 def _what_if_panel(base_energy: EnergyInputs, base_finance: ProjectFinanceInputs) -> None:
@@ -123,7 +127,7 @@ def _what_if_panel(base_energy: EnergyInputs, base_finance: ProjectFinanceInputs
             onsw_om  = _num("Wind O&M",  pf + "onsw_om",  base_finance.onsw_fixed_om,  step=0.005, fmt="%.4f")
             pv_om    = _num("Solar O&M", pf + "pv_om",    base_finance.pv_fixed_om,    step=0.005, fmt="%.4f")
             bess_om  = _num("BESS O&M",  pf + "bess_om",  base_finance.bess_fixed_om,  step=0.005, fmt="%.4f")
-            anc      = _num("Ancillary (% rev)", pf + "anc", base_finance.ancillary_pct, step=0.005, fmt="%.3f")
+            anc      = _num("Ancillary (% rev)", pf + "anc", base_finance.ancillary_pct, step=0.1, fmt="%.2f", pct=True)
 
         with cols[1]:
             st.markdown("**Revenue**")
@@ -131,26 +135,26 @@ def _what_if_panel(base_energy: EnergyInputs, base_finance: ProjectFinanceInputs
             pen     = _num("Penalty multiple (×)",   pf + "pen",     base_finance.penalty_multiple, step=0.1, fmt="%.2f")
             lgc     = _num("LGC / GO (€/MWh)",       pf + "lgc",     base_finance.lgc_price,        step=0.5)
             st.markdown("**Indexation (%/yr)**")
-            ppa_idx      = _num("PPA indexation",     pf + "ppa_idx",      base_finance.ppa_indexation,          step=0.005, fmt="%.3f")
-            cost_infl    = _num("Cost inflation",     pf + "cost_infl",    base_finance.cost_inflation,           step=0.005, fmt="%.3f")
-            solar_infl   = _num("Solar price",        pf + "solar_infl",   base_finance.solar_price_inflation,    step=0.005, fmt="%.3f")
-            nonsolar_infl= _num("Non-solar price",    pf + "nonsolar_infl",base_finance.nonsolar_price_inflation, step=0.005, fmt="%.3f")
+            ppa_idx      = _num("PPA indexation",     pf + "ppa_idx",      base_finance.ppa_indexation,          step=0.1, fmt="%.2f", pct=True)
+            cost_infl    = _num("Cost inflation",     pf + "cost_infl",    base_finance.cost_inflation,           step=0.1, fmt="%.2f", pct=True)
+            solar_infl   = _num("Solar price",        pf + "solar_infl",   base_finance.solar_price_inflation,    step=0.1, fmt="%.2f", pct=True)
+            nonsolar_infl= _num("Non-solar price",    pf + "nonsolar_infl",base_finance.nonsolar_price_inflation, step=0.1, fmt="%.2f", pct=True)
 
         with cols[2]:
             st.markdown("**Debt**")
-            debt_rate   = _num("Debt rate",          pf + "debt_rate",   base_finance.debt_rate,   step=0.005, fmt="%.3f")
+            debt_rate   = _num("Debt rate (%)",      pf + "debt_rate",   base_finance.debt_rate,   step=0.1, fmt="%.2f", pct=True)
             debt_tenor  = int(_num("Tenor (yrs)",    pf + "debt_tenor",  base_finance.debt_tenor,  step=1))
             dscr_c      = _num("DSCR contracted",    pf + "dscr_c",      base_finance.dscr_contracted,   step=0.05, fmt="%.2f")
             dscr_u      = _num("DSCR uncontracted",  pf + "dscr_u",      base_finance.dscr_uncontracted, step=0.05, fmt="%.2f")
-            gear_c      = _num("Max gearing contr.", pf + "gear_c",      base_finance.max_gearing_contracted,   step=0.05, fmt="%.2f")
-            gear_u      = _num("Max gearing uncontr.", pf + "gear_u",    base_finance.max_gearing_uncontracted, step=0.05, fmt="%.2f")
+            gear_c      = _num("Max gearing contr. (%)", pf + "gear_c",  base_finance.max_gearing_contracted,   step=1.0, fmt="%.1f", pct=True)
+            gear_u      = _num("Max gearing uncontr. (%)", pf + "gear_u", base_finance.max_gearing_uncontracted, step=1.0, fmt="%.1f", pct=True)
 
         with cols[3]:
             st.markdown("**Tax & depreciation**")
-            tax_rate  = _num("Corp. tax rate",       pf + "tax_rate",  base_finance.corp_tax_rate,         step=0.01, fmt="%.3f")
-            book_dep  = _num("Book dep. rate",        pf + "book_dep",  base_finance.book_depreciation_rate, step=0.005, fmt="%.3f")
-            tax_dep   = _num("Tax dep. rate",         pf + "tax_dep",   base_finance.tax_depreciation_rate,  step=0.005, fmt="%.3f")
-            wacc      = _num("WACC / discount rate",  pf + "wacc",      base_finance.discount_rate,          step=0.005, fmt="%.3f")
+            tax_rate  = _num("Corp. tax rate (%)",    pf + "tax_rate",  base_finance.corp_tax_rate,         step=1.0, fmt="%.1f", pct=True)
+            book_dep  = _num("Book dep. rate (%)",     pf + "book_dep",  base_finance.book_depreciation_rate, step=0.1, fmt="%.2f", pct=True)
+            tax_dep   = _num("Tax dep. rate (%)",      pf + "tax_dep",   base_finance.tax_depreciation_rate,  step=0.1, fmt="%.2f", pct=True)
+            wacc      = _num("WACC / discount rate (%)", pf + "wacc",    base_finance.discount_rate,          step=0.1, fmt="%.2f", pct=True)
             st.markdown("**Devex**")
             onsw_devex = _num("Wind devex",  pf + "onsw_devex", base_finance.onsw_devex, step=0.01, fmt="%.3f")
             pv_devex   = _num("Solar devex", pf + "pv_devex",   base_finance.pv_devex,   step=0.01, fmt="%.3f")
