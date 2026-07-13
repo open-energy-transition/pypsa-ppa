@@ -128,16 +128,17 @@ CASE_STUDIES: list[CaseStudy] = [
         icon="⚓",
         storyline=(
             "A first-mover IPP signs a 10-year PPA with a cement plant at €90/MWh. "
-            "The portfolio is wind-dominant with no storage and no market flexibility — a pure baseline "
-            "to understand penalty exposure. The cement load runs near-continuous but drops sharply "
-            "during its Sunday maintenance window."
+            "The portfolio is wind-dominant with no storage, and shortfalls cannot be covered from the "
+            "market — a clean baseline to understand penalty exposure. The cement load (real measured "
+            "sector data) runs steadily on weekdays but drops sharply over the weekend."
         ),
         question=(
-            "Can onshore wind alone hit a 70% delivery obligation against this near-baseload industrial "
-            "demand in central Europe?"
+            "Can a wind-dominant portfolio with no storage hit a 70% delivery obligation against this "
+            "weekday-heavy industrial demand in central Europe?"
         ),
         overrides={
             "name": "The Foundation Deal",
+            "simulation_years": 10,
             "onsw_mw": 300.0,
             "pv_mw": 80.0,
             "bess_mw": 0.0,
@@ -187,13 +188,14 @@ CASE_STUDIES: list[CaseStudy] = [
         subtitle="Steel EAF offtaker, high obligation, 2× penalty",
         icon="📈",
         storyline=(
-            "An aggressive IPP structure serves a steel Electric Arc Furnace (EAF) with a 90% delivery obligation "
-            "and a generous 15% market buy allowance. The EAF's batch melting cycles create highly variable demand — "
-            "spiking at ~95% during each heat then dropping to ~15% between charges. "
-            "The penalty regime is strict at 2× the tariff. "
+            "An aggressive IPP structure serves a steel plant running near-baseload (~97% load factor, "
+            "real measured sector data) with a 90% delivery obligation and a strict 2× penalty. "
+            "A generous 15% market buy allowance provides an escape valve — but at a punishing 50% "
+            "bid-offer spread, every purchased MWh comes at a steep premium. "
         ),
         question=(
-            "Does the optimizer exploit the EAF's idle periods for market sales, and can BESS bridge the delivery gaps?"
+            "When the portfolio falls short, is buying through the wide market spread cheaper than "
+            "paying the 2× penalty — and can BESS reduce the need for either?"
         ),
         overrides={
             "name": "Merchant Hybrid",
@@ -218,7 +220,7 @@ CASE_STUDIES: list[CaseStudy] = [
         subtitle="Data-centre offtaker, premium price, near-zero market buy",
         icon="🏢",
         storyline=(
-            "A European corporation signs a 15-year virtual PPA for its data-centre fleet at €105/MWh. "
+            "A European corporation signs a 15-year PPA for its data-centre fleet at €105/MWh. "
             "The data-centre load is near-flat with a modest business-hours peak — a demanding obligation "
             "for an RE portfolio. Market supplementation is capped at 1% to preserve additionality claims. "
         ),
@@ -228,6 +230,7 @@ CASE_STUDIES: list[CaseStudy] = [
         ),
         overrides={
             "name": "Corporate PPA",
+            "simulation_years": 15,
             "onsw_mw": 280.0,
             "pv_mw": 200.0,
             "bess_mw": 90.0,
