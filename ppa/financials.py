@@ -86,7 +86,8 @@ def run_financial_analysis(
     annual_ppa_rev = annual_ppa_vol * s.ppa_price
     annual_merch_rev = annual_merch_mwh * avg_merch_price
     annual_buy_cost = annual_buy_mwh * avg_buy_price
-    annual_net_rev = annual_ppa_rev + annual_merch_rev - annual_buy_cost
+    annual_trans_cost = annual_ppa_vol * s.transmission_cost_eur_mwh
+    annual_net_rev = annual_ppa_rev + annual_merch_rev - annual_buy_cost - annual_trans_cost
 
     # ── LCOE ──────────────────────────────────────────────────────────────────
     annuity_wacc = (1 - (1 + s.discount_rate) ** -s.project_life_yrs) / s.discount_rate
@@ -111,7 +112,7 @@ def run_financial_analysis(
     annuity_target = (1 - (1 + s.target_irr) ** -s.project_life_yrs) / s.target_irr
     required_cf = capex_total / annuity_target
     required_rev = required_cf + annual_opex
-    required_ppa_rev = required_rev - annual_merch_rev + annual_buy_cost
+    required_ppa_rev = required_rev - annual_merch_rev + annual_buy_cost + annual_trans_cost
     breakeven_ppa_price = required_ppa_rev / annual_ppa_vol if annual_ppa_vol > 0 else float("nan")
 
     return FinancialResult(
@@ -150,6 +151,7 @@ class YearlyFinancials:
     fulfilled_share: float
     wind_gen_mwh: float
     pv_gen_mwh: float
+    transmission_cost: float = 0.0
 
 
 @dataclass
@@ -217,6 +219,7 @@ def run_multi_year_financial_analysis(
                 merch_revenue=rev.excess_revenue,
                 market_buy_cost=rev.market_purchase_cost,
                 penalty_cost=rev.penalty_cost,
+                transmission_cost=rev.transmission_cost,
                 net_revenue=net_rev,
                 opex=annual_opex,
                 net_cashflow=net_cf,
