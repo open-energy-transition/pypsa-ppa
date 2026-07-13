@@ -57,9 +57,22 @@ class Scenario:
     wind_degradation_rate: float = 0.002  # 0.2%/yr
     bess_degradation_rate: float = 0.020  # 2.0%/yr usable capacity fade
 
-    # European location (lat/lon for renewables.ninja CF downloads)
+    # European locations. lat/lon is the *offtaker* (consumer) location — it
+    # determines the bidding zone whose day-ahead prices are used. PV and wind
+    # assets may sit elsewhere; None means "same as the offtaker".
     lat: float = 51.5
     lon: float = 10.0
+    pv_lat: float | None = None
+    pv_lon: float | None = None
+    wind_lat: float | None = None
+    wind_lon: float | None = None
+    # Explicit ENTSO-E bidding-zone code (e.g. "IT_NORD"); empty = derive from
+    # the offtaker lat/lon via ppa.data.bidding_zones.bidding_zone_for.
+    bidding_zone_override: str = ""
+    # Combined transmission / grid-use charge (€/MWh) on every MWh delivered to
+    # the offtaker, covering all network levels between generation sites and
+    # consumer — charged regardless of whether they share a bidding zone.
+    transmission_cost_eur_mwh: float = 0.0
 
     # Financial — European 2024 benchmarks
     wind_capex_per_kw: float = 1200.0   # €/kW, EU onshore wind
@@ -71,6 +84,28 @@ class Scenario:
     target_irr: float = 0.10
 
     # ── Derived properties ─────────────────────────────────────────────────────
+
+    @property
+    def pv_location(self) -> tuple[float, float]:
+        return (
+            self.pv_lat if self.pv_lat is not None else self.lat,
+            self.pv_lon if self.pv_lon is not None else self.lon,
+        )
+
+    @property
+    def wind_location(self) -> tuple[float, float]:
+        return (
+            self.wind_lat if self.wind_lat is not None else self.lat,
+            self.wind_lon if self.wind_lon is not None else self.lon,
+        )
+
+    @property
+    def bidding_zone(self) -> str:
+        if self.bidding_zone_override:
+            return self.bidding_zone_override
+        from ppa.data.bidding_zones import bidding_zone_for
+
+        return bidding_zone_for(self.lat, self.lon)
 
     @property
     def bess_max_hours(self) -> float:
@@ -271,6 +306,15 @@ def validate_scenario(s: Scenario, available_days: list[str] | None = None) -> l
         errors.append("At least one generation asset (wind or solar) must have capacity > 0.")
     if s.load_profile not in PROFILE_KEYS:
         errors.append(f"Unknown load profile '{s.load_profile}'. Valid options: {PROFILE_KEYS}")
+    if s.transmission_cost_eur_mwh < 0:
+        errors.append("Transmission cost must be ≥ 0 €/MWh.")
+    if s.bidding_zone_override:
+        from ppa.data.bidding_zones import SUPPORTED_ZONES
+
+        if s.bidding_zone_override not in SUPPORTED_ZONES:
+            errors.append(
+                f"Unknown bidding zone '{s.bidding_zone_override}'. Valid options: {SUPPORTED_ZONES}"
+            )
     if available_days and s.chosen_day not in available_days:
         errors.append(f"chosen_day '{s.chosen_day}' is not present in the timeseries data.")
     return errors
@@ -315,6 +359,7 @@ def scenario_from_excel(path: str | Path) -> Scenario:
         required_delivery_share=_float("required_delivery_share", 0.75),
         market_buy_share=_float("market_buy_share", 0.05),
         market_spread=_float("market_spread", 0.10),
+        transmission_cost_eur_mwh=_float("transmission_cost_eur_mwh", 0.0),
         chosen_day=str(params.get("chosen_day", "2023-03-15")).strip(),
         wind_capex_per_kw=_float("wind_capex_per_kw", 1800.0),
         pv_capex_per_kw=_float("pv_capex_per_kw", 1000.0),
