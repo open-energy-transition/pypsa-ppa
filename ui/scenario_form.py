@@ -182,6 +182,16 @@ def render_scenario_form(initial: Scenario) -> Scenario:
             )
             bidding_zone_override = "" if zone_choice == "auto" else zone_choice
 
+            transmission_cost_eur_mwh = st.number_input(
+                "Transmission cost (€/MWh delivered)", 0.0, 200.0,
+                float(initial.transmission_cost_eur_mwh), 0.5, format="%.1f",
+                key="sf_transmission_cost",
+                help="Combined transmission / grid-use charge across all network levels between "
+                    "the generation sites and the offtaker, applied to every MWh delivered under "
+                    "the PPA. Enter the total (combined) value — it is charged regardless of "
+                    "whether assets and offtaker are in the same bidding zone or different ones.",
+            )
+
         with cols[1]:
             st.markdown("**Generation assets**")
             pv_separate = st.toggle(
@@ -189,22 +199,23 @@ def render_scenario_form(initial: Scenario) -> Scenario:
             )
             if pv_separate:
                 pv_lat = st.number_input(
-                    "PV latitude", -90.0, 90.0, step=0.01, format="%.2f", key="sf_pv_lat",
+                    "PV latitude", -90.0, 90.0, step=0.01, format="%.2f", key="sf_pv_lat", value=st.session_state.get("sf_pv_lat", initial.pv_lat if initial.pv_lat is not None else lat)
                 )
                 pv_lon = st.number_input(
-                    "PV longitude", -180.0, 180.0, step=0.01, format="%.2f", key="sf_pv_lon",
+                    "PV longitude", -180.0, 180.0, step=0.01, format="%.2f", key="sf_pv_lon", value=st.session_state.get("sf_pv_lon", initial.pv_lon if initial.pv_lon is not None else lon)
                 )
             else:
                 pv_lat, pv_lon = None, None
+
             wind_separate = st.toggle(
                 "Wind at its own location", value=initial.wind_lat is not None, key="sf_wind_separate",
             )
             if wind_separate:
                 wind_lat = st.number_input(
-                    "Wind latitude", -90.0, 90.0, step=0.01, format="%.2f", key="sf_wind_lat",
+                    "Wind latitude", -90.0, 90.0, step=0.01, format="%.2f", key="sf_wind_lat", value=st.session_state.get("sf_wind_lat", initial.wind_lat if initial.wind_lat is not None else lat)
                 )
                 wind_lon = st.number_input(
-                    "Wind longitude", -180.0, 180.0, step=0.01, format="%.2f", key="sf_wind_lon",
+                    "Wind longitude", -180.0, 180.0, step=0.01, format="%.2f", key="sf_wind_lon", value=st.session_state.get("sf_wind_lon", initial.wind_lon if initial.wind_lon is not None else lon)
                 )
             else:
                 wind_lat, wind_lon = None, None
@@ -250,16 +261,6 @@ def render_scenario_form(initial: Scenario) -> Scenario:
                     fmap, height=320, use_container_width=True,
                     key="sf_loc_map", returned_objects=["last_clicked"],
                 )
-
-        transmission_cost_eur_mwh = st.number_input(
-            "Transmission cost (€/MWh delivered)", 0.0, 200.0,
-            float(initial.transmission_cost_eur_mwh), 0.5, format="%.1f",
-            key="sf_transmission_cost",
-            help="Combined transmission / grid-use charge across all network levels between "
-                 "the generation sites and the offtaker, applied to every MWh delivered under "
-                 "the PPA. Enter the total (combined) value — it is charged regardless of "
-                 "whether assets and offtaker are in the same bidding zone or different ones.",
-        )
 
     with st.expander("Simulation", expanded=True):
         cols = st.columns(4)
