@@ -113,18 +113,92 @@ def render_scenario_form(initial: Scenario) -> Scenario:
         project_life_yrs = cols[3].number_input("Project life (years)", 5, 40,
                                             int(initial.project_life_yrs), 1, key="sf_project_life")
 
-    with st.expander("Project Location", expanded=True):
+    with st.expander("Project Locations & Market Zone", expanded=True):
+        from ppa.data.bidding_zones import SUPPORTED_ZONES, bidding_zone_for, zone_label
+
         cols = st.columns([1, 1, 2])
-        lat = cols[0].number_input(
-            "Latitude", -90.0, 90.0, float(initial.lat), 0.01, format="%.2f", key="sf_lat",
-            help="Decimal degrees N. Used to fetch renewables.ninja CF profiles.",
+        with cols[0]:
+            st.markdown("**Offtaker (consumer)**")
+            lat = st.number_input(
+                "Latitude", -90.0, 90.0, float(initial.lat), 0.01, format="%.2f", key="sf_lat",
+                help="Decimal degrees N. The offtaker location sets the bidding zone "
+                     "whose ENTSO-E day-ahead prices are used.",
+            )
+            lon = st.number_input(
+                "Longitude", -180.0, 180.0, float(initial.lon), 0.01, format="%.2f", key="sf_lon",
+                help="Decimal degrees E.",
+            )
+            auto_zone = bidding_zone_for(lat, lon)
+            _zone_options = ["auto"] + SUPPORTED_ZONES
+            _initial_zone = initial.bidding_zone_override or "auto"
+            _zone_idx = _zone_options.index(_initial_zone) if _initial_zone in _zone_options else 0
+            zone_choice = st.selectbox(
+                "Bidding zone (prices)",
+                options=_zone_options,
+                index=_zone_idx,
+                format_func=lambda z: (
+                    f"Auto — {auto_zone} ({zone_label(auto_zone)})" if z == "auto"
+                    else f"{z} ({zone_label(z)})"
+                ),
+                key="sf_bidding_zone",
+                help="Derived from the offtaker location (nearest-zone approximation) — "
+                     "override it if the site is close to a zone border.",
+            )
+            bidding_zone_override = "" if zone_choice == "auto" else zone_choice
+
+        with cols[1]:
+            st.markdown("**Generation assets**")
+            pv_separate = st.toggle(
+                "PV at its own location", value=initial.pv_lat is not None, key="sf_pv_separate",
+            )
+            if pv_separate:
+                pv_lat = st.number_input(
+                    "PV latitude", -90.0, 90.0,
+                    float(initial.pv_lat if initial.pv_lat is not None else initial.lat),
+                    0.01, format="%.2f", key="sf_pv_lat",
+                )
+                pv_lon = st.number_input(
+                    "PV longitude", -180.0, 180.0,
+                    float(initial.pv_lon if initial.pv_lon is not None else initial.lon),
+                    0.01, format="%.2f", key="sf_pv_lon",
+                )
+            else:
+                pv_lat, pv_lon = None, None
+            wind_separate = st.toggle(
+                "Wind at its own location", value=initial.wind_lat is not None, key="sf_wind_separate",
+            )
+            if wind_separate:
+                wind_lat = st.number_input(
+                    "Wind latitude", -90.0, 90.0,
+                    float(initial.wind_lat if initial.wind_lat is not None else initial.lat),
+                    0.01, format="%.2f", key="sf_wind_lat",
+                )
+                wind_lon = st.number_input(
+                    "Wind longitude", -180.0, 180.0,
+                    float(initial.wind_lon if initial.wind_lon is not None else initial.lon),
+                    0.01, format="%.2f", key="sf_wind_lon",
+                )
+            else:
+                wind_lat, wind_lon = None, None
+
+        with cols[2]:
+            _points = [{"lat": lat, "lon": lon, "color": "#1565C0"}]  # offtaker: blue
+            if pv_separate:
+                _points.append({"lat": pv_lat, "lon": pv_lon, "color": "#F9A825"})  # PV: amber
+            if wind_separate:
+                _points.append({"lat": wind_lat, "lon": wind_lon, "color": "#2E7D32"})  # wind: green
+            st.map(pd.DataFrame(_points), zoom=5, height=300, color="color")
+            st.caption("🔵 Offtaker · 🟡 PV · 🟢 Wind (asset markers shown only when separate)")
+
+        transmission_cost_eur_mwh = st.number_input(
+            "Transmission cost (€/MWh delivered)", 0.0, 200.0,
+            float(initial.transmission_cost_eur_mwh), 0.5, format="%.1f",
+            key="sf_transmission_cost",
+            help="Combined transmission / grid-use charge across all network levels between "
+                 "the generation sites and the offtaker, applied to every MWh delivered under "
+                 "the PPA. Enter the total (combined) value — it is charged regardless of "
+                 "whether assets and offtaker are in the same bidding zone or different ones.",
         )
-        lon = cols[1].number_input(
-            "Longitude", -180.0, 180.0, float(initial.lon), 0.01, format="%.2f", key="sf_lon",
-            help="Decimal degrees E.",
-        )
-        loc_df = pd.DataFrame({"lat": [lat], "lon": [lon]})
-        cols[2].map(loc_df, zoom=5, height=300)
 
     with st.expander("Simulation", expanded=True):
         cols = st.columns(4)
@@ -227,6 +301,12 @@ def render_scenario_form(initial: Scenario) -> Scenario:
         chosen_day=str(chosen_day),
         lat=float(lat),
         lon=float(lon),
+        pv_lat=float(pv_lat) if pv_lat is not None else None,
+        pv_lon=float(pv_lon) if pv_lon is not None else None,
+        wind_lat=float(wind_lat) if wind_lat is not None else None,
+        wind_lon=float(wind_lon) if wind_lon is not None else None,
+        bidding_zone_override=bidding_zone_override,
+        transmission_cost_eur_mwh=float(transmission_cost_eur_mwh),
         simulation_years=simulation_years,
         first_sim_year=first_sim_year,
         price_escalation_rate=float(price_escalation_rate),
