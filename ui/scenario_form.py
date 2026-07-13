@@ -116,16 +116,52 @@ def render_scenario_form(initial: Scenario) -> Scenario:
     with st.expander("Project Locations & Market Zone", expanded=True):
         from ppa.data.bidding_zones import SUPPORTED_ZONES, bidding_zone_for, zone_label
 
+        # Seed the coordinate widgets once from the scenario; afterwards their
+        # session-state keys are the single source of truth so a map click can
+        # update them (widget state must be written BEFORE the widget renders).
+        _seed = {
+            "sf_lat": float(initial.lat),
+            "sf_lon": float(initial.lon),
+            "sf_pv_lat": float(initial.pv_lat if initial.pv_lat is not None else initial.lat),
+            "sf_pv_lon": float(initial.pv_lon if initial.pv_lon is not None else initial.lon),
+            "sf_wind_lat": float(initial.wind_lat if initial.wind_lat is not None else initial.lat),
+            "sf_wind_lon": float(initial.wind_lon if initial.wind_lon is not None else initial.lon),
+        }
+        for _k, _v in _seed.items():
+            st.session_state.setdefault(_k, _v)
+
+        # Apply a map click from the previous rerun (st_folium stores its state
+        # under its widget key). Rounded to 0.01° — the CF cache granularity.
+        _click = (st.session_state.get("sf_loc_map") or {}).get("last_clicked")
+        if _click:
+            _sig = (round(_click["lat"], 6), round(_click["lng"], 6))
+            if st.session_state.get("_sf_handled_click") != _sig:
+                st.session_state["_sf_handled_click"] = _sig
+                _target = st.session_state.get("sf_map_target", "🔵 Offtaker")
+                # A stale PV/Wind target (its "own location" toggle since
+                # switched off) falls back to placing the offtaker.
+                if _target == "🟡 PV" and not st.session_state.get("sf_pv_separate", False):
+                    _target = "🔵 Offtaker"
+                if _target == "🟢 Wind" and not st.session_state.get("sf_wind_separate", False):
+                    _target = "🔵 Offtaker"
+                _target_keys = {
+                    "🔵 Offtaker": ("sf_lat", "sf_lon"),
+                    "🟡 PV": ("sf_pv_lat", "sf_pv_lon"),
+                    "🟢 Wind": ("sf_wind_lat", "sf_wind_lon"),
+                }[_target]
+                st.session_state[_target_keys[0]] = round(_click["lat"], 2)
+                st.session_state[_target_keys[1]] = round(_click["lng"], 2)
+
         cols = st.columns([1, 1, 2])
         with cols[0]:
             st.markdown("**Offtaker (consumer)**")
             lat = st.number_input(
-                "Latitude", -90.0, 90.0, float(initial.lat), 0.01, format="%.2f", key="sf_lat",
+                "Latitude", -90.0, 90.0, step=0.01, format="%.2f", key="sf_lat",
                 help="Decimal degrees N. The offtaker location sets the bidding zone "
                      "whose ENTSO-E day-ahead prices are used.",
             )
             lon = st.number_input(
-                "Longitude", -180.0, 180.0, float(initial.lon), 0.01, format="%.2f", key="sf_lon",
+                "Longitude", -180.0, 180.0, step=0.01, format="%.2f", key="sf_lon",
                 help="Decimal degrees E.",
             )
             auto_zone = bidding_zone_for(lat, lon)
@@ -153,14 +189,10 @@ def render_scenario_form(initial: Scenario) -> Scenario:
             )
             if pv_separate:
                 pv_lat = st.number_input(
-                    "PV latitude", -90.0, 90.0,
-                    float(initial.pv_lat if initial.pv_lat is not None else initial.lat),
-                    0.01, format="%.2f", key="sf_pv_lat",
+                    "PV latitude", -90.0, 90.0, step=0.01, format="%.2f", key="sf_pv_lat",
                 )
                 pv_lon = st.number_input(
-                    "PV longitude", -180.0, 180.0,
-                    float(initial.pv_lon if initial.pv_lon is not None else initial.lon),
-                    0.01, format="%.2f", key="sf_pv_lon",
+                    "PV longitude", -180.0, 180.0, step=0.01, format="%.2f", key="sf_pv_lon",
                 )
             else:
                 pv_lat, pv_lon = None, None
@@ -169,26 +201,55 @@ def render_scenario_form(initial: Scenario) -> Scenario:
             )
             if wind_separate:
                 wind_lat = st.number_input(
-                    "Wind latitude", -90.0, 90.0,
-                    float(initial.wind_lat if initial.wind_lat is not None else initial.lat),
-                    0.01, format="%.2f", key="sf_wind_lat",
+                    "Wind latitude", -90.0, 90.0, step=0.01, format="%.2f", key="sf_wind_lat",
                 )
                 wind_lon = st.number_input(
-                    "Wind longitude", -180.0, 180.0,
-                    float(initial.wind_lon if initial.wind_lon is not None else initial.lon),
-                    0.01, format="%.2f", key="sf_wind_lon",
+                    "Wind longitude", -180.0, 180.0, step=0.01, format="%.2f", key="sf_wind_lon",
                 )
             else:
                 wind_lat, wind_lon = None, None
 
         with cols[2]:
-            _points = [{"lat": lat, "lon": lon, "color": "#1565C0"}]  # offtaker: blue
+            _markers = [("🔵 Offtaker", lat, lon, "#1565C0")]
             if pv_separate:
-                _points.append({"lat": pv_lat, "lon": pv_lon, "color": "#F9A825"})  # PV: amber
+                _markers.append(("🟡 PV", pv_lat, pv_lon, "#F9A825"))
             if wind_separate:
-                _points.append({"lat": wind_lat, "lon": wind_lon, "color": "#2E7D32"})  # wind: green
-            st.map(pd.DataFrame(_points), zoom=5, height=300, color="color")
-            st.caption("🔵 Offtaker · 🟡 PV · 🟢 Wind (asset markers shown only when separate)")
+                _markers.append(("🟢 Wind", wind_lat, wind_lon, "#2E7D32"))
+
+            try:
+                import folium
+                from streamlit_folium import st_folium
+            except ImportError:
+                st.map(
+                    pd.DataFrame(
+                        [{"lat": la, "lon": lo, "color": c} for _, la, lo, c in _markers]
+                    ),
+                    zoom=5, height=300, color="color",
+                )
+                st.caption(
+                    "🔵 Offtaker · 🟡 PV · 🟢 Wind — install `streamlit-folium` "
+                    "to place locations by clicking the map."
+                )
+            else:
+                _target_options = [name for name, *_ in _markers]
+                if st.session_state.get("sf_map_target") not in _target_options:
+                    st.session_state["sf_map_target"] = _target_options[0]
+                st.radio(
+                    "Clicking the map places:", _target_options, horizontal=True,
+                    key="sf_map_target",
+                    help="Choose which location a map click sets, then click the map. "
+                         "Coordinates snap to 0.01°.",
+                )
+                fmap = folium.Map(location=(lat, lon), zoom_start=5, tiles="CartoDB positron")
+                for name, la, lo, color in _markers:
+                    folium.CircleMarker(
+                        (la, lo), radius=9, color=color, fill=True,
+                        fill_color=color, fill_opacity=0.9, tooltip=name,
+                    ).add_to(fmap)
+                st_folium(
+                    fmap, height=320, use_container_width=True,
+                    key="sf_loc_map", returned_objects=["last_clicked"],
+                )
 
         transmission_cost_eur_mwh = st.number_input(
             "Transmission cost (€/MWh delivered)", 0.0, 200.0,
