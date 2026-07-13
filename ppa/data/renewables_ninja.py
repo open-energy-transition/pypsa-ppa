@@ -150,18 +150,40 @@ def download_all_years(
     return pv_by_year, wind_by_year
 
 
+def _cached_years(prefix: str, lat: float, lon: float, cache_dir: Path) -> list[int]:
+    if not cache_dir.exists():
+        return []
+    return sorted(
+        year
+        for year in AVAILABLE_YEARS
+        if (cache_dir / f"{prefix}_{lat:.2f}_{lon:.2f}_{year}.parquet").exists()
+    )
+
+
+def list_cached_pv_years(
+    lat: float = DEFAULT_LAT,
+    lon: float = DEFAULT_LON,
+    cache_dir: Path = CACHE_DIR,
+) -> list[int]:
+    """Return years for which a PV CF file is cached at this location."""
+    return _cached_years("pv", lat, lon, cache_dir)
+
+
+def list_cached_wind_years(
+    lat: float = DEFAULT_LAT,
+    lon: float = DEFAULT_LON,
+    cache_dir: Path = CACHE_DIR,
+) -> list[int]:
+    """Return years for which a wind CF file is cached at this location."""
+    return _cached_years("wind", lat, lon, cache_dir)
+
+
 def list_cached_years(
     lat: float = DEFAULT_LAT,
     lon: float = DEFAULT_LON,
     cache_dir: Path = CACHE_DIR,
 ) -> list[int]:
-    """Return years for which both PV and wind CF files are already cached."""
-    if not cache_dir.exists():
-        return []
-    result = []
-    for year in AVAILABLE_YEARS:
-        pv_ok = (cache_dir / f"pv_{lat:.2f}_{lon:.2f}_{year}.parquet").exists()
-        wind_ok = (cache_dir / f"wind_{lat:.2f}_{lon:.2f}_{year}.parquet").exists()
-        if pv_ok and wind_ok:
-            result.append(year)
-    return sorted(result)
+    """Return years for which both PV and wind CF files are cached at one location."""
+    pv = set(list_cached_pv_years(lat, lon, cache_dir))
+    wind = set(list_cached_wind_years(lat, lon, cache_dir))
+    return sorted(pv & wind)

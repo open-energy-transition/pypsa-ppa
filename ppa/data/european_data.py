@@ -14,18 +14,24 @@ def load_illustration_ts(
     year: int = 2023,
     lat: float = 51.5,
     lon: float = 10.0,
+    zone: str = DE_LU,
+    wind_lat: float | None = None,
+    wind_lon: float | None = None,
 ) -> pd.DataFrame | None:
     """Assemble a representative European hourly timeseries from cached data.
 
-    Reads cached ENTSO-E German (DE-LU) day-ahead prices and renewables.ninja
-    wind/solar capacity factors for ``year`` at ``lat``/``lon`` (central Germany
-    by default) and returns a DataFrame with ``ts_MktPrice``, ``ts_WindGen`` and
-    ``ts_PVGen`` on a common hourly index. Cache-only (no network); returns
-    ``None`` if the required files are not present so callers can degrade
-    gracefully."""
-    price_file = Path(ENTSOE_CACHE) / f"da_prices_{DE_LU}_{year}.parquet"
+    Reads cached ENTSO-E day-ahead prices for bidding zone ``zone`` and
+    renewables.ninja wind/solar capacity factors for ``year``. ``lat``/``lon``
+    locate the PV asset (central Germany by default); the wind asset defaults
+    to the same spot unless ``wind_lat``/``wind_lon`` are given. Returns a
+    DataFrame with ``ts_MktPrice``, ``ts_WindGen`` and ``ts_PVGen`` on a common
+    hourly index. Cache-only (no network); returns ``None`` if the required
+    files are not present so callers can degrade gracefully."""
+    w_lat = wind_lat if wind_lat is not None else lat
+    w_lon = wind_lon if wind_lon is not None else lon
+    price_file = Path(ENTSOE_CACHE) / f"da_prices_{zone}_{year}.parquet"
     pv_file = Path(NINJA_CACHE) / f"pv_{lat:.2f}_{lon:.2f}_{year}.parquet"
-    wind_file = Path(NINJA_CACHE) / f"wind_{lat:.2f}_{lon:.2f}_{year}.parquet"
+    wind_file = Path(NINJA_CACHE) / f"wind_{w_lat:.2f}_{w_lon:.2f}_{year}.parquet"
     if not (price_file.exists() and pv_file.exists() and wind_file.exists()):
         return None
 
@@ -52,13 +58,16 @@ def load_reference_month_ts(
     month: int = 3,
     lat: float = 51.5,
     lon: float = 10.0,
+    zone: str = DE_LU,
+    wind_lat: float | None = None,
+    wind_lon: float | None = None,
 ) -> pd.DataFrame | None:
     """A single representative European month for the single-day reference run.
 
-    Slices one month out of :func:`load_illustration_ts` (German DE-LU prices +
+    Slices one month out of :func:`load_illustration_ts` (zonal ENTSO-E prices +
     renewables.ninja CFs) so the reference LP stays quick (~one month of hours)
     while using European market data. Returns ``None`` if the cache is missing."""
-    ts = load_illustration_ts(year, lat, lon)
+    ts = load_illustration_ts(year, lat, lon, zone=zone, wind_lat=wind_lat, wind_lon=wind_lon)
     if ts is None:
         return None
     return ts[ts.index.month == month]
