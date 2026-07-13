@@ -12,15 +12,23 @@ from ui import state
 # ── timeseries loader (European reference-month path) ──────────────────────────
 
 @st.cache_data
-def _cached_reference_ts():
+def _cached_reference_ts(pv_lat: float, pv_lon: float, wind_lat: float, wind_lon: float, zone: str):
     from ppa.data.european_data import load_reference_month_ts
-    return load_reference_month_ts()
+    return load_reference_month_ts(
+        lat=pv_lat, lon=pv_lon, zone=zone, wind_lat=wind_lat, wind_lon=wind_lon
+    )
 
 
-def _get_timeseries():
+def _get_timeseries(scenario):
     if state.has_timeseries():
         return state.get_timeseries()
-    ts = _cached_reference_ts()
+    pv_lat, pv_lon = scenario.pv_location
+    wind_lat, wind_lon = scenario.wind_location
+    ts = _cached_reference_ts(pv_lat, pv_lon, wind_lat, wind_lon, scenario.bidding_zone)
+    if ts is None:
+        # Fall back to the default German reference cache so the single-day
+        # illustration keeps working before location-specific data is fetched.
+        ts = _cached_reference_ts(51.5, 10.0, 51.5, 10.0, "DE_LU")
     if ts is None:
         return None
     state.set_timeseries(ts)
@@ -68,7 +76,15 @@ def _render_scenario_summary(s) -> None:
 
         with cols[3]:
             st.markdown("**Simulation**")
-            st.markdown(f"- Location: **{s.lat:.2f}°N, {s.lon:.2f}°E**")
+            st.markdown(
+                f"- Offtaker: **{s.lat:.2f}°N, {s.lon:.2f}°E** — zone **{s.bidding_zone}**"
+            )
+            if s.pv_location != (s.lat, s.lon):
+                st.markdown(f"- PV site: **{s.pv_location[0]:.2f}°N, {s.pv_location[1]:.2f}°E**")
+            if s.wind_location != (s.lat, s.lon):
+                st.markdown(f"- Wind site: **{s.wind_location[0]:.2f}°N, {s.wind_location[1]:.2f}°E**")
+            if s.transmission_cost_eur_mwh > 0:
+                st.markdown(f"- Transmission: **€{s.transmission_cost_eur_mwh:.1f}/MWh** delivered")
             if s.simulation_years == 1:
                 st.markdown(f"- Mode: **1-year** ({s.first_sim_year})")
             else:
@@ -86,23 +102,30 @@ def _render_scenario_summary(s) -> None:
 
 # ── data status (compact) ─────────────────────────────────────────────────────
 
-def _render_data_status(lat: float, lon: float) -> tuple[bool, bool]:
+def _render_data_status(s) -> tuple[bool, bool]:
     from ppa.data.entsoe_client import list_cached_years as list_cached_price_years, AVAILABLE_YEARS as PRICE_YEARS
-    from ppa.data.renewables_ninja import list_cached_years, AVAILABLE_YEARS
+    from ppa.data.renewables_ninja import list_cached_pv_years, list_cached_wind_years, AVAILABLE_YEARS
 
-    cached_price_years = list_cached_price_years()
+    zone = s.bidding_zone
+    pv_lat, pv_lon = s.pv_location
+    wind_lat, wind_lon = s.wind_location
+
+    cached_price_years = list_cached_price_years(country_code=zone)
     prices_ok = len(cached_price_years) > 0
-    cached_cf_years = list_cached_years(lat=lat, lon=lon)
+    cached_cf_years = sorted(
+        set(list_cached_pv_years(lat=pv_lat, lon=pv_lon))
+        & set(list_cached_wind_years(lat=wind_lat, lon=wind_lon))
+    )
     cf_ok = len(cached_cf_years) > 0
 
     cols = st.columns(2)
     with cols[0]:
         if prices_ok:
             missing = [y for y in PRICE_YEARS if y not in cached_price_years]
-            label = f"ENTSO-E prices: {len(cached_price_years)} / {len(PRICE_YEARS)} years cached"
+            label = f"ENTSO-E prices ({zone}): {len(cached_price_years)} / {len(PRICE_YEARS)} years cached"
             st.warning(f"{label} (missing: {missing})") if missing else st.success(f"{label} ✓")
         else:
-            st.warning("No ENTSO-E prices cached — go to **Get Data** tab")
+            st.warning(f"No ENTSO-E prices cached for zone {zone} — go to **Get Data** tab")
 
     with cols[1]:
         if cf_ok:
@@ -110,7 +133,10 @@ def _render_data_status(lat: float, lon: float) -> tuple[bool, bool]:
             label = f"CF profiles: {len(cached_cf_years)} /{len(AVAILABLE_YEARS)} years cached"
             st.warning(f"{label} (missing: {missing})") if missing else st.success(f"{label} ✓")
         else:
-            st.warning(f"No CF profiles cached for ({lat:.2f}, {lon:.2f}) — go to **Download Data** tab")
+            st.warning(
+                f"No CF profiles cached for PV ({pv_lat:.2f}, {pv_lon:.2f}) + "
+                f"wind ({wind_lat:.2f}, {wind_lon:.2f}) — go to **Download Data** tab"
+            )
 
     return prices_ok, cf_ok
 
@@ -123,22 +149,27 @@ def _run_simulation(scenario, max_workers: int) -> None:
     from ppa.multi_year import run_multi_year
     from ppa.financials import run_multi_year_financial_analysis
 
-    lat, lon = scenario.lat, scenario.lon
-    cached_cf_years = rn.list_cached_years(lat=lat, lon=lon)
+    pv_lat, pv_lon = scenario.pv_location
+    wind_lat, wind_lon = scenario.wind_location
+    cached_cf_years = sorted(
+        set(rn.list_cached_pv_years(lat=pv_lat, lon=pv_lon))
+        & set(rn.list_cached_wind_years(lat=wind_lat, lon=wind_lon))
+    )
     pv_by_year: dict[int, pd.Series] = {}
     wind_by_year: dict[int, pd.Series] = {}
     for year in cached_cf_years:
-        pv_by_year[year] = rn.download_pv_cf(year, "", lat=lat, lon=lon)
-        wind_by_year[year] = rn.download_wind_cf(year, "", lat=lat, lon=lon)
+        pv_by_year[year] = rn.download_pv_cf(year, "", lat=pv_lat, lon=pv_lon)
+        wind_by_year[year] = rn.download_wind_cf(year, "", lat=wind_lat, lon=wind_lon)
 
+    zone = scenario.bidding_zone
     prices_by_year: dict[int, pd.Series] = {}
-    for year in list_cached_price_years():
-        prices_by_year[year] = fetch_day_ahead_prices(year, "")
+    for year in list_cached_price_years(country_code=zone):
+        prices_by_year[year] = fetch_day_ahead_prices(year, "", country_code=zone)
 
     # Fall back to any available price year if a CF year has no matching price year
     # (prices_by_year is cycled the same way as CF in pick_weather_year)
     if not prices_by_year:
-        raise RuntimeError("No ENTSO-E prices cached. Go to **Get Data** tab first.")
+        raise RuntimeError(f"No ENTSO-E prices cached for zone {zone}. Go to **Get Data** tab first.")
 
     progress_bar = st.progress(0, text="Starting optimization ...")
     status_text = st.empty()
@@ -237,6 +268,7 @@ def _render_revenue_chart(fin) -> None:
     fig.add_trace(go.Bar(x=years, y=[round(y.merch_revenue / 1e6, 2) for y in fin.yearly], name="Merchant revenue"))
     fig.add_trace(go.Bar(x=years, y=[round(-y.market_buy_cost / 1e6, 2) for y in fin.yearly], name="Market buy cost"))
     fig.add_trace(go.Bar(x=years, y=[round(-y.penalty_cost / 1e6, 2) for y in fin.yearly], name="Penalty cost"))
+    fig.add_trace(go.Bar(x=years, y=[round(-y.transmission_cost / 1e6, 2) for y in fin.yearly], name="Transmission cost"))
     fig.add_trace(go.Bar(x=years, y=[round(-y.opex / 1e6, 2) for y in fin.yearly], name="OPEX"))
     fig.update_layout(
         barmode="relative", title="Annual Revenue Breakdown",
@@ -269,6 +301,7 @@ def _render_yearly_table(fin) -> None:
             "Merchant Revenue (€M)": round(y.merch_revenue / 1e6, 2),
             "Market Buy Cost (€M)": round(y.market_buy_cost / 1e6, 2),
             "Penalty Cost (€M)": round(y.penalty_cost / 1e6, 2),
+            "Transmission Cost (€M)": round(y.transmission_cost / 1e6, 2),
             "OPEX (€M)": round(y.opex / 1e6, 2),
             "Net Cash Flow (€M)": round(y.net_cashflow / 1e6, 2),
             "Delivery Rate (%)": round(y.fulfilled_share * 100, 1),
@@ -295,7 +328,7 @@ def render() -> None:
     # ── Simulation ───────────────────────────────────────────────────
     # st.subheader("Optimization")
     with st.expander("Optimization", expanded=True):
-        prices_ok, cf_ok = _render_data_status(s.lat, s.lon)
+        prices_ok, cf_ok = _render_data_status(s)
         data_ready = prices_ok and cf_ok
 
         cols = st.columns([1, 1, 2], vertical_alignment="bottom")
@@ -340,11 +373,12 @@ def render() -> None:
     # st.markdown("---")
     with st.expander("Single-day reference optimization (European reference month)", expanded=False):
         st.caption(
-            "Runs the LP over a representative European month (German DE-LU prices + "
-            "renewables.ninja capacity factors). Pick the day to inspect under **Reference "
-            "day selection**. Results feed the Results, and Analysis tabs."
+            f"Runs the LP over a representative European month ({s.bidding_zone} prices + "
+            "renewables.ninja capacity factors, falling back to the German reference cache "
+            "if location data is not downloaded yet). Pick the day to inspect under "
+            "**Reference day selection**. Results feed the Results, and Analysis tabs."
         )
-        ts = _get_timeseries()
+        ts = _get_timeseries(s)
         if ts is None:
             st.error("Could not load the European reference timeseries from `data/cache/`.")
         else:
