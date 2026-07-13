@@ -287,12 +287,20 @@ def _tornado_panel(base_energy: EnergyInputs, base_finance: ProjectFinanceInputs
                 ),
             ))
 
+        # Label above the plot area (yref="paper", y>1) so it never overlaps
+        # the top bar.
         fig.add_vline(
             x=base_scaled,
             line_dash="dash",
             line_color="black",
-            annotation_text=f"Base {base_scaled:.2f}{unit}",
-            annotation_position="top right",
+            annotation=dict(
+                text=f"Base {base_scaled:.2f}{unit}",
+                yref="paper",
+                y=1.0,
+                yanchor="bottom",
+                xanchor="center",
+                showarrow=False,
+            ),
         )
 
         metric_label = METRIC_OPTIONS[metric_key]
@@ -302,7 +310,7 @@ def _tornado_panel(base_energy: EnergyInputs, base_finance: ProjectFinanceInputs
         fig.update_layout(
             barmode="overlay",
             height=max(350, len(rows) * 32 + 80),
-            margin=dict(t=40, b=50, l=10, r=40),
+            margin=dict(t=50, b=50, l=10, r=40),
             xaxis_title=metric_label,
             yaxis=dict(automargin=True),
             plot_bgcolor="white",
