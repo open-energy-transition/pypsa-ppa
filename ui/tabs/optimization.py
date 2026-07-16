@@ -41,6 +41,7 @@ def _render_scenario_summary(s) -> None:
                     f"solar **{s.max_build_pv_mw:.0f}** / "
                     f"BESS **{s.max_build_bess_mw:.0f} MW**"
                 )
+                st.markdown(f"- Sizing LP resolution: **{s.sizing_resolution_h}h**")
                 if s.include_bess:
                     st.markdown(f"- BESS duration: **{s.bess_max_hours:.1f} h** (fixed)")
                 else:
@@ -164,16 +165,22 @@ def _run_simulation(scenario, max_workers: int) -> None:
             optimize_capacities,
         )
 
-        n_sizing_years, notice = clamp_sizing_years(scenario.simulation_years)
+        n_sizing_years, notice = clamp_sizing_years(
+            scenario.simulation_years, scenario.sizing_resolution_h
+        )
         if notice:
             st.warning(notice)
         progress_bar.progress(
             0.0,
-            text=f"Sizing portfolio (co-optimizing capacities, {n_sizing_years}-year LP)...",
+            text=(
+                f"Sizing portfolio (co-optimizing capacities, {n_sizing_years}-year LP "
+                f"at {scenario.sizing_resolution_h}h resolution)..."
+            ),
         )
         status_text.text(
             "Solving the investment LP — this is one large solve and can take "
-            "a few minutes for long horizons..."
+            "a few minutes for long horizons. The sized portfolio is then "
+            "re-simulated hourly..."
         )
         sizing_ts = build_sizing_timeseries(
             scenario, pv_by_year, wind_by_year, prices_by_year, n_sizing_years
@@ -191,7 +198,8 @@ def _run_simulation(scenario, max_workers: int) -> None:
         status_text.success(
             f"Optimized portfolio — Wind {sized.onsw_mw:.0f} MW · "
             f"Solar {sized.pv_mw:.0f} MW · BESS {sized.bess_mw:.0f} MW / "
-            f"{sized.bess_mwh:.0f} MWh (sized over {sized.sizing_years_used} year(s))"
+            f"{sized.bess_mwh:.0f} MWh (sized over {sized.sizing_years_used} year(s) "
+            f"at {sized.resolution_h}h resolution) — running hourly dispatch..."
         )
 
     def _on_progress(done: int, total: int, sim_year: int) -> None:
@@ -390,7 +398,8 @@ def render() -> None:
             st.info(
                 f"⚡ **Optimized portfolio** — Wind **{sized.onsw_mw:.0f} MW** · "
                 f"Solar **{sized.pv_mw:.0f} MW** · BESS **{sized.bess_mw:.0f} MW / "
-                f"{sized.bess_mwh:.0f} MWh** (sized over {sized.sizing_years_used} year(s))"
+                f"{sized.bess_mwh:.0f} MWh** (sized over {sized.sizing_years_used} year(s) "
+                f"at {getattr(sized, 'resolution_h', 1)}h resolution; dispatch & financials run hourly)"
             )
         _render_results(state.get_multi_year_financial(), s.simulation_years)
 
