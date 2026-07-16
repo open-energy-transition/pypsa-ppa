@@ -58,13 +58,24 @@ def solve(
     # (~1000 → ~735 MB per solve) and faster — matters on the ~1 GB Streamlit
     # Cloud tier. assign_all_duals is left at its default (False): duals are never
     # consumed anywhere in the app, so materialising 300k+ of them is dead work.
+    solver_options = {
+        # general solver settings
+        "output_flag": False,
+        "log_to_console": False,
+    }
+    if s.optimize_capacity and solver_name == "highs":
+        # Multi-year investment LPs are far faster with parallel interior point
+        # than the default (dual simplex). Crossover to a vertex solution is
+        # skipped: capacities are rounded to 0.1 MW downstream anyway, and
+        # crossover can dominate runtime on large LPs. Duals are never consumed.
+        solver_options.update({
+            "solver": "ipm",
+            "run_crossover": "off",
+            "parallel": "on",
+        })
     status, condition = n.optimize.solve_model(
         solver_name=solver_name,
         io_api="direct",
-        solver_options = {
-            # general solver settings
-            "output_flag": False,
-            "log_to_console": False,
-        }
+        solver_options=solver_options,
     )
     return status, condition

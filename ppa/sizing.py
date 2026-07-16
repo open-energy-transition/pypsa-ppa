@@ -11,7 +11,11 @@ financials consume unchanged.
 from __future__ import annotations
 
 import dataclasses
+import math
+import multiprocessing
+import traceback
 from dataclasses import dataclass
+from typing import Callable
 
 import pandas as pd
 
@@ -33,6 +37,34 @@ class SizedCapacities:
     sizing_years_used: int
     horizon_clamped: bool
     resolution_h: int = 1
+
+
+def weather_cycle_years(
+    requested_years: int, n_weather_years: int, n_price_years: int
+) -> tuple[int, str | None]:
+    """Cap the sizing horizon at one full cycle of the historical input years.
+
+    The simulation cycles CF and price years from the cached historical sets
+    (`pick_weather_year`), so beyond one least-common-multiple cycle the sizing
+    LP re-solves near-copies of the same profiles (only slow degradation /
+    price-escalation drift differs). Capping there keeps all weather diversity
+    at a fraction of the LP size. Returns (capped_years, note) with a
+    human-readable note when the cap bites (None otherwise).
+    """
+    requested_years = max(1, int(requested_years))
+    cycle = math.lcm(max(1, int(n_weather_years)), max(1, int(n_price_years)))
+    if cycle >= requested_years:
+        return requested_years, None
+
+    note = (
+        f"Sizing LP horizon set to {cycle} year(s) — one full cycle of the "
+        f"{n_weather_years} cached weather year(s) and {n_price_years} price "
+        f"year(s). Later years repeat the same profiles, so a "
+        f"{requested_years}-year sizing LP would add cost but almost no new "
+        "information. The full simulation still runs all "
+        f"{requested_years} year(s) hourly with the sized capacities."
+    )
+    return cycle, note
 
 
 def clamp_sizing_years(requested_years: int, resolution_h: float = 1.0) -> tuple[int, str | None]:
@@ -180,6 +212,78 @@ def optimize_capacities(ts: pd.DataFrame, scenario: Scenario) -> SizedCapacities
         horizon_clamped=n_years < scenario.simulation_years,
         resolution_h=resolution_h,
     )
+
+
+def _sizing_worker(conn, ts: pd.DataFrame, scenario_fields: dict) -> None:
+    """Child-process entry point: solve the sizing LP and send the result back.
+
+    Takes the scenario as a plain dict for the same Streamlit class-reload
+    pickling reason as `ppa.multi_year._solve_one_year`.
+    """
+    try:
+        sized = optimize_capacities(ts, Scenario(**scenario_fields))
+        conn.send(("ok", sized))
+    except BaseException:
+        conn.send(("err", traceback.format_exc()))
+    finally:
+        conn.close()
+
+
+def run_sizing_subprocess(
+    ts: pd.DataFrame,
+    scenario: Scenario,
+    heartbeat: Callable[[], None] | None = None,
+    poll_interval: float = 0.5,
+) -> SizedCapacities:
+    """Run `optimize_capacities` in a killable child process.
+
+    The solve is one blocking native HiGHS call, so it cannot be interrupted
+    in-process (Streamlit's Stop button, Ctrl+C and SIGTERM are all deferred
+    until the solver returns). Running it in a child process makes it
+    cancellable — `heartbeat` is invoked every `poll_interval` seconds and may
+    raise (e.g. a Streamlit StopException); the child is then killed by the
+    finally block. Killing the child also returns the LP's multi-GB memory to
+    the OS immediately instead of leaving it in the app process.
+    """
+    try:
+        mp_context = multiprocessing.get_context("fork")
+    except ValueError:  # pragma: no cover - Windows only
+        mp_context = multiprocessing.get_context("spawn")
+
+    parent_conn, child_conn = mp_context.Pipe(duplex=False)
+    proc = mp_context.Process(
+        target=_sizing_worker,
+        args=(child_conn, ts, dataclasses.asdict(scenario)),
+        daemon=True,
+    )
+    proc.start()
+    child_conn.close()
+
+    try:
+        while True:
+            if parent_conn.poll(poll_interval):
+                kind, payload = parent_conn.recv()
+                break
+            if not proc.is_alive():
+                # Drain a result sent just before exit, else it truly crashed
+                if parent_conn.poll(0):
+                    kind, payload = parent_conn.recv()
+                    break
+                raise RuntimeError(
+                    "Sizing subprocess died without returning a result "
+                    "(likely killed by the OS — out of memory?)."
+                )
+            if heartbeat is not None:
+                heartbeat()  # may raise (user cancelled) → finally kills child
+    finally:
+        if proc.is_alive():
+            proc.kill()
+        proc.join(timeout=5)
+        parent_conn.close()
+
+    if kind == "err":
+        raise RuntimeError(f"Capacity sizing LP failed in subprocess:\n{payload}")
+    return payload
 
 
 def apply_sizing(scenario: Scenario, sized: SizedCapacities) -> Scenario:

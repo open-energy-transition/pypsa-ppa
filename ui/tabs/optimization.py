@@ -158,15 +158,23 @@ def _run_simulation(scenario, max_workers: int) -> None:
 
     # ── Capacity co-optimization pre-step ─────────────────────────────────────
     if scenario.optimize_capacity:
+        import time
+
         from ppa.sizing import (
             apply_sizing,
             build_sizing_timeseries,
             clamp_sizing_years,
-            optimize_capacities,
+            run_sizing_subprocess,
+            weather_cycle_years,
         )
 
+        n_sizing_years, cycle_note = weather_cycle_years(
+            scenario.simulation_years, len(pv_by_year), len(prices_by_year)
+        )
+        if cycle_note:
+            st.info(cycle_note)
         n_sizing_years, notice = clamp_sizing_years(
-            scenario.simulation_years, scenario.sizing_resolution_h
+            n_sizing_years, scenario.sizing_resolution_h
         )
         if notice:
             st.warning(notice)
@@ -177,15 +185,19 @@ def _run_simulation(scenario, max_workers: int) -> None:
                 f"at {scenario.sizing_resolution_h}h resolution)..."
             ),
         )
-        status_text.text(
-            "Solving the investment LP — this is one large solve and can take "
-            "a few minutes for long horizons. The sized portfolio is then "
-            "re-simulated hourly..."
-        )
         sizing_ts = build_sizing_timeseries(
             scenario, pv_by_year, wind_by_year, prices_by_year, n_sizing_years
         )
-        sized = optimize_capacities(sizing_ts, scenario)
+
+        _t0 = time.monotonic()
+
+        def _sizing_heartbeat() -> None:
+            status_text.text(
+                f"Solving the sizing LP in a background process... "
+                f"{time.monotonic() - _t0:.0f}s elapsed. Press Stop to cancel."
+            )
+
+        sized = run_sizing_subprocess(sizing_ts, scenario, heartbeat=_sizing_heartbeat)
         if sized.status != "ok":
             raise RuntimeError(
                 f"Capacity sizing LP failed: {sized.status} / {sized.condition}"
