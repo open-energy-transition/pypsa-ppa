@@ -58,10 +58,27 @@ def render_scenario_form(initial: Scenario) -> Scenario:
                 "Max BESS build (MW)", 0.0, 10_000.0, float(initial.max_build_bess_mw),
                 50.0, key="sf_max_build_bess",
             )
+            _res_options = [1, 2, 3, 4, 6]
+            _res_idx = (
+                _res_options.index(int(initial.sizing_resolution_h))
+                if int(initial.sizing_resolution_h) in _res_options
+                else _res_options.index(3)
+            )
+            sizing_resolution_h = cols[3].selectbox(
+                "Sizing LP resolution (h)", _res_options, index=_res_idx,
+                key="sf_sizing_resolution",
+                help=(
+                    "Time resolution of the capacity-sizing LP only. Coarser "
+                    "blocks (e.g. 3h) solve much faster and use less memory; the "
+                    "sized portfolio is then always re-simulated at hourly "
+                    "resolution for dispatch and financials."
+                ),
+            )
         else:
             max_build_wind_mw = initial.max_build_wind_mw
             max_build_pv_mw = initial.max_build_pv_mw
             max_build_bess_mw = initial.max_build_bess_mw
+            sizing_resolution_h = initial.sizing_resolution_h
 
         cols = st.columns(4)
         onsw_mw = cols[0].slider("Onshore wind (MW)", 0, max_cap_per_technology, int(initial.onsw_mw), step=10, key="sf_onsw_mw",
@@ -237,6 +254,7 @@ def render_scenario_form(initial: Scenario) -> Scenario:
         max_build_wind_mw=float(max_build_wind_mw),
         max_build_pv_mw=float(max_build_pv_mw),
         max_build_bess_mw=float(max_build_bess_mw),
+        sizing_resolution_h=int(sizing_resolution_h),
         include_bess=include_bess,
         enable_market_buy=enable_market_buy,
         enable_market_sell=enable_market_sell,

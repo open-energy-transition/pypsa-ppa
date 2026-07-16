@@ -32,6 +32,9 @@ class Scenario:
     max_build_wind_mw: float = 1000.0
     max_build_pv_mw: float = 1000.0
     max_build_bess_mw: float = 1000.0
+    # Time resolution (hours) of the sizing LP only. The subsequent dispatch
+    # simulation and financials always run hourly on the sized portfolio.
+    sizing_resolution_h: int = 3
 
     # Portfolio sizing
     onsw_mw: float = 250.0
@@ -271,6 +274,8 @@ def validate_scenario(s: Scenario, available_days: list[str] | None = None) -> l
             errors.append("Max build capacities must be ≥ 0 MW.")
         if s.max_build_wind_mw == 0 and s.max_build_pv_mw == 0:
             errors.append("At least one of wind/solar max build must be > 0 MW.")
+        if int(s.sizing_resolution_h) < 1 or int(s.sizing_resolution_h) > 24:
+            errors.append("Sizing LP resolution must be between 1 and 24 hours.")
     else:
         if s.onsw_mw < 0:
             errors.append("Onshore wind capacity must be ≥ 0 MW.")

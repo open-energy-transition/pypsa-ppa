@@ -6,7 +6,7 @@ import pypsa
 from ppa.scenario import Scenario
 
 
-def build_network(ts: pd.DataFrame, scenario: Scenario) -> pypsa.Network:
+def build_network(ts: pd.DataFrame, scenario: Scenario, resolution_h: float = 1.0) -> pypsa.Network:
     """Build an unsolved PyPSA network from prepared timeseries and scenario.
 
     When `scenario.optimize_capacity` is True, wind/PV/BESS capacities become
@@ -14,16 +14,22 @@ def build_network(ts: pd.DataFrame, scenario: Scenario) -> pypsa.Network:
     carry an annualized capital cost scaled to the LP horizon. Market sales earn
     no revenue in that mode, so the objective is least-cost-to-serve-the-PPA
     rather than merchant profit maximization (which would build to the caps).
+
+    `resolution_h` is the hours each snapshot represents (>1 for the coarse
+    sizing LP). It sets the snapshot weightings so marginal costs and storage
+    state-of-charge integrate over real hours, not snapshot counts.
     """
     s = scenario
     n = pypsa.Network()
     n.set_snapshots(ts.index)
+    if resolution_h != 1.0:
+        n.snapshot_weightings.loc[:, :] = float(resolution_h)
 
     sizing = s.optimize_capacity
     # Annualized €/MW/yr (or €/MW-of-BESS/yr via fixed duration), scaled by the
     # fraction of a year the LP covers so capex and operational costs are summed
     # over the same horizon. crf annualizes overnight capex; opex_rate adds fixed O&M.
-    horizon_years = len(ts) / 8760.0
+    horizon_years = len(ts) * resolution_h / 8760.0
     wind_cc = s.wind_capex_per_kw * 1_000 * (s.crf + s.opex_rate) * horizon_years
     pv_cc = s.pv_capex_per_kw * 1_000 * (s.crf + s.opex_rate) * horizon_years
     bess_cc = s.bess_capex_per_kwh * 1_000 * s.bess_max_hours * (s.crf + s.opex_rate) * horizon_years

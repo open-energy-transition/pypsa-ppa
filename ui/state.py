@@ -40,6 +40,7 @@ _SCENARIO_FORM_KEYS = [
     "sf_sim_years", "sf_first_sim_year", "sf_escalation",
     "sf_pv_deg", "sf_wind_deg", "sf_bess_deg",
     "sf_optimize_capacity", "sf_max_build_wind", "sf_max_build_pv", "sf_max_build_bess",
+    "sf_sizing_resolution",
 ]
 
 

@@ -2,9 +2,11 @@
 
 Two-stage flow: the sizing LP here optimizes capacities + dispatch over the
 concatenated simulation horizon (least-cost-to-serve-the-PPA, see
-`ppa.network.build_network` sizing mode), then `apply_sizing` writes the optimal
-capacities back into a fixed-capacity Scenario that the existing per-year
-simulation (`ppa.multi_year.run_multi_year`) and financials consume unchanged.
+`ppa.network.build_network` sizing mode) at a coarse, configurable time
+resolution (`scenario.sizing_resolution_h`, default 3h), then `apply_sizing`
+writes the optimal capacities back into a fixed-capacity Scenario that the
+existing per-year *hourly* simulation (`ppa.multi_year.run_multi_year`) and
+financials consume unchanged.
 """
 from __future__ import annotations
 
@@ -30,29 +32,33 @@ class SizedCapacities:
     condition: str
     sizing_years_used: int
     horizon_clamped: bool
+    resolution_h: int = 1
 
 
-def clamp_sizing_years(requested_years: int) -> tuple[int, str | None]:
+def clamp_sizing_years(requested_years: int, resolution_h: float = 1.0) -> tuple[int, str | None]:
     """Clamp the sizing-LP horizon to what fits in available RAM.
 
-    A single-year solve peaks ~`_PER_WORKER_MEM_MB` MB and linopy LP memory grows
-    roughly linearly with snapshots, so we budget one year-block per that much
-    available memory. Returns (clamped_years, notice) where notice is a
-    human-readable message when clamping occurred (None otherwise).
+    A single-year *hourly* solve peaks ~`_PER_WORKER_MEM_MB` MB and linopy LP
+    memory grows roughly linearly with snapshots, so a year at `resolution_h`
+    hours per snapshot costs ~that much / resolution_h. We budget one year-block
+    per that much available memory. Returns (clamped_years, notice) where notice
+    is a human-readable message when clamping occurred (None otherwise).
     """
     requested_years = max(1, int(requested_years))
     mem_mb = _available_memory_mb()
     if mem_mb is None:
         return requested_years, None
 
-    fit_years = max(1, int(mem_mb // _PER_WORKER_MEM_MB))
+    per_year_mem_mb = _PER_WORKER_MEM_MB / max(1.0, float(resolution_h))
+    fit_years = max(1, int(mem_mb // per_year_mem_mb))
     if fit_years >= requested_years:
         return requested_years, None
 
     notice = (
         f"Sizing LP horizon reduced from {requested_years} to {fit_years} year(s) "
         f"to fit available memory (~{mem_mb / 1024:.1f} GB free, "
-        f"~{_PER_WORKER_MEM_MB / 1024:.1f} GB per simulated year). "
+        f"~{per_year_mem_mb / 1024:.1f} GB per simulated year at "
+        f"{resolution_h:.0f}h resolution). "
         "Optimized capacities are sized on the reduced horizon; the full "
         f"{requested_years}-year simulation still runs with those capacities."
     )
@@ -104,14 +110,36 @@ def build_sizing_timeseries(
     return sizing_ts
 
 
+def coarsen_timeseries(ts: pd.DataFrame, resolution_h: int) -> pd.DataFrame:
+    """Downsample an hourly timeseries to `resolution_h`-hour block averages.
+
+    Block-averaging CFs, prices and load preserves per-block energy and cost
+    exactly; only intra-block variability (which the sizing LP doesn't need at
+    full fidelity) is smoothed. Bins align to midnight, and year blocks are
+    whole multiples of common resolutions, so no bin straddles a year boundary.
+    """
+    if resolution_h <= 1:
+        return ts
+    coarse = ts.resample(f"{resolution_h}h").mean()
+    coarse.index.name = ts.index.name
+    return coarse
+
+
 def optimize_capacities(ts: pd.DataFrame, scenario: Scenario) -> SizedCapacities:
-    """Solve the investment LP and extract optimal capacities.
+    """Solve the investment LP at coarse resolution and extract optimal capacities.
+
+    `ts` is the hourly timeseries; it is downsampled here to
+    `scenario.sizing_resolution_h`-hour blocks before the solve. Snapshot
+    weightings (set in `build_network`) keep costs and storage dynamics in real
+    hours.
 
     BESS energy capacity fade cannot be time-varied on a StorageUnit, so the
     horizon-average degradation factor is applied to the fixed duration — a
     slight de-rating that approximates multi-year usable-capacity fade.
     """
-    n_years = max(1, round(len(ts) / 8760))
+    resolution_h = max(1, int(scenario.sizing_resolution_h))
+    ts = coarsen_timeseries(ts, resolution_h)
+    n_years = max(1, round(len(ts) * resolution_h / 8760))
     avg_bess_factor = (
         sum((1.0 - scenario.bess_degradation_rate) ** i for i in range(n_years)) / n_years
     )
@@ -131,7 +159,7 @@ def optimize_capacities(ts: pd.DataFrame, scenario: Scenario) -> SizedCapacities
     if not sizing_scn.include_bess:
         sizing_scn = dataclasses.replace(sizing_scn, max_build_bess_mw=0.0)
 
-    n = build_network(ts, sizing_scn)
+    n = build_network(ts, sizing_scn, resolution_h=resolution_h)
     status, condition = solve(n, sizing_scn, ts)
 
     # max(0, ·) clamps solver noise (e.g. -0.0 / -1e-9) at zero builds
@@ -150,6 +178,7 @@ def optimize_capacities(ts: pd.DataFrame, scenario: Scenario) -> SizedCapacities
         condition=condition,
         sizing_years_used=n_years,
         horizon_clamped=n_years < scenario.simulation_years,
+        resolution_h=resolution_h,
     )
 
 
