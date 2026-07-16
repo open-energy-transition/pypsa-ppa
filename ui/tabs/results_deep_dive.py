@@ -139,7 +139,9 @@ def _render_multi_year_counterfactuals(results, fin, s) -> None:
 def _render_multi_year_deep_dive() -> None:
     results = state.get_multi_year_results()
     fin = state.get_multi_year_financial()
-    s = state.get_scenario()
+    # Effective scenario: after a sizing run this carries the optimized
+    # capacities the results were actually produced with, not the slider values.
+    s = state.get_effective_scenario()
 
     # ── Year + day selectors ──────────────────────────────────────────────────
     year_options = [y.year for y in fin.yearly]

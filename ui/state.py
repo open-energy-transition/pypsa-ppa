@@ -24,7 +24,25 @@ OPTIMIZED_SIZES_KEY = "optimized_sizes"
 
 
 def get_scenario() -> "Scenario | None":
-    return st.session_state.get(SCENARIO_KEY)
+    s = st.session_state.get(SCENARIO_KEY)
+    if s is None:
+        return None
+
+    from ppa.scenario import Scenario as _Scenario
+
+    if s.__class__ is not _Scenario:
+        # The stored instance predates a code reload (Streamlit's file watcher
+        # re-imports ppa.scenario when it changes on disk): it may lack newly
+        # added fields (AttributeError on access) and its stale class identity
+        # breaks pickling into worker processes. Rebuild it from the current
+        # class, dropping removed fields and filling new ones with defaults.
+        import dataclasses as _dc
+
+        current_fields = {f.name for f in _dc.fields(_Scenario)}
+        data = {k: v for k, v in _dc.asdict(s).items() if k in current_fields}
+        s = _Scenario(**data)
+        st.session_state[SCENARIO_KEY] = s
+    return s
 
 
 _SCENARIO_FORM_KEYS = [
@@ -42,6 +60,27 @@ _SCENARIO_FORM_KEYS = [
     "sf_optimize_capacity", "sf_max_build_wind", "sf_max_build_pv", "sf_max_build_bess",
     "sf_sizing_resolution",
 ]
+
+
+def get_effective_scenario() -> "Scenario | None":
+    """The scenario as actually simulated — optimized capacities applied.
+
+    After a capacity-sizing run the session scenario deliberately keeps the
+    user's slider values and `optimize_capacity=True` (so re-runs re-size),
+    while the dispatch results were produced with the sized fleet. Any tab that
+    combines scenario capacities with result-derived values (capacity factors,
+    BESS SoC/cycles, CAPEX breakdowns) must read this accessor, not
+    `get_scenario`, or the numbers won't match the dispatch.
+    """
+    s = get_scenario()
+    if s is None or not s.optimize_capacity:
+        return s
+    sized = get_optimized_sizes()
+    if sized is None:
+        return s
+    from ppa.sizing import apply_sizing
+
+    return apply_sizing(s, sized)
 
 
 def set_scenario(s: "Scenario") -> None:
