@@ -10,7 +10,9 @@ from ui.charts import make_supply_mix_24h_chart, make_revenue_breakdown_chart
 
 
 def _render_multi_year_overview(fin) -> None:
-    s = state.get_scenario()
+    # Effective scenario: after a sizing run this carries the optimized
+    # capacities the results were actually produced with, not the slider values.
+    s = state.get_effective_scenario()
 
     # ── Lifetime KPIs ─────────────────────────────────────────────────────────
     st.subheader("Lifetime KPIs")
