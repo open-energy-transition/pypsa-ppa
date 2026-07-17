@@ -1,6 +1,6 @@
 pypsa==1.2.4
-highspy==1.14.0
-linopy==0.7.0
+highspy==1.15.1
+linopy==0.8.0
 pandas==2.3.3
 numpy==2.4.6
 pyarrow==24.0.0
