@@ -50,6 +50,7 @@ class RevenueBreakdown:
     penalty_cost: float
     net_revenue: float
     effective_capture_price: float
+    transmission_cost: float = 0.0
 
 
 @dataclass
@@ -144,7 +145,10 @@ def extract_results(
     excess_revenue = float((market_sell * ts["ts_MktPrice"]).sum())
     market_purchase_cost = float((market_buy * ts["ts_MktPrice"]).sum())
     penalty_cost = penalty_mwh * s.penalty_price
-    net_revenue = ppa_revenue + excess_revenue - market_purchase_cost - penalty_cost
+    transmission_cost = ppa_delivered_mwh * s.transmission_cost_eur_mwh
+    net_revenue = (
+        ppa_revenue + excess_revenue - market_purchase_cost - penalty_cost - transmission_cost
+    )
 
     total_gen_mwh = wind_generation_mwh + pv_generation_mwh + bess_dispatch_mwh
     effective_capture_price = net_revenue / total_gen_mwh if total_gen_mwh > 0 else 0.0
@@ -156,6 +160,7 @@ def extract_results(
         penalty_cost=penalty_cost,
         net_revenue=net_revenue,
         effective_capture_price=effective_capture_price,
+        transmission_cost=transmission_cost,
     )
 
     return OptimizationResult(

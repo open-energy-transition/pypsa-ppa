@@ -153,11 +153,13 @@ def build_network(ts: pd.DataFrame, scenario: Scenario, resolution_h: float = 1.
     sell_link_mw = build_cap_sum if sizing else s.maxsell_mw
 
     link_defs = [
-        ("OnshoreWind_to_IPPGeneration",   "Bus_OnshoreWind",   "Bus_IPPGeneration", wind_link_mw,   0.0),
-        ("PVBESS_to_IPPGeneration",        "Bus_PVBESS",        "Bus_IPPGeneration", pvbess_link_mw, 0.0),
-        ("BuyFromMarket_to_IPPGeneration", "Bus_BuyFromMarket", "Bus_IPPGeneration", s.maxbuy_mw,    0.0),
-        ("IPPGen_to_SellToMarket",         "Bus_IPPGeneration", "Bus_SellToMarket",  sell_link_mw,   0.0),
-        ("IPPGen_to_PPAOfftake",           "Bus_IPPGeneration", "Bus_PPAOfftake",    s.ppaload_mw,   -s.ppa_price),
+        ("OnshoreWind_to_IPPGeneration",   "Bus_OnshoreWind",   "Bus_IPPGeneration", s.onsw_mw,                      0.0),
+        ("PVBESS_to_IPPGeneration",        "Bus_PVBESS",        "Bus_IPPGeneration", s.pv_mw + s.effective_bess_mw,  0.0),
+        ("BuyFromMarket_to_IPPGeneration", "Bus_BuyFromMarket", "Bus_IPPGeneration", s.maxbuy_mw,                    0.0),
+        ("IPPGen_to_SellToMarket",         "Bus_IPPGeneration", "Bus_SellToMarket",  s.maxsell_mw,                   0.0),
+        # Delivery earns the PPA tariff but pays the combined transmission /
+        # grid-use charge per MWh, whatever the source (RE, BESS or market buy).
+        ("IPPGen_to_PPAOfftake",           "Bus_IPPGeneration", "Bus_PPAOfftake",    s.ppaload_mw,                   s.transmission_cost_eur_mwh - s.ppa_price),
     ]
 
     for name, bus0, bus1, p_nom, marginal_cost in link_defs:

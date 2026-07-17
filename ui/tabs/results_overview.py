@@ -134,7 +134,7 @@ def _render_single_day_overview() -> None:
     cols[1].metric(
         "Net Revenue",
         f"€{revenue.net_revenue / 1e6:,.2f}M",
-        help="PPA revenue + merchant revenue − market purchases − penalty costs (period total)",
+        help="PPA revenue + merchant revenue − market purchases − penalty costs − transmission costs (period total)",
     )
     cols[2].metric(
         "Effective Capture Price",
@@ -257,6 +257,7 @@ def _render_single_day_overview() -> None:
                 "Merchant revenue",
                 mkt_buy_label,
                 "Penalty cost",
+                "Transmission cost (combined)",
                 "Net revenue",
             ],
             "€": [
@@ -264,6 +265,7 @@ def _render_single_day_overview() -> None:
                 f"€{revenue.excess_revenue:,.0f}",
                 mkt_buy_display,
                 f"−€{revenue.penalty_cost:,.0f}",
+                f"−€{revenue.transmission_cost:,.0f}",
                 f"€{revenue.net_revenue:,.0f}",
             ],
         }

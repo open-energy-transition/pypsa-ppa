@@ -45,15 +45,21 @@ def _energy_source() -> tuple[EnergyInputs | None, list, bool]:
 
 
 def _num(label: str, key: str, default, *, step=None, fmt=None, pct=False, help=None, label_visibility="visible"):
-    """Number input that persists its own default into session state once."""
+    """Number input that persists its own default into session state once.
+
+    With ``pct=True`` the model value is a decimal fraction (e.g. 0.065) but is
+    displayed and edited in percent (6.5), and the return value is converted back
+    to a fraction. ``step`` and ``fmt`` are then given in percent terms."""
+    scale = 100.0 if pct else 1.0
     if key not in st.session_state:
-        st.session_state[key] = float(default) if not isinstance(default, int) else default
+        st.session_state[key] = float(default) * scale if not isinstance(default, int) else default
     kwargs = {}
     if step is not None:
         kwargs["step"] = step
     if fmt is not None:
         kwargs["format"] = fmt
-    return st.number_input(label, key=key, help=help, label_visibility=label_visibility, **kwargs, )
+    val = st.number_input(label, key=key, help=help, label_visibility=label_visibility, **kwargs, )
+    return val / scale if pct else val
 
 
 def _collect_inputs(seed: ProjectFinanceInputs, multi_year: bool) -> ProjectFinanceInputs:
@@ -103,22 +109,22 @@ def _collect_inputs(seed: ProjectFinanceInputs, multi_year: bool) -> ProjectFina
             bess_devex = _num("BESS  ", f + "bess_devex", seed.bess_devex, step=0.01, fmt="%.3f", label_visibility="collapsed")
 
         cols = st.columns(4)
-        cols[0].markdown("**Fixed O&M** (-/a of Investment)")
+        cols[0].markdown("**Fixed O&M** (€M/MW, €M/MWh p.a.)")
 
         with cols[1]:
-            onsw_om = _num("Onshore wind   ", f + "onsw_om", seed.onsw_fixed_om, step=0.005, fmt="%.4f", label_visibility="collapsed")
+            onsw_om = _num("Onshore wind   ", f + "onsw_om", seed.onsw_fixed_om, step=0.005, fmt="%.3f", label_visibility="collapsed")
 
         with cols[2]:
-            pv_om = _num("Solar PV   ", f + "pv_om", seed.pv_fixed_om, step=0.005, fmt="%.4f", label_visibility="collapsed")
+            pv_om = _num("Solar PV   ", f + "pv_om", seed.pv_fixed_om, step=0.005, fmt="%.3f", label_visibility="collapsed")
 
         with cols[3]:
-            bess_om = _num("BESS   ", f + "bess_om", seed.bess_fixed_om, step=0.005, fmt="%.4f", label_visibility="collapsed")
+            bess_om = _num("BESS   ", f + "bess_om", seed.bess_fixed_om, step=0.005, fmt="%.3f", label_visibility="collapsed")
 
         cols = st.columns(4)
         cols[0].markdown("**Ancillary** (% of revenue)")
 
         with cols[1]:
-            anc = _num("Ancillary (% of revenue)", f + "anc", seed.ancillary_pct, step=0.005, fmt="%.3f", label_visibility="collapsed")
+            anc = _num("Ancillary (% of revenue)", f + "anc", seed.ancillary_pct, step=0.1, fmt="%.2f", pct=True, label_visibility="collapsed")
 
     with st.expander("📅 Timing (development, construction, life)", expanded=False):
         cols = st.columns(4, vertical_alignment="bottom")
@@ -166,11 +172,11 @@ def _collect_inputs(seed: ProjectFinanceInputs, multi_year: bool) -> ProjectFina
             lgc = _num("LGC / GO price (€/MWh)", f + "lgc", seed.lgc_price, step=1.0)
         with cols[2]:
             offset = int(_num("Indexation offset (yrs)", f + "offset", seed.indexation_offset_years, step=1))
-            cost_infl = _num("Cost inflation (%/yr)", f + "cost_infl", seed.cost_inflation, step=0.005, fmt="%.3f")
+            cost_infl = _num("Cost inflation (%/yr)", f + "cost_infl", seed.cost_inflation, step=0.1, fmt="%.2f", pct=True)
         with cols[3]:
-            ppa_idx = _num("PPA & LGC indexation (%/yr)", f + "ppa_idx", seed.ppa_indexation, step=0.005, fmt="%.3f")
-            solar_infl = _num("Solar-hour price infl. (%/yr)", f + "solar_infl", seed.solar_price_inflation, step=0.005, fmt="%.3f")
-            nonsolar_infl = _num("Non-solar price infl. (%/yr)", f + "nonsolar_infl", seed.nonsolar_price_inflation, step=0.005, fmt="%.3f")
+            ppa_idx = _num("PPA & LGC indexation (%/yr)", f + "ppa_idx", seed.ppa_indexation, step=0.1, fmt="%.2f", pct=True)
+            solar_infl = _num("Solar-hour price infl. (%/yr)", f + "solar_infl", seed.solar_price_inflation, step=0.1, fmt="%.2f", pct=True)
+            nonsolar_infl = _num("Non-solar price infl. (%/yr)", f + "nonsolar_infl", seed.nonsolar_price_inflation, step=0.1, fmt="%.2f", pct=True)
         esc_key = f + "esc_merch"
         if esc_key not in st.session_state:
             st.session_state[esc_key] = not multi_year
@@ -195,21 +201,21 @@ def _collect_inputs(seed: ProjectFinanceInputs, multi_year: bool) -> ProjectFina
         with cols[0]:
             st.markdown("**Debt**")
             debt_tenor = int(_num("Repayment tenor (yrs)", f + "debt_tenor", seed.debt_tenor, step=1))
-            debt_rate = _num("Debt rate (%)", f + "debt_rate", seed.debt_rate, step=0.005, fmt="%.3f")
-            wacc = _num("Discount rate / WACC (%)", f + "wacc", seed.discount_rate, step=0.005, fmt="%.3f")
+            debt_rate = _num("Debt rate (%)", f + "debt_rate", seed.debt_rate, step=0.1, fmt="%.2f", pct=True)
+            wacc = _num("Discount rate / WACC (%)", f + "wacc", seed.discount_rate, step=0.1, fmt="%.2f", pct=True)
         with cols[1]:
             st.markdown("**DSCR**")
             dscr_c = _num("DSCR — contracted", f + "dscr_c", seed.dscr_contracted, step=0.05, fmt="%.2f")
             dscr_u = _num("DSCR — uncontracted", f + "dscr_u", seed.dscr_uncontracted, step=0.05, fmt="%.2f")
         with cols[2]:
             st.markdown("**Gearing**")
-            gear_c = _num("Max gearing — contracted", f + "gear_c", seed.max_gearing_contracted, step=0.05, fmt="%.2f")
-            gear_u = _num("Max gearing — uncontracted", f + "gear_u", seed.max_gearing_uncontracted, step=0.05, fmt="%.2f")
+            gear_c = _num("Max gearing — contracted (%)", f + "gear_c", seed.max_gearing_contracted, step=1.0, fmt="%.1f", pct=True)
+            gear_u = _num("Max gearing — uncontracted (%)", f + "gear_u", seed.max_gearing_uncontracted, step=1.0, fmt="%.1f", pct=True)
         with cols[3]:
             st.markdown("**Depreciation & tax**")
-            book_dep = _num("Book depreciation (%/yr)", f + "book_dep", seed.book_depreciation_rate, step=0.005, fmt="%.3f")
-            tax_dep = _num("Tax depreciation (%/yr)", f + "tax_dep", seed.tax_depreciation_rate, step=0.005, fmt="%.3f")
-            tax_rate = _num("Corporate tax rate (%)", f + "tax_rate", seed.corp_tax_rate, step=0.01, fmt="%.2f")
+            book_dep = _num("Book depreciation (%/yr)", f + "book_dep", seed.book_depreciation_rate, step=0.1, fmt="%.2f", pct=True)
+            tax_dep = _num("Tax depreciation (%/yr)", f + "tax_dep", seed.tax_depreciation_rate, step=0.1, fmt="%.2f", pct=True)
+            tax_rate = _num("Corporate tax rate (%)", f + "tax_rate", seed.corp_tax_rate, step=1.0, fmt="%.1f", pct=True)
 
     return ProjectFinanceInputs(
         onsw_build_cost=onsw_build, pv_build_cost=pv_build, bess_build_cost=bess_build,

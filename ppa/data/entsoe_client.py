@@ -1,4 +1,9 @@
-"""Fetch and cache German day-ahead prices from ENTSO-E Transparency Platform."""
+"""Fetch and cache European day-ahead prices from the ENTSO-E Transparency Platform.
+
+Prices are cached per bidding zone and year (``da_prices_{zone}_{year}.parquet``),
+so switching the scenario to a different zone triggers a fresh download rather
+than silently reusing another zone's prices.
+"""
 from __future__ import annotations
 
 from pathlib import Path

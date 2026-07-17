@@ -1,4 +1,4 @@
-"""Download European market and weather data for the active scenario location."""
+"""Download European market and weather data for the active scenario locations."""
 from __future__ import annotations
 
 import time
@@ -25,46 +25,62 @@ def _save_token(name: str, value: str) -> None:
 def render() -> None:
     st.title("📡 Download Data")
     st.markdown(
-        "Download market prices and wind/solar hourly profiles for the location defined in "
-        "your active scenario. Data is cached locally — downloads only happen once per location. "
+        "Download market prices and wind/solar hourly profiles for the locations defined in "
+        "your active scenario. Data is cached locally per bidding zone and per asset location — "
+        "downloads only happen once per zone/location. "
         "**Currently supported locations are in Europe only and cover the years 2018 until 2023.**"
     )
 
-    # ── Active location ───────────────────────────────────────────────────────
+    # ── Active locations & bidding zone ───────────────────────────────────────
     scenario = state.get_scenario()
     if scenario is None:
         st.info("Define a scenario in the **Case Study & Simulation** tab first.")
         return
 
     lat, lon = scenario.lat, scenario.lon
+    pv_lat, pv_lon = scenario.pv_location
+    wind_lat, wind_lon = scenario.wind_location
+    zone = scenario.bidding_zone
 
+    from ppa.data.bidding_zones import zone_label
     from ppa.data.entsoe_client import list_cached_years as list_cached_price_years, AVAILABLE_YEARS as PRICE_YEARS
-    from ppa.data.renewables_ninja import list_cached_years, AVAILABLE_YEARS
+    from ppa.data.renewables_ninja import list_cached_pv_years, list_cached_wind_years, AVAILABLE_YEARS
 
-    cached_price_years = list_cached_price_years()
+    cached_price_years = list_cached_price_years(country_code=zone)
     missing_prices = [y for y in PRICE_YEARS if y not in cached_price_years]
-    cached_cf_years = list_cached_years(lat=lat, lon=lon)
-    missing_cf = [y for y in AVAILABLE_YEARS if y not in cached_cf_years]
-    needs_download = bool(missing_prices) or bool(missing_cf)
+    cached_pv_years = list_cached_pv_years(lat=pv_lat, lon=pv_lon)
+    missing_pv = [y for y in AVAILABLE_YEARS if y not in cached_pv_years]
+    cached_wind_years = list_cached_wind_years(lat=wind_lat, lon=wind_lon)
+    missing_wind = [y for y in AVAILABLE_YEARS if y not in cached_wind_years]
+    needs_download = bool(missing_prices) or bool(missing_pv) or bool(missing_wind)
 
-    with st.expander("**Scenario location**", expanded=False):
+    with st.expander("**Scenario locations**", expanded=False):
         cols = st.columns([2, 2])
         with cols[0]:
-            # st.subheader("Active scenario location")
-            st.markdown(f"Location 1: **{lat:.2f}°N, {lon:.2f}°E**")
+            st.markdown(
+                f"Offtaker: **{lat:.2f}°N, {lon:.2f}°E** — bidding zone "
+                f"**{zone}** ({zone_label(zone)})"
+            )
+            st.markdown(f"PV asset: **{pv_lat:.2f}°N, {pv_lon:.2f}°E**")
+            st.markdown(f"Wind asset: **{wind_lat:.2f}°N, {wind_lon:.2f}°E**")
             st.info(
-                "To change location see **Case Setup** tab: "
-                "see *Customise parameters* → *Project Location*."
+                "To change locations or override the bidding zone see **Case Setup** tab: "
+                "*Customise parameters* → *Project Locations & Market Zone*."
             )
         with cols[1]:
-            st.map(pd.DataFrame({"lat": [lat], "lon": [lon]}), zoom=6, height=400)
-
-    #st.markdown("---")
+            points = pd.DataFrame(
+                {
+                    "lat": [lat, pv_lat, wind_lat],
+                    "lon": [lon, pv_lon, wind_lon],
+                    "color": ["#1565C0", "#F9A825", "#2E7D32"],
+                }
+            ).drop_duplicates(subset=["lat", "lon"])
+            st.map(points, zoom=5, height=400, color="color")
+            st.caption("🔵 Offtaker · 🟡 PV · 🟢 Wind")
 
     # ── API tokens ────────────────────────────────────────────────────────────
     expanded_status = True if needs_download else False
     with st.expander("**API tokens**", expanded=expanded_status):
-        # st.subheader("API tokens")
         cols = st.columns(4)
 
         with cols[0]:
@@ -100,11 +116,9 @@ def render() -> None:
     # ── Data status ───────────────────────────────────────────────────────────
     expanded_status = True if needs_download else False
     with st.expander("**Cache status**", expanded=expanded_status):
-        # st.subheader("Cache status")
-
         cols = st.columns(4)
         with cols[0]:
-            st.markdown("**ENTSO-E day-ahead (DA) prices**")
+            st.markdown(f"**ENTSO-E day-ahead (DA) prices — {zone}**")
 
         with cols[1]:
             if not missing_prices:
@@ -113,19 +127,22 @@ def render() -> None:
             elif cached_price_years:
                 st.warning(f"{len(cached_price_years)}/{len(PRICE_YEARS)} years cached. Missing: {missing_prices}")
             else:
-                st.warning(f"No years cached. Will download: {PRICE_YEARS}")
+                st.warning(f"No years cached for zone {zone}. Will download: {PRICE_YEARS}")
 
         with cols[2]:
-            st.markdown(f"**Renewables.ninja normalized renewable profiles**")
+            st.markdown("**Renewables.ninja normalized renewable profiles**")
 
         with cols[3]:
-            if not missing_cf:
-                st.success(f"All {len(AVAILABLE_YEARS)} years cached ✓ ")
-                st.caption(f"Available: {', '.join(str(y) for y in cached_cf_years)}")
-            elif cached_cf_years:
-                st.warning(f"{len(cached_cf_years)}/{len(AVAILABLE_YEARS)} years cached. Missing: {missing_cf}")
-            else:
-                st.warning(f"No years cached for this location. Will download: {AVAILABLE_YEARS}")
+            for label, cached, missing in [
+                (f"PV ({pv_lat:.2f}, {pv_lon:.2f})", cached_pv_years, missing_pv),
+                (f"Wind ({wind_lat:.2f}, {wind_lon:.2f})", cached_wind_years, missing_wind),
+            ]:
+                if not missing:
+                    st.success(f"{label}: all {len(AVAILABLE_YEARS)} years cached ✓")
+                elif cached:
+                    st.warning(f"{label}: {len(cached)}/{len(AVAILABLE_YEARS)} years cached. Missing: {missing}")
+                else:
+                    st.warning(f"{label}: no years cached. Will download: {AVAILABLE_YEARS}")
 
     # ── Download button ───────────────────────────────────────────────────────
     if not needs_download:
@@ -142,49 +159,63 @@ def render() -> None:
         key="dd_download",
         help="Downloads missing ENTSO-E prices and renewables.ninja CF profiles.",
     ):
-        _do_download(entsoe_token, ninja_token, lat, lon, missing_prices, missing_cf)
+        _do_download(
+            entsoe_token,
+            ninja_token,
+            zone,
+            (pv_lat, pv_lon),
+            (wind_lat, wind_lon),
+            missing_prices,
+            missing_pv,
+            missing_wind,
+        )
         st.rerun()
 
 
 def _do_download(
     entsoe_token: str,
     ninja_token: str,
-    lat: float,
-    lon: float,
+    zone: str,
+    pv_location: tuple[float, float],
+    wind_location: tuple[float, float],
     missing_price_years: list[int],
-    missing_cf_years: list[int],
+    missing_pv_years: list[int],
+    missing_wind_years: list[int],
 ) -> None:
-    total_steps = len(missing_price_years) + len(missing_cf_years) * 2
+    total_steps = len(missing_price_years) + len(missing_pv_years) + len(missing_wind_years)
     done = 0
     bar = st.progress(0, text="Preparing…")
 
-    # ENTSO-E prices — all missing years
+    # ENTSO-E prices — all missing years for the scenario's bidding zone
     from ppa.data.entsoe_client import fetch_day_ahead_prices
     for year in missing_price_years:
-        bar.progress(done / total_steps, text=f"Fetching {year} DE-LU day-ahead prices…")
+        bar.progress(done / total_steps, text=f"Fetching {year} {zone} day-ahead prices…")
         try:
-            fetch_day_ahead_prices(year, entsoe_token)
+            fetch_day_ahead_prices(year, entsoe_token, country_code=zone)
             done += 1
-            bar.progress(done / total_steps, text=f"ENTSO-E {year} prices downloaded ✓")
+            bar.progress(done / total_steps, text=f"ENTSO-E {zone} {year} prices downloaded ✓")
         except Exception as exc:
-            st.error(f"ENTSO-E {year} download failed: {exc}")
+            st.error(f"ENTSO-E {zone} {year} download failed: {exc}")
             return
 
-    # renewables.ninja CF profiles
+    # renewables.ninja CF profiles — PV and wind at their own asset locations
     from ppa.data import renewables_ninja as rn
-    for year in missing_cf_years:
+    pv_lat, pv_lon = pv_location
+    for year in missing_pv_years:
         bar.progress(done / total_steps, text=f"Downloading solar PV CF for {year}…")
         try:
-            rn.download_pv_cf(year, ninja_token, lat=lat, lon=lon)
+            rn.download_pv_cf(year, ninja_token, lat=pv_lat, lon=pv_lon)
         except Exception as exc:
             st.error(f"PV CF download failed for {year}: {exc}")
             return
         done += 1
         time.sleep(2)  # respect renewables.ninja rate limit
 
+    wind_lat, wind_lon = wind_location
+    for year in missing_wind_years:
         bar.progress(done / total_steps, text=f"Downloading wind CF for {year}…")
         try:
-            rn.download_wind_cf(year, ninja_token, lat=lat, lon=lon)
+            rn.download_wind_cf(year, ninja_token, lat=wind_lat, lon=wind_lon)
         except Exception as exc:
             st.error(f"Wind CF download failed for {year}: {exc}")
             return
