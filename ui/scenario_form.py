@@ -104,7 +104,7 @@ def render_scenario_form(initial: Scenario) -> Scenario:
                                           value=float(initial.ppa_price), step=5.0, key="sf_ppa_price")
         required_delivery_share = cols[2].slider(
             "Required delivery share (%)", 50, 100, int(initial.required_delivery_share * 100),
-            step=5, format="%d%%",
+            step=1, format="%d%%",
             help="Fraction of total contracted load that must be delivered on average.",
             key="sf_required_delivery_share",
         ) / 100.0

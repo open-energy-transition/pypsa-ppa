@@ -6,6 +6,13 @@ import numpy as np
 import pandas as pd
 import pypsa
 
+pypsa.options.general.allow_network_requests = False
+pypsa.options.params.statistics.drop_zero = True
+pypsa.options.params.statistics.round = 2
+pypsa.options.params.optimize.log_to_console = False
+pypsa.options.params.optimize.include_objective_constant = False
+pypsa.options.api.new_components_api = True
+
 from ppa.scenario import Scenario
 
 
@@ -75,19 +82,19 @@ def extract_results(
     s = scenario
 
     # ── Dispatch series ───────────────────────────────────────────────────────
-    wind_gen = n.generators_t.p["Gen_OnshoreWind"]
-    pv_gen = n.generators_t.p["Gen_PV"]
-    market_buy = n.generators_t.p["Gen_BuyFromMarket"]
-    allowed_shortfall = n.generators_t.p["Gen_AllowedShortfall"]
-    penalty_gen = n.generators_t.p["Gen_Penalty"]
-    market_sell = n.generators_t.p["Gen_SellToMarket"]
+    wind_gen = n.generators.dynamic.p["Gen_OnshoreWind"]
+    pv_gen = n.generators.dynamic.p["Gen_PV"]
+    market_buy = n.generators.dynamic.p["Gen_BuyFromMarket"]
+    allowed_shortfall = n.generators.dynamic.p["Gen_AllowedShortfall"]
+    penalty_gen = n.generators.dynamic.p["Gen_Penalty"]
+    market_sell = n.generators.dynamic.p["Gen_SellToMarket"]
 
-    bess_dispatch = n.storage_units_t.p_dispatch["SU_BESS"]
-    bess_store = n.storage_units_t.p_store["SU_BESS"]
-    soc = n.storage_units_t.state_of_charge["SU_BESS"]
+    bess_dispatch = n.storage_units.dynamic.p_dispatch["SU_BESS"]
+    bess_store = n.storage_units.dynamic.p_store["SU_BESS"]
+    soc = n.storage_units.dynamic.state_of_charge["SU_BESS"]
 
     # Links: p1 is negative when supplying to bus1 — negate for positive delivered MW
-    ppa_delivery = -n.links_t.p1["IPPGen_to_PPAOfftake"]
+    ppa_delivery = -n.links.dynamic.p1["IPPGen_to_PPAOfftake"]
 
     dispatch = DispatchSeries(
         wind_gen=wind_gen,

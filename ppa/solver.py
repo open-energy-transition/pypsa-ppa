@@ -3,6 +3,13 @@ from __future__ import annotations
 import pandas as pd
 import pypsa
 
+pypsa.options.general.allow_network_requests = False
+pypsa.options.params.statistics.drop_zero = True
+pypsa.options.params.statistics.round = 2
+pypsa.options.params.optimize.log_to_console = False
+pypsa.options.params.optimize.include_objective_constant = False
+pypsa.options.api.new_components_api = True
+
 from ppa.scenario import Scenario
 
 
@@ -23,7 +30,7 @@ def solve(
     gen_p = m.variables["Generator-p"]
     link_p = m.variables["Link-p"]
 
-    load = n.loads_t.p_set["Load_PPAOfftake"]
+    load = n.loads.dynamic.p_set["Load_PPAOfftake"]
 
     # In a multi-year sizing LP the caps must bind per calendar year — one
     # aggregate constraint over 25 years would let the optimizer concentrate all
@@ -65,10 +72,5 @@ def solve(
     status, condition = n.optimize.solve_model(
         solver_name=solver_name,
         io_api="direct",
-        solver_options={
-            # general solver settings
-            "output_flag": False,
-            "log_to_console": False,
-        },
     )
     return status, condition

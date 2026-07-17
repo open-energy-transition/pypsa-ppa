@@ -264,72 +264,73 @@ def _render_results(r) -> None:
     # st.markdown("---")
     cols = st.columns(2)
 
-    tab_chart1, tab_chart2, tab_chart3, tab_chart4 = st.tabs([
-        "| Cumulative equity cash flow (FCFE)", 
-        "| Revenue: contracted vs uncontracted", 
-        "| Debt service & DSCR",
-        "| Annual schedule table",
-    ])
-    with tab_chart1:
-        # Cumulative equity cash flow
-        st.markdown("**Cumulative equity cash flow (FCFE)**")
-        cum = np.cumsum(sc["fcfe"])
-        fig = go.Figure()
-        fig.add_trace(go.Scatter(x=periods, y=cum, mode="lines", name="Cumulative FCFE",
-                                 line=dict(color="#2E7D32", width=2), fill="tozeroy",
-                                 fillcolor="rgba(46,125,50,0.08)"))
-        fig.add_hline(y=0, line_dash="dash", line_color="gray")
-        fig.update_layout(height=400, margin=dict(t=10, b=30), xaxis_title="Period",
-                          yaxis_title="€m")
-        st.plotly_chart(fig, width="stretch")
+    with st.expander("**Annual results**", expanded=True):
+        tab_chart1, tab_chart2, tab_chart3, tab_chart4 = st.tabs([
+            "| Cumulative equity cash flow (FCFE)", 
+            "| Revenue: contracted vs uncontracted", 
+            "| Debt service & DSCR",
+            "| Annual schedule table",
+        ])
+        with tab_chart1:
+            # Cumulative equity cash flow
+            st.markdown("**Cumulative equity cash flow (FCFE)**")
+            cum = np.cumsum(sc["fcfe"])
+            fig = go.Figure()
+            fig.add_trace(go.Scatter(x=periods, y=cum, mode="lines", name="Cumulative FCFE",
+                                    line=dict(color="#2E7D32", width=2), fill="tozeroy",
+                                    fillcolor="rgba(46,125,50,0.08)"))
+            fig.add_hline(y=0, line_dash="dash", line_color="gray")
+            fig.update_layout(height=400, margin=dict(t=10, b=30), xaxis_title="Period",
+                            yaxis_title="€m")
+            st.plotly_chart(fig, width="stretch")
 
-    with tab_chart2:
-        # Revenue split
-        st.markdown("**Revenue: contracted vs uncontracted**")
-        fig = go.Figure()
-        fig.add_trace(go.Bar(x=periods[ops], y=sc["net_contracted_rev"][ops],
-                             name="Contracted", marker_color="#1565C0"))
-        fig.add_trace(go.Bar(x=periods[ops], y=sc["net_uncontracted_rev"][ops],
-                             name="Uncontracted (merchant + LGC)", marker_color="#90CAF9"))
-        fig.update_layout(barmode="stack", height=400, margin=dict(t=10, b=30),
-                          xaxis_title="Period", yaxis_title="€m",
-                          legend=dict(orientation="h", y=1.15))
-        st.plotly_chart(fig, width="stretch")
+        with tab_chart2:
+            # Revenue split
+            st.markdown("**Revenue: contracted vs uncontracted**")
+            fig = go.Figure()
+            fig.add_trace(go.Bar(x=periods[ops], y=sc["net_contracted_rev"][ops],
+                                name="Contracted", marker_color="#1565C0"))
+            fig.add_trace(go.Bar(x=periods[ops], y=sc["net_uncontracted_rev"][ops],
+                                name="Uncontracted (merchant + LGC)", marker_color="#90CAF9"))
+            fig.update_layout(barmode="stack", height=400, margin=dict(t=10, b=30),
+                            xaxis_title="Period", yaxis_title="€m",
+                            legend=dict(orientation="h", y=1.15))
+            st.plotly_chart(fig, width="stretch")
 
-    with tab_chart3:
-        # Debt balance & DSCR
-        st.markdown("**Debt service & DSCR**")
-        fig = go.Figure()
-        fig.add_trace(go.Bar(x=periods[ops], y=sc["interest"][ops], name="Interest", marker_color="#EF6C00"))
-        fig.add_trace(go.Bar(x=periods[ops], y=sc["loan_repay"][ops], name="Principal", marker_color="#FFB74D"))
-        dscr = sc["dscr"]
-        fig.add_trace(go.Scatter(x=periods[ops], y=dscr[ops], name="DSCR", yaxis="y2",
-                                mode="lines+markers", line=dict(color="#1B5E20", width=2)))
-        fig.update_layout(barmode="stack", height=400, margin=dict(t=10, b=30),
-                        xaxis_title="Period", yaxis_title="€m",
-                        yaxis2=dict(title="DSCR", overlaying="y", side="right", showgrid=False),
-                        legend=dict(orientation="h", y=1.15))
-        st.plotly_chart(fig, width="stretch")
+        with tab_chart3:
+            # Debt balance & DSCR
+            st.markdown("**Debt service & DSCR**")
+            fig = go.Figure()
+            fig.add_trace(go.Bar(x=periods[ops], y=sc["interest"][ops], name="Interest", marker_color="#EF6C00"))
+            fig.add_trace(go.Bar(x=periods[ops], y=sc["loan_repay"][ops], name="Principal", marker_color="#FFB74D"))
+            dscr = sc["dscr"]
+            fig.add_trace(go.Scatter(x=periods[ops], y=dscr[ops], name="DSCR", yaxis="y2",
+                                    mode="lines+markers", line=dict(color="#1B5E20", width=2)))
+            fig.update_layout(barmode="stack", height=400, margin=dict(t=10, b=30),
+                            xaxis_title="Period", yaxis_title="€m",
+                            yaxis2=dict(title="DSCR", overlaying="y", side="right", showgrid=False),
+                            legend=dict(orientation="h", y=1.15))
+            st.plotly_chart(fig, width="stretch")
 
-    with tab_chart4:
-        # Annual schedule table
-        df = pd.DataFrame({
-            "Period": periods.astype(int),
-            "Net contracted rev": sc["net_contracted_rev"],
-            "Net uncontracted rev": sc["net_uncontracted_rev"],
-            "Opex": -sc["opex"],
-            "EBITDA": sc["ebitda"],
-            "Interest": -sc["interest"],
-            "Loan repay": -sc["loan_repay"],
-            "Book dep": -sc["book_dep"],
-            "Tax": -sc["tax"],
-            "PAT": sc["pat"],
-            "FCFF": sc["fcff"],
-            "FCFE": sc["fcfe"],
-            "DSCR": sc["dscr"],
-        })
-        df = df[(df["Period"] >= 1)].round(2)
-        st.dataframe(df.set_index("Period"), width="stretch", height="content")
+        with tab_chart4:
+            # Annual schedule table
+            df = pd.DataFrame({
+                "Period": periods.astype(int),
+                "Net contracted rev": sc["net_contracted_rev"],
+                "Net uncontracted rev": sc["net_uncontracted_rev"],
+                "Opex": -sc["opex"],
+                "EBITDA": sc["ebitda"],
+                "Interest": -sc["interest"],
+                "Loan repay": -sc["loan_repay"],
+                "Book dep": -sc["book_dep"],
+                "Tax": -sc["tax"],
+                "PAT": sc["pat"],
+                "FCFF": sc["fcff"],
+                "FCFE": sc["fcfe"],
+                "DSCR": sc["dscr"],
+            })
+            df = df[(df["Period"] >= 1)].round(2)
+            st.dataframe(df.set_index("Period"), width="stretch", height="content")
 
 
 # ── Tab entry point ────────────────────────────────────────────────────────────
@@ -410,7 +411,7 @@ def render() -> None:
 
     # ── Export ────────────────────────────────────────────────────────────────
     # st.markdown("---")
-    with st.expander("⚡ Export financial model as Excel(R) file", expanded=True):
+    with st.expander("⚡ Export financial model as Excel(R) file", expanded=False):
         # st.subheader("Export")
         n_years = len(results_list)
         st.caption(

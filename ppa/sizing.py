@@ -195,9 +195,15 @@ def optimize_capacities(ts: pd.DataFrame, scenario: Scenario) -> SizedCapacities
     status, condition = solve(n, sizing_scn, ts)
 
     # max(0, ·) clamps solver noise (e.g. -0.0 / -1e-9) at zero builds
-    onsw_mw = max(0.0, float(n.generators.p_nom_opt["Gen_OnshoreWind"]))
-    pv_mw = max(0.0, float(n.generators.p_nom_opt["Gen_PV"]))
-    bess_mw = max(0.0, float(n.storage_units.p_nom_opt["SU_BESS"]))
+    if "p_nom_opt" in n.generators.static.columns:
+        onsw_mw = max(0.0, float(n.generators.static.p_nom_opt["Gen_OnshoreWind"]))
+        pv_mw = max(0.0, float(n.generators.static.p_nom_opt["Gen_PV"]))
+        bess_mw = max(0.0, float(n.storage_units.static.p_nom_opt["SU_BESS"]))
+    else:
+        onsw_mw = 0.0
+        pv_mw = 0.0
+        bess_mw = 0.0
+
     # Report undegraded nameplate energy (the simulation applies fade per year itself)
     bess_mwh = bess_mw * scenario.bess_max_hours
 

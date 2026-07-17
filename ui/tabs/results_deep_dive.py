@@ -29,22 +29,14 @@ def _render_dispatch_section(result, s, chosen_day: str) -> None:
 
     tab_chart1, tab_chart2, tab_chart3 = st.tabs([
         "| Actual hourly supply mix", 
-        "| BESS SoC", 
         "| Market spot price",
+        "| BESS SoC", 
     ])
     with tab_chart1:
         fig = make_supply_mix_day_chart(day_mix, s.ppaload_mw, chosen_day)
         st.plotly_chart(fig, width="stretch", height=400)
 
     with tab_chart2:
-        if s.include_bess and s.effective_bess_mwh > 0:
-            #st.subheader("BESS state of charge")
-            fig_soc = make_soc_chart(result.dispatch.soc, s.effective_bess_mwh)
-            st.plotly_chart(fig_soc, width="stretch", height=400)
-        else:
-            st.info("No BESS included in this scenario.")
-
-    with tab_chart3:
         if getattr(result, "market_prices", None) is not None:
             # st.subheader("Market spot price")
             price_day = result.market_prices[result.market_prices.index.strftime("%Y-%m-%d") == chosen_day]
@@ -52,6 +44,14 @@ def _render_dispatch_section(result, s, chosen_day: str) -> None:
             st.plotly_chart(fig_price, width="stretch", height=400)
         else:
             st.info("No market price data available for this scenario.")
+
+    with tab_chart3:
+        if s.include_bess and s.effective_bess_mwh > 0:
+            #st.subheader("BESS state of charge")
+            fig_soc = make_soc_chart(result.dispatch.soc, s.effective_bess_mwh)
+            st.plotly_chart(fig_soc, width="stretch", height=400)
+        else:
+            st.info("No BESS included in this scenario.")
 
 
 def _render_gen_stats(result, s) -> None:
@@ -143,29 +143,8 @@ def _render_multi_year_deep_dive() -> None:
     # capacities the results were actually produced with, not the slider values.
     s = state.get_effective_scenario()
 
-    # ── Year + day selectors ──────────────────────────────────────────────────
-    year_options = [y.year for y in fin.yearly]
-    cols = st.columns(4)
-    selected_year = cols[0].selectbox("Optimization year", year_options, key="dd_year")
-    year_idx = year_options.index(selected_year)
-    result = results[year_idx]
-
-    available_days = sorted(result.dispatch.wind_gen.index.normalize().unique().strftime("%Y-%m-%d"))
-    chosen_day = cols[2].selectbox("Day to inspect", available_days, index=0, key="dd_chosen_day1")
-
-    # ── Financial summary for selected year ───────────────────────────────────
-    # st.markdown("---")
-    with st.expander(f"Financial summary for {selected_year}", expanded=True):
-        yf = fin.yearly[year_idx]
-        cols = st.columns(5)
-        cols[0].metric("PPA Revenue", f"€{yf.ppa_revenue / 1e6:.2f}M")
-        cols[1].metric("Merchant Revenue", f"€{yf.merch_revenue / 1e6:.2f}M")
-        cols[2].metric("Net Cash Flow", f"€{yf.net_cashflow / 1e6:.2f}M")
-        cols[3].metric("Delivery Rate", f"{yf.fulfilled_share:.1%}")
-        cols[4].metric("Wind+PV Gen", f"{(yf.wind_gen_mwh + yf.pv_gen_mwh) / 1e3:.0f} GWh")
-
     # ── Lifetime project economics ────────────────────────────────────────────
-    with st.expander("Lifetime project economics", expanded=False):
+    with st.expander("Lifetime project economics", expanded=True):
         cols = st.columns(2)
         with cols[0]:
             st.markdown("**CAPEX & OPEX**")
@@ -198,24 +177,47 @@ def _render_multi_year_deep_dive() -> None:
             )
             st.dataframe(econ_df, hide_index=True, width="stretch")
 
+    # ── Year + day selectors ──────────────────────────────────────────────────
+    year_options = [y.year for y in fin.yearly]
+    cols = st.columns(4)
+    selected_year = cols[0].selectbox("**Year to analyze:**", year_options, key="dd_year")
+    year_idx = year_options.index(selected_year)
+    result = results[year_idx]
+
+    available_days = sorted(result.dispatch.wind_gen.index.normalize().unique().strftime("%Y-%m-%d"))
+
+    # ── Financial summary for selected year ───────────────────────────────────
+    # st.markdown("---")
+    with st.expander(f"Financial summary for {selected_year}", expanded=False):
+        yf = fin.yearly[year_idx]
+        cols = st.columns(5)
+        cols[0].metric("PPA Revenue", f"€{yf.ppa_revenue / 1e6:.2f}M")
+        cols[1].metric("Merchant Revenue", f"€{yf.merch_revenue / 1e6:.2f}M")
+        cols[2].metric("Net Cash Flow", f"€{yf.net_cashflow / 1e6:.2f}M")
+        cols[3].metric("Delivery Rate", f"{yf.fulfilled_share:.1%}")
+        cols[4].metric("Wind+PV Gen", f"{(yf.wind_gen_mwh + yf.pv_gen_mwh) / 1e3:.0f} GWh")
+
     # ── Daily dispatch ────────────────────────────────────────────────────────
     # st.markdown("---")
-    tab_chart1, tab_chart2, tab_chart3 = st.tabs([
-        "| Hourly dispatch", 
-        "| Generation statistics", 
-        "| Counterfactual procurement comparison",
-    ])
-    with tab_chart1:
-        # st.subheader(f"Hourly dispatch — {chosen_day}")
-        _render_dispatch_section(result, result.scenario, chosen_day)
-    with tab_chart2:
-        # ── Generation statistics ─────────────────────────────────────────────────
-        st.caption(f"High-level generation statistics for {selected_year}")
-        _render_gen_stats(result, result.scenario)
-    with tab_chart3:
-        # ── Counterfactual procurement comparison ─────────────────────────────────
-        # st.subheader("Counterfactual procurement comparison")
-        _render_multi_year_counterfactuals(results, fin, s)
+    with st.expander(f"Detailed results", expanded=False):
+        tab_chart1, tab_chart2, tab_chart3 = st.tabs([
+            "| Hourly dispatch", 
+            "| Generation statistics", 
+            "| Counterfactual procurement comparison",
+        ])
+        with tab_chart1:
+            # st.subheader(f"Hourly dispatch — {chosen_day}")
+            cols = st.columns(4)
+            chosen_day = cols[0].selectbox("Day to inspect", available_days, index=0, key="dd_chosen_day1")
+            _render_dispatch_section(result, result.scenario, chosen_day)
+        with tab_chart2:
+            # ── Generation statistics ─────────────────────────────────────────────────
+            st.caption(f"High-level generation statistics for {selected_year}")
+            _render_gen_stats(result, result.scenario)
+        with tab_chart3:
+            # ── Counterfactual procurement comparison ─────────────────────────────────
+            # st.subheader("Counterfactual procurement comparison")
+            _render_multi_year_counterfactuals(results, fin, s)
 
 
 def _render_single_day_deep_dive() -> None:
