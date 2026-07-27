@@ -98,16 +98,13 @@ def _degraded_scenario(scenario: Scenario, year_idx: int) -> Scenario:
     """
     Return a copy of `scenario` with technology degradation applied for simulation year `year_idx`.
 
-    year_idx is 0-based (year_idx=0 → no degradation, year_idx=1 → one year of degradation, …).
     Wind/solar degradation scales the effective CF via p_nom reduction; BESS degradation
     reduces usable energy capacity.
+    Even the first year has on average already half a degradation to consider.
     """
-    if year_idx == 0:
-        return scenario
-
-    pv_factor = (1.0 - scenario.pv_degradation_rate) ** year_idx
-    wind_factor = (1.0 - scenario.wind_degradation_rate) ** year_idx
-    bess_factor = (1.0 - scenario.bess_degradation_rate) ** year_idx
+    pv_factor = (1.0 - scenario.pv_degradation_rate) ** (year_idx+0.5)
+    wind_factor = (1.0 - scenario.wind_degradation_rate) ** (year_idx+0.5)
+    bess_factor = (1.0 - scenario.bess_degradation_rate) ** (year_idx+0.5)
 
     return dataclasses.replace(
         scenario,
