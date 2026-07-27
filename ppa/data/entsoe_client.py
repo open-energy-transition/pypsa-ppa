@@ -14,7 +14,7 @@ CACHE_DIR = Path(__file__).parent.parent.parent / "data" / "cache" / "entsoe"
 DE_LU = "DE_LU"
 
 # Historical years available — matches renewables.ninja CF range
-AVAILABLE_YEARS: list[int] = [2018, 2019, 2020, 2021, 2022, 2023]
+AVAILABLE_YEARS: list[int] = [2018, 2019, 2020, 2021, 2022, 2023, 2024]
 
 
 def fetch_day_ahead_prices(

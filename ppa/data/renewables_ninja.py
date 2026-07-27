@@ -16,7 +16,7 @@ DEFAULT_LAT = 51.5
 DEFAULT_LON = 10.0
 
 # Historical weather years to cycle over for multi-year simulations
-AVAILABLE_YEARS = list(range(2018, 2024))  # 2018–2023
+AVAILABLE_YEARS = list(range(2018, 2025))  # 2015–2024
 
 
 def _auth_headers(token: str) -> dict:

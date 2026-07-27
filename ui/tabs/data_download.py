@@ -28,7 +28,7 @@ def render() -> None:
         "Download market prices and wind/solar hourly profiles for the locations defined in "
         "your active scenario. Data is cached locally per bidding zone and per asset location — "
         "downloads only happen once per zone/location. "
-        "**Currently supported locations are in Europe only and cover the years 2018 until 2023.**"
+        "**Currently supported locations are in Europe only and cover the years 2018 until 2024.**"
     )
 
     # ── Active locations & bidding zone ───────────────────────────────────────
