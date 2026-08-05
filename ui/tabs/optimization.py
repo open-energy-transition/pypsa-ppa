@@ -123,13 +123,15 @@ def _render_data_status(s) -> tuple[bool, bool]:
     pv_lat, pv_lon = s.pv_location
     wind_lat, wind_lon = s.wind_location
 
+    custom = state.get_custom_timeseries() or {}
+
     cached_price_years = list_cached_price_years(country_code=zone)
-    prices_ok = len(cached_price_years) > 0
+    prices_ok = len(cached_price_years) > 0 or bool(custom.get("price"))
     cached_cf_years = sorted(
         set(list_cached_pv_years(lat=pv_lat, lon=pv_lon))
         & set(list_cached_wind_years(lat=wind_lat, lon=wind_lon))
     )
-    cf_ok = len(cached_cf_years) > 0
+    cf_ok = len(cached_cf_years) > 0 or (bool(custom.get("pv_cf")) and bool(custom.get("wind_cf")))
 
     cols = st.columns(2)
     with cols[0]:
@@ -139,6 +141,8 @@ def _render_data_status(s) -> tuple[bool, bool]:
             st.warning(f"{label} (missing: {missing})") if missing else st.success(f"{label} ✓")
         else:
             st.warning(f"No ENTSO-E prices cached for zone {zone} — go to **Get Data** tab")
+        if custom.get("price"):
+            st.caption(f"+ custom price data for year(s): {sorted(custom['price'])}")
 
     with cols[1]:
         if cf_ok:
@@ -150,6 +154,9 @@ def _render_data_status(s) -> tuple[bool, bool]:
                 f"No CF profiles cached for PV ({pv_lat:.2f}, {pv_lon:.2f}) + "
                 f"wind ({wind_lat:.2f}, {wind_lon:.2f}) — go to **Download Data** tab"
             )
+        custom_cf_years = sorted(set(custom.get("pv_cf", {})) & set(custom.get("wind_cf", {})))
+        if custom_cf_years:
+            st.caption(f"+ custom CF data for year(s): {custom_cf_years}")
 
     return prices_ok, cf_ok
 
@@ -178,6 +185,14 @@ def _run_simulation(scenario, max_workers: int) -> None:
     prices_by_year: dict[int, pd.Series] = {}
     for year in list_cached_price_years(country_code=zone):
         prices_by_year[year] = fetch_day_ahead_prices(year, "", country_code=zone)
+
+    # User-uploaded custom timeseries override cached/downloaded data year-by-year
+    # (see ppa/data/custom_timeseries.py + the Download Data tab's import UI).
+    custom = state.get_custom_timeseries()
+    if custom:
+        pv_by_year.update(custom.get("pv_cf", {}))
+        wind_by_year.update(custom.get("wind_cf", {}))
+        prices_by_year.update(custom.get("price", {}))
 
     # Fall back to any available price year if a CF year has no matching price year
     # (prices_by_year is cycled the same way as CF in pick_weather_year)
