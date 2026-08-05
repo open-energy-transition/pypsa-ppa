@@ -172,6 +172,7 @@ def render() -> None:
             if st.button("Clear custom timeseries", key="dd_clear_custom"):
                 state.clear_custom_timeseries()
                 st.session_state.pop("_dd_custom_upload_fp", None)
+                st.session_state.pop("_dd_custom_upload_pending", None)
                 st.rerun()
 
         st.markdown(
@@ -197,20 +198,20 @@ def render() -> None:
 
         uploaded = st.file_uploader("Re-upload edited CSV", type=["csv"], key="dd_custom_upload")
         if uploaded is not None:
-            # file_uploader keeps the last upload across reruns, so only (re)process
-            # it once per distinct file — otherwise the post-success st.rerun() below
-            # would re-trigger this branch forever.
+            # file_uploader keeps the last upload across reruns, so only (re)validate
+            # it once per distinct file — the parsed result is staged as "pending"
+            # until the user explicitly clicks Apply, it's never applied automatically.
             fingerprint = (uploaded.name, uploaded.size)
             if st.session_state.get("_dd_custom_upload_fp") != fingerprint:
                 st.session_state["_dd_custom_upload_fp"] = fingerprint
+                st.session_state.pop("_dd_custom_upload_pending", None)
                 try:
                     parsed = parse_and_validate(uploaded.getvalue())
                 except TemplateValidationError as exc:
                     st.session_state["_dd_custom_upload_error"] = exc.errors
                 else:
                     st.session_state.pop("_dd_custom_upload_error", None)
-                    state.set_custom_timeseries(parsed)
-                    st.rerun()
+                    st.session_state["_dd_custom_upload_pending"] = parsed
 
             errors = st.session_state.get("_dd_custom_upload_error")
             if errors:
@@ -219,6 +220,22 @@ def render() -> None:
                     st.markdown(f"- {msg}")
                 if len(errors) > 15:
                     st.caption(f"...and {len(errors) - 15} more issue(s).")
+
+            pending = st.session_state.get("_dd_custom_upload_pending")
+            if pending is not None:
+                pending_years = sorted(
+                    set(pending.get("price", {}))
+                    | set(pending.get("pv_cf", {}))
+                    | set(pending.get("wind_cf", {}))
+                )
+                st.info(
+                    f"File validated for weather year(s) {pending_years} — **not applied yet**. "
+                    "Click below to use it in the next run."
+                )
+                if st.button("Apply custom timeseries", type="primary", key="dd_apply_custom"):
+                    state.set_custom_timeseries(pending)
+                    st.session_state.pop("_dd_custom_upload_pending", None)
+                    st.rerun()
 
     # ── Download button ───────────────────────────────────────────────────────
     if not needs_download:
