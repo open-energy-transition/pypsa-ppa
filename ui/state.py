@@ -21,6 +21,7 @@ MULTI_YEAR_RESULTS_KEY = "multi_year_results"
 MULTI_YEAR_FINANCIAL_KEY = "multi_year_financial"
 PROJECT_FINANCE_KEY = "project_finance_result"
 OPTIMIZED_SIZES_KEY = "optimized_sizes"
+CUSTOM_TIMESERIES_KEY = "custom_timeseries"
 
 
 def get_scenario() -> "Scenario | None":
@@ -192,6 +193,28 @@ def set_optimized_sizes(sized: "object") -> None:
 
 def has_optimized_sizes() -> bool:
     return OPTIMIZED_SIZES_KEY in st.session_state
+
+
+def get_custom_timeseries() -> "dict[str, dict[int, pd.Series]] | None":
+    """User-uploaded price/PV-CF/wind-CF overrides, keyed by weather year.
+
+    Shape: ``{"price": {year: Series}, "pv_cf": {year: Series}, "wind_cf": {year: Series}}``.
+    Only years present here override the downloaded/cached data for that series;
+    other years keep using cache as usual. Session-only — never written to disk.
+    """
+    return st.session_state.get(CUSTOM_TIMESERIES_KEY)
+
+
+def set_custom_timeseries(data: "dict[str, dict[int, pd.Series]]") -> None:
+    st.session_state[CUSTOM_TIMESERIES_KEY] = data
+
+
+def has_custom_timeseries() -> bool:
+    return bool(st.session_state.get(CUSTOM_TIMESERIES_KEY))
+
+
+def clear_custom_timeseries() -> None:
+    st.session_state.pop(CUSTOM_TIMESERIES_KEY, None)
 
 
 def get_project_finance() -> "object | None":

@@ -144,6 +144,99 @@ def render() -> None:
                 else:
                     st.warning(f"{label}: no years cached. Will download: {AVAILABLE_YEARS}")
 
+    # ── Custom timeseries import ────────────────────────────────────────────────
+    from ppa.data.custom_timeseries import (
+        TEMPLATE_YEARS,
+        TemplateValidationError,
+        build_template,
+        parse_and_validate,
+        template_to_csv_bytes,
+    )
+
+    custom = state.get_custom_timeseries()
+    custom_expanded = bool(custom)
+    with st.expander("**Import custom timeseries**", expanded=custom_expanded):
+        st.markdown(
+            "Rather than using the publicly available ENTSO-E / renewables.ninja data, you "
+            "can substitute your own day-ahead price and PV/wind capacity-factor data for "
+            f"any of the weather years this app cycles through ({TEMPLATE_YEARS[0]}–{TEMPLATE_YEARS[-1]})."
+        )
+
+        if custom:
+            active_years = sorted(
+                set(custom.get("price", {}))
+                | set(custom.get("pv_cf", {}))
+                | set(custom.get("wind_cf", {}))
+            )
+            st.success(f"Custom timeseries active for weather year(s): {active_years}")
+            if st.button("Clear custom timeseries", key="dd_clear_custom"):
+                state.clear_custom_timeseries()
+                st.session_state.pop("_dd_custom_upload_fp", None)
+                st.session_state.pop("_dd_custom_upload_pending", None)
+                st.rerun()
+
+        st.markdown(
+            "1. **Download the template** below — it's pre-filled with whatever is already "
+            "cached for this scenario's zone/locations (blank where nothing is cached yet).\n"
+            "2. Edit `price_eur_mwh` (€/MWh), `pv_capacity_factor` and `wind_capacity_factor` "
+            "(both 0–1) for the year(s) you want to override. Leave other years untouched, or "
+            "delete their rows entirely — only years present in the re-uploaded file are "
+            "overridden, every other year keeps using downloaded/cached data.\n"
+            "3. Don't edit `year`, `hour_of_year` or `timestamp_utc` — rows are matched back "
+            "positionally by hour-of-year, and edits there will fail validation.\n"
+            "4. Re-upload the edited CSV below."
+        )
+
+        template_df = build_template(zone, (pv_lat, pv_lon), (wind_lat, wind_lon))
+        st.download_button(
+            "Download template CSV",
+            data=template_to_csv_bytes(template_df),
+            file_name=f"custom_timeseries_template_{zone}.csv",
+            mime="text/csv",
+            key="dd_download_custom_template",
+        )
+
+        uploaded = st.file_uploader("Re-upload edited CSV", type=["csv"], key="dd_custom_upload")
+        if uploaded is not None:
+            # file_uploader keeps the last upload across reruns, so only (re)validate
+            # it once per distinct file — the parsed result is staged as "pending"
+            # until the user explicitly clicks Apply, it's never applied automatically.
+            fingerprint = (uploaded.name, uploaded.size)
+            if st.session_state.get("_dd_custom_upload_fp") != fingerprint:
+                st.session_state["_dd_custom_upload_fp"] = fingerprint
+                st.session_state.pop("_dd_custom_upload_pending", None)
+                try:
+                    parsed = parse_and_validate(uploaded.getvalue())
+                except TemplateValidationError as exc:
+                    st.session_state["_dd_custom_upload_error"] = exc.errors
+                else:
+                    st.session_state.pop("_dd_custom_upload_error", None)
+                    st.session_state["_dd_custom_upload_pending"] = parsed
+
+            errors = st.session_state.get("_dd_custom_upload_error")
+            if errors:
+                st.error("Upload rejected — fix the following issue(s) and re-upload:")
+                for msg in errors[:15]:
+                    st.markdown(f"- {msg}")
+                if len(errors) > 15:
+                    st.caption(f"...and {len(errors) - 15} more issue(s).")
+
+            pending = st.session_state.get("_dd_custom_upload_pending")
+            if pending is not None:
+                pending_years = sorted(
+                    set(pending.get("price", {}))
+                    | set(pending.get("pv_cf", {}))
+                    | set(pending.get("wind_cf", {}))
+                )
+                st.info(
+                    f"File validated for weather year(s) {pending_years} — **not applied yet**. "
+                    "Click below to use it in the next run."
+                )
+                if st.button("Apply custom timeseries", type="primary", key="dd_apply_custom"):
+                    state.set_custom_timeseries(pending)
+                    st.session_state.pop("_dd_custom_upload_pending", None)
+                    st.rerun()
+
     # ── Download button ───────────────────────────────────────────────────────
     if not needs_download:
         st.success("All data already cached — nothing to download.")
