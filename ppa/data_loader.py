@@ -26,7 +26,7 @@ def load_timeseries(csv_path: str | Path) -> pd.DataFrame:
     if not csv_path.exists():
         raise FileNotFoundError(f"Timeseries CSV not found: {csv_path}")
 
-    ts = pd.read_csv(csv_path)
+    ts = pd.read_csv(csv_path, sep=None, engine="python"))
 
     missing = [c for c in REQUIRED_COLUMNS if c not in ts.columns]
     if missing:
