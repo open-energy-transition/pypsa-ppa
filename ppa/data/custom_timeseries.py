@@ -176,7 +176,7 @@ def parse_and_validate(csv_bytes: bytes) -> dict[str, dict[int, pd.Series]]:
     range — no partial results are applied on failure.
     """
     try:
-        df = pd.read_csv(io.BytesIO(csv_bytes))
+        df = pd.read_csv(io.BytesIO(csv_bytes), sep=None, engine="python")
     except Exception as exc:
         raise TemplateValidationError([f"Could not parse CSV: {exc}"]) from exc
 
