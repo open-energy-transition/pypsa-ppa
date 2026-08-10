@@ -13,8 +13,11 @@ import pandas as pd
 CACHE_DIR = Path(__file__).parent.parent.parent / "data" / "cache" / "entsoe"
 DE_LU = "DE_LU"
 
-# Historical years available — matches renewables.ninja CF range
-AVAILABLE_YEARS: list[int] = [2018, 2019, 2020, 2021, 2022, 2023, 2024]
+# Historical years available. Starts at 2019, not 2018: the DE_LU bidding zone
+# only came into being on 2018-10-01 (split from the former DE-AT-LU zone), so
+# ENTSO-E has no separate DE_LU day-ahead prices for Jan-Sep 2018 — cycling 2018
+# in would silently pad ~9 months with a repeated December price shape.
+AVAILABLE_YEARS: list[int] = [2019, 2020, 2021, 2022, 2023, 2024]
 
 
 def fetch_day_ahead_prices(
