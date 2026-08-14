@@ -104,7 +104,7 @@ Because a full hourly 25-year investment LP isn't practical, this runs at a coar
 
 ## The optimization model, briefly
 
-The energy-side model is a linear program: wind and solar dispatch against their capacity factors, a battery that can only charge from PV (not wind or the market, a real topology choice rather than a bug), a market-buy and market-sell option, and a penalty generator that makes the model always solvable even when the portfolio can't fully cover the contract, just expensive to rely on. The contract's shortfall allowance and any market-buy limit are enforced as caps relative to total load or delivery, computed per calendar year in multi-year sizing runs so the optimizer can't concentrate all its slack into one bad weather year.
+The energy-side model is a linear program: wind and solar dispatch against their capacity factors, a battery that can only charge from PV, not wind or the market, representing a co-located solar-plus-storage hybrid asset sitting alongside a separate wind asset, a market-buy and market-sell option, and a penalty generator that makes the model always solvable even when the portfolio can't fully cover the contract, just expensive to rely on. The contract's shortfall allowance and any market-buy limit are enforced as caps relative to total load or delivery, computed per calendar year in multi-year sizing runs so the optimizer can't concentrate all its slack into one bad weather year.
 
 The full variable list, objective function and every constraint, with file and line references, are written up in [docs/MODEL.md](docs/MODEL.md).
 

@@ -31,7 +31,9 @@ Five one-directional links move power between them:
 | `IPPGen_to_SellToMarket` | Hub → market sale | 0 |
 | `IPPGen_to_PPAOfftake` | Hub → offtaker | `transmission_cost_eur_mwh − ppa_price` |
 
-Because these are PyPSA links, flow only goes one way (bus0 to bus1), and PV and the battery share a bus that only has one outgoing link to the hub. Put together, **the battery can only ever charge from PV generation on the same bus** (net of whatever isn't exported that hour), with no path to charge from wind or from the market. This is a real modelling choice, not an oversight, and it matters when you're trying to understand why a case study's battery does or doesn't get used.
+Because these are PyPSA links, flow only goes one way (bus0 to bus1), and PV and the battery share a bus that only has one outgoing link to the hub. Put together, **the battery can only ever charge from PV generation on the same bus** (net of whatever isn't exported that hour), with no path to charge from wind or from the market.
+
+This mirrors a common real-world project structure: solar and storage co-located as one hybrid asset behind a shared grid connection, with wind developed and metered separately. It's a useful detail to keep in mind when comparing case studies, since it means the battery's value depends entirely on how much the contract rewards shifting solar output specifically, not on overall portfolio flexibility.
 
 The last link is where the PPA revenue actually shows up: its marginal cost is `transmission_cost − ppa_price`, so every MWh that flows across it earns the model `ppa_price` and costs `transmission_cost`, both applied to delivered energy regardless of whether it came from wind, PV, the battery, or a market purchase.
 
