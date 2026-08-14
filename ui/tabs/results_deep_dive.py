@@ -40,7 +40,7 @@ def _render_dispatch_section(result, s, chosen_day: str) -> None:
         if getattr(result, "market_prices", None) is not None:
             # st.subheader("Market spot price")
             price_day = result.market_prices[result.market_prices.index.strftime("%Y-%m-%d") == chosen_day]
-            fig_price = make_price_series_chart(price_day, title=f"Day-ahead price — {chosen_day}")
+            fig_price = make_price_series_chart(price_day, title=f"Day-ahead price: {chosen_day}")
             st.plotly_chart(fig_price, width="stretch", height=400)
         else:
             st.info("No market price data available for this scenario.")
@@ -78,7 +78,7 @@ def _render_gen_stats(result, s) -> None:
 
 
 def _render_multi_year_counterfactuals(results, fin, s) -> None:
-    # Need market_prices on each result — skip if not available (old cached runs)
+    # Need market_prices on each result: skip if not available (old cached runs)
     if not any(getattr(r, "market_prices", None) is not None for r in results):
         return
 
@@ -125,7 +125,7 @@ def _render_multi_year_counterfactuals(results, fin, s) -> None:
     def _em(cost): return f"€{cost / 1e6:.2f}M"
 
     tbl = pd.DataFrame([
-        ("PPA (offtaker)", f"€{_eff(total_ppa):.2f}/MWh", _em(total_ppa), "—"),
+        ("PPA (offtaker)", f"€{_eff(total_ppa):.2f}/MWh", _em(total_ppa), "N/A"),
         ("Spot-only", f"€{_eff(total_spot):.2f}/MWh", _em(total_spot),
          f"€{(total_spot - total_ppa) / 1e6:+.2f}M vs PPA"),
         ("CAL Y+1 (escalated)", f"€{_eff(total_cal):.2f}/MWh", _em(total_cal),
@@ -206,7 +206,7 @@ def _render_multi_year_deep_dive() -> None:
             "| Counterfactual procurement comparison",
         ])
         with tab_chart1:
-            # st.subheader(f"Hourly dispatch — {chosen_day}")
+            # st.subheader(f"Hourly dispatch: {chosen_day}")
             cols = st.columns(4)
             chosen_day = cols[0].selectbox("Day to inspect", available_days, index=0, key="dd_chosen_day1")
             _render_dispatch_section(result, result.scenario, chosen_day)
@@ -328,7 +328,7 @@ def _render_single_day_deep_dive() -> None:
                 (f"Blended ({s.cal_hedge_fraction:.0%} CAL)", f"€{cf.blended_avg_price:.2f}",
                  f"€{cf.blended_cost / 1e6:.3f}M", f"€{cf.blended_cost - cf.ppa_offtaker_cost:+,.0f}"),
                 ("PPA (offtaker)", f"€{cf.ppa_effective_price:.2f}",
-                 f"€{cf.ppa_offtaker_cost / 1e6:.3f}M", "—"),
+                 f"€{cf.ppa_offtaker_cost / 1e6:.3f}M", "N/A"),
             ],
             columns=["Strategy", "Effective €/MWh", "Period total", "vs PPA (€, + = more expensive)"],
         )

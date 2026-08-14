@@ -67,7 +67,7 @@ The tabs run roughly in the order you'd use them:
 |---|---|
 | **Welcome** | Orientation: what the tool does and where the data comes from |
 | **1. Case Setup** | Pick one of four predefined case studies, or open the form and build your own scenario from scratch |
-| **2. Get Data** | Check what's cached for your chosen locations and download whatever's missing |
+| **2. Get Data** | Check what's cached for your chosen locations, download whatever's missing, or upload your own price/weather data instead |
 | **3. Optimization** | Run the simulation: either a single reference month for a quick look, or the full multi-year run |
 | **4. Results** | Hourly dispatch, generation stats, and a comparison against alternative procurement strategies (spot-only, forward-hedged, blended) |
 | **5. Financial Model** | The full levered project-finance model, run on top of the energy results, with an Excel export |
@@ -128,6 +128,10 @@ Offtaker, PV and wind sites are independent lat/lon points. The offtaker's locat
 An optional transmission/grid-use charge (€/MWh) applies to every MWh actually delivered to the offtaker, regardless of source, so it factors into both the dispatch decision and the reported margin.
 
 Renewable capacity factors and day-ahead prices are cached under `data/cache/` per location and price zone, so a scenario in Italy doesn't accidentally reuse German data. That used to be a real bug, before locations were made explicit per asset.
+
+### Bringing your own data
+
+If you don't want to rely on ENTSO-E and renewables.ninja, the Get Data tab can also produce a CSV template pre-filled with whatever's already cached for your scenario's locations, covering every weather year the app cycles through. Fill in day-ahead prices and PV/wind capacity factors for any subset of years and re-upload it: those years use your data instead, and every other year keeps using downloaded or cached data as normal.
 
 ### Offtaker load profiles
 

@@ -93,7 +93,7 @@ def extract_results(
     bess_store = n.storage_units.dynamic.p_store["SU_BESS"]
     soc = n.storage_units.dynamic.state_of_charge["SU_BESS"]
 
-    # Links: p1 is negative when supplying to bus1 — negate for positive delivered MW
+    # Links: p1 is negative when supplying to bus1: negate for positive delivered MW
     ppa_delivery = -n.links.dynamic.p1["IPPGen_to_PPAOfftake"]
 
     dispatch = DispatchSeries(

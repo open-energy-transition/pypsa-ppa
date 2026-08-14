@@ -6,7 +6,7 @@ Outputs sheet. The revenue → EBITDA → depreciation → tax → cash-flow cha
 the IRR/NPV/DSCR outputs are written as **live Excel formulas**, so an analyst
 can change a tariff, cost or rate and watch the returns update. The debt sizing
 (front-loaded drawdown, IDC, DSCR tranche split) is circular by nature, so it is
-written as toolkit-computed values that the live formulas reference — clearly
+written as toolkit-computed values that the live formulas reference: clearly
 flagged so it can be overridden.
 """
 
@@ -85,7 +85,7 @@ def _write_inputs(wb: Workbook, p: ProjectFinanceInputs) -> dict[str, str]:
     ws.column_dimensions["D"].width = 10
     ws.column_dimensions["E"].width = 60
 
-    ws["B1"] = "Financial Model — Inputs"
+    ws["B1"] = "Financial Model: Inputs"
     ws["B1"].font = _TITLE
     ws["B2"] = "Yellow cells are editable assumptions. Costs in €M/MW (€M/MWh for BESS)."
     ws["B2"].font = Font(italic=True, color="808080")
@@ -213,7 +213,7 @@ def _write_hourly_sheets(wb: Workbook, year_results: list) -> dict[str, list[str
 
     Each sheet carries the raw hourly series (generation, sales, purchases, PPA
     delivery, penalty, price) and an annual aggregate block that *sums* those
-    rows — so the totals feeding the financial model are auditable roll-ups of
+    rows: so the totals feeding the financial model are auditable roll-ups of
     the hourly data, computed live by Excel formulas."""
     import numpy as np  # noqa: F401  (kept for parity / future use)
 
@@ -244,7 +244,7 @@ def _write_hourly_sheets(wb: Workbook, year_results: list) -> dict[str, list[str
         last = _HOURLY_DATA_START + n_hours - 1
 
         # ── Header / aggregate block ──────────────────────────────────────────
-        sheet["A1"] = f"Hourly dispatch — Year {idx} ({year_label})"
+        sheet["A1"] = f"Hourly dispatch: Year {idx} ({year_label})"
         sheet["A1"].font = _TITLE
         sheet["A2"] = "Annual totals below are sums of the hourly rows (× annualisation factor)."
         sheet["A2"].font = Font(italic=True, color="808080")
@@ -264,22 +264,22 @@ def _write_hourly_sheets(wb: Workbook, year_results: list) -> dict[str, list[str
 
         agg("scale", "Annualisation factor (8760 / hours)", round(8760.0 / n_hours, 6), "×", "0.0000")
         agg("ppa_gwh", "PPA delivered", f"=SUM({rng(_C_PPA)})*{scale_cell}/1000", "GWh p.a.")
-        agg("excess_solar_gwh", "Excess sold — solar hours",
+        agg("excess_solar_gwh", "Excess sold: solar hours",
             f"={solar.format(r=rng(_C_SELL))}*{scale_cell}/1000", "GWh p.a.")
-        agg("excess_nonsolar_gwh", "Excess sold — non-solar hours",
+        agg("excess_nonsolar_gwh", "Excess sold: non-solar hours",
             f"=(SUM({rng(_C_SELL)})-{solar.format(r=rng(_C_SELL))})*{scale_cell}/1000", "GWh p.a.")
         agg("penalty_gwh", "Penalty (undelivered)", f"=SUM({rng(_C_PEN)})*{scale_cell}/1000", "GWh p.a.")
-        agg("total_solar_gwh", "Total generation — solar hours",
+        agg("total_solar_gwh", "Total generation: solar hours",
             f"={solar.format(r=rng(_C_TOTAL))}*{scale_cell}/1000", "GWh p.a.")
-        agg("total_nonsolar_gwh", "Total generation — non-solar hours",
+        agg("total_nonsolar_gwh", "Total generation: non-solar hours",
             f"=(SUM({rng(_C_TOTAL)})-{solar.format(r=rng(_C_TOTAL))})*{scale_cell}/1000", "GWh p.a.")
         # Volume-weighted capture prices (solar / non-solar hours), guarded for /0
         solar_w = f'({hour_rng}>=9)*({hour_rng}<17)'
         nonsolar_w = f'(({hour_rng}<9)+({hour_rng}>=17))'
-        agg("sell_solar_price", "Merchant capture — solar hours",
+        agg("sell_solar_price", "Merchant capture: solar hours",
             f"=IFERROR(SUMPRODUCT({solar_w}*{rng(_C_SELL)}*{rng(_C_PRICE)})"
             f"/SUMPRODUCT({solar_w}*{rng(_C_SELL)}),0)", "€/MWh")
-        agg("sell_nonsolar_price", "Merchant capture — non-solar hours",
+        agg("sell_nonsolar_price", "Merchant capture: non-solar hours",
             f"=IFERROR(SUMPRODUCT({nonsolar_w}*{rng(_C_SELL)}*{rng(_C_PRICE)})"
             f"/SUMPRODUCT({nonsolar_w}*{rng(_C_SELL)}),0)", "€/MWh")
         agg("purchase_price", "Market purchase price",
@@ -359,15 +359,15 @@ def _write_energy(
     field("Offtaker load", "load_mw", e.load_mw, "MW")
     row += 1
     field("PPA delivered", "ppa_gwh", e.ppa_gwh, "GWh p.a.")
-    field("Excess sold — solar hours", "excess_solar_gwh", e.excess_solar_gwh, "GWh p.a.")
-    field("Excess sold — non-solar hours", "excess_nonsolar_gwh", e.excess_nonsolar_gwh, "GWh p.a.")
+    field("Excess sold: solar hours", "excess_solar_gwh", e.excess_solar_gwh, "GWh p.a.")
+    field("Excess sold: non-solar hours", "excess_nonsolar_gwh", e.excess_nonsolar_gwh, "GWh p.a.")
     field("Penalty (undelivered)", "penalty_gwh", e.penalty_gwh, "GWh p.a.")
     row += 1
-    field("Total generation — solar hours", "total_solar_gwh", e.total_solar_gwh, "GWh p.a.")
-    field("Total generation — non-solar hours", "total_nonsolar_gwh", e.total_nonsolar_gwh, "GWh p.a.")
+    field("Total generation: solar hours", "total_solar_gwh", e.total_solar_gwh, "GWh p.a.")
+    field("Total generation: non-solar hours", "total_nonsolar_gwh", e.total_nonsolar_gwh, "GWh p.a.")
     row += 1
-    field("Merchant capture — solar hours", "sell_solar_price", e.sell_solar_price, "€/MWh")
-    field("Merchant capture — non-solar hours", "sell_nonsolar_price", e.sell_nonsolar_price, "€/MWh")
+    field("Merchant capture: solar hours", "sell_solar_price", e.sell_solar_price, "€/MWh")
+    field("Merchant capture: non-solar hours", "sell_nonsolar_price", e.sell_nonsolar_price, "€/MWh")
     field("Market purchase price", "purchase_price", e.purchase_price, "€/MWh")
     field("Market purchase volume", "marketbuy_gwh", e.marketbuy_gwh, "GWh p.a.")
 
@@ -541,9 +541,9 @@ def _write_model(
         return (f"=({cl}{R['ppa_flag']}*{E['excess_nonsolar_gwh']}+{cl}{R['nonppa_flag']}*{E['total_nonsolar_gwh']})"
                 f"*1000*({E['sell_nonsolar_price']}{fac})/1000000")
 
-    label_row("merch_solar", "Merchant — solar hours", "€M")
+    label_row("merch_solar", "Merchant: solar hours", "€M")
     put_formula("merch_solar", _merch_solar)
-    label_row("merch_nonsolar", "Merchant — non-solar hours", "€M")
+    label_row("merch_nonsolar", "Merchant: non-solar hours", "€M")
     put_formula("merch_nonsolar", _merch_nonsolar)
     label_row("lgc_rev", "LGC / GO revenue", "€M")
     put_formula("lgc_rev", lambda pr, cl: (
@@ -670,7 +670,7 @@ def _write_outputs(wb: Workbook, result: ProjectFinanceResult) -> None:
     ws.column_dimensions["C"].width = 16
     rng = getattr(wb, "_fm_ranges", {})
 
-    ws["B1"] = "Financial Model — Key Outputs"
+    ws["B1"] = "Financial Model: Key Outputs"
     ws["B1"].font = _TITLE
     ws["B2"] = f"Scenario: {result.energy.name}"
     ws["B2"].font = Font(italic=True, color="808080")
@@ -723,17 +723,17 @@ def _write_notes(wb: Workbook) -> None:
         "  • Hourly sheets (one per simulated year) hold the full hourly dispatch; the",
         "    Energy-sheet annual totals are SUM/SUMIFS roll-ups of those hours, averaged",
         "    across years. Edit the hourly data and the totals (and the model) follow.",
-        "  • Capex & devex — per-technology build/connection/devex cost × capacity ×",
+        "  • Capex & devex: per-technology build/connection/devex cost × capacity ×",
         "    indexation (spend timing baked per period; edit a cost and it flows through).",
         "  • Indexation multipliers, all revenue lines, opex, EBITDA.",
         "  • Book/tax depreciation (straight-line, capped at the live asset base).",
         "  • Taxable income, loss carry-forward and income tax.",
         "  • PBT, PAT, FCFF, FCFE, DSCR, and the Project/Equity IRR outputs.",
         "",
-        "Toolkit-sized values (green) — edit to override:",
+        "Toolkit-sized values (green): edit to override:",
         "  • Debt drawdown, IDC and the contracted/uncontracted tranche split are circular",
         "    (debt size depends on IDC which depends on drawdown), so they are pre-solved.",
-        "    Changing capex therefore updates returns but not the debt amount — re-run the",
+        "    Changing capex therefore updates returns but not the debt amount: re-run the",
         "    toolkit to re-size debt.",
         "",
         "Simplifications (consistent with the source model):",

@@ -202,11 +202,11 @@ def _what_if_panel(base_energy: EnergyInputs, base_finance: ProjectFinanceInputs
 
 def _tornado_panel(base_energy: EnergyInputs, base_finance: ProjectFinanceInputs) -> None:
     tab_chart1, tab_chart2 = st.tabs([
-        "| Tornado chart — one-at-a-time sensitivity", 
+        "| Tornado chart: one-at-a-time sensitivity", 
         "| Data table",
     ])
     with tab_chart1:
-    # with st.expander("Tornado chart — one-at-a-time sensitivity", expanded=True):
+    # with st.expander("Tornado chart: one-at-a-time sensitivity", expanded=True):
         cols = st.columns([3, 1])
         with cols[1]:
             metric_key = st.selectbox(
@@ -246,8 +246,8 @@ def _tornado_panel(base_energy: EnergyInputs, base_finance: ProjectFinanceInputs
             hi = row.high_metric * scale
 
             # Which end is "down" vs "up"?
-            col_down = "#EF6C00"   # orange  — parameter decrease → lower metric
-            col_up   = "#1565C0"   # blue    — parameter increase → higher metric
+            col_down = "#EF6C00"   # orange : parameter decrease → lower metric
+            col_up   = "#1565C0"   # blue   : parameter increase → higher metric
             # If increasing the parameter increases the metric: hi > lo
             if hi >= lo:
                 col_lo_bar, col_hi_bar = col_down, col_up
@@ -331,7 +331,7 @@ def _tornado_panel(base_energy: EnergyInputs, base_finance: ProjectFinanceInputs
 def render() -> None:
     st.header("Sensitivity Analysis")
     st.caption(
-        "Financial-parameter sensitivity — no PyPSA re-run required. "
+        "Financial-parameter sensitivity: no PyPSA re-run required. "
         "For capacity or dispatch changes (wind/solar/BESS MW, delivery share, "
         "BESS round-trip efficiency) run a new optimisation in the Optimisation tab."
     )
@@ -340,7 +340,7 @@ def render() -> None:
     if base_energy is None:
         st.info(
             "Run an optimisation first (Optimisation tab), then return here. "
-            "For richer results, run the Financial Model tab first — "
+            "For richer results, run the Financial Model tab first: "
             "its edited assumptions will be used as the base case."
         )
         return

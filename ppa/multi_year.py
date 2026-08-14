@@ -157,7 +157,7 @@ def run_multi_year(
     """
     if scenario.optimize_capacity:
         raise ValueError(
-            "run_multi_year received a scenario with optimize_capacity=True — "
+            "run_multi_year received a scenario with optimize_capacity=True: "
             "the dispatch simulation needs fixed capacities. Run the sizing LP "
             "first (ppa.sizing.optimize_capacities) and pass the scenario "
             "returned by ppa.sizing.apply_sizing."
@@ -221,7 +221,7 @@ def run_multi_year(
 
     # ProcessPoolExecutor, not threads: PyPSA/linopy/HiGHS run non-thread-safe C
     # extensions (model build via pandas/xarray, then the HiGHS solver). Running
-    # them concurrently in one process corrupts the shared heap — manifesting as
+    # them concurrently in one process corrupts the shared heap: manifesting as
     # `free(): invalid next size` core dumps and stray ArrowStringArray errors.
     # Separate processes = separate heaps = safe true parallelism. The years are
     # independent; the scenario crosses as a plain dict (see _solve_one_year) and

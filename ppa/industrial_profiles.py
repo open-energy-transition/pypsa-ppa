@@ -118,7 +118,7 @@ PROFILE_INFO: dict[str, dict] = {
         ),
     },
     "steel_eaf": {
-        "label": "Steel — Electric Arc Furnace",
+        "label": "Steel (Electric Arc Furnace)",
         "icon": "⚙️",
         "typical_lf": "~97%",
         "description": (
@@ -143,7 +143,7 @@ PROFILE_INFO: dict[str, dict] = {
         "typical_lf": "~88%",
         "description": (
             "Stable IT load with a slight business-hours compute peak and low overnight "
-            "minimum. Very low volatility — the textbook 'always-on' corporate offtaker. "
+            "minimum. Very low volatility, the textbook 'always-on' corporate offtaker. "
             "Synthetic profile."
         ),
     },

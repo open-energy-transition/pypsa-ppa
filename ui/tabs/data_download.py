@@ -26,8 +26,9 @@ def render() -> None:
     st.title("📡 Download Data")
     st.markdown(
         "Download market prices and wind/solar hourly profiles for the locations defined in "
-        "your active scenario. Data is cached locally per bidding zone and per asset location — "
-        "downloads only happen once per zone/location. "
+        "your active scenario. Data is cached locally per bidding zone and per asset location: "
+        "downloads only happen once per zone/location. You can also bring your own data instead, "
+        "see **Import custom timeseries** below. "
         "**Currently supported locations are in Europe only and cover the years 2018 until 2024.**"
     )
 
@@ -58,7 +59,7 @@ def render() -> None:
         cols = st.columns([2, 2])
         with cols[0]:
             st.markdown(
-                f"Offtaker: **{lat:.2f}°N, {lon:.2f}°E** — bidding zone "
+                f"Offtaker: **{lat:.2f}°N, {lon:.2f}°E**: bidding zone "
                 f"**{zone}** ({zone_label(zone)})"
             )
             st.markdown(f"PV asset: **{pv_lat:.2f}°N, {pv_lon:.2f}°E**")
@@ -118,7 +119,7 @@ def render() -> None:
     with st.expander("**Cache status**", expanded=expanded_status):
         cols = st.columns(4)
         with cols[0]:
-            st.markdown(f"**ENTSO-E day-ahead (DA) prices — {zone}**")
+            st.markdown(f"**ENTSO-E day-ahead (DA) prices: {zone}**")
 
         with cols[1]:
             if not missing_prices:
@@ -176,13 +177,13 @@ def render() -> None:
                 st.rerun()
 
         st.markdown(
-            "1. **Download the template** below — it's pre-filled with whatever is already "
+            "1. **Download the template** below. It's pre-filled with whatever is already "
             "cached for this scenario's zone/locations (blank where nothing is cached yet).\n"
             "2. Edit `price_eur_mwh` (€/MWh), `pv_capacity_factor` and `wind_capacity_factor` "
-            "(both 0–1) for the year(s) you want to override. Leave other years untouched, or "
-            "delete their rows entirely — only years present in the re-uploaded file are "
+            "(both 0-1) for the year(s) you want to override. Leave other years untouched, or "
+            "delete their rows entirely. Only years present in the re-uploaded file are "
             "overridden, every other year keeps using downloaded/cached data.\n"
-            "3. Don't edit `year`, `hour_of_year` or `timestamp_utc` — rows are matched back "
+            "3. Don't edit `year`, `hour_of_year` or `timestamp_utc`. Rows are matched back "
             "positionally by hour-of-year, and edits there will fail validation.\n"
             "4. Re-upload the edited CSV below."
         )
@@ -199,7 +200,7 @@ def render() -> None:
         uploaded = st.file_uploader("Re-upload edited CSV", type=["csv"], key="dd_custom_upload")
         if uploaded is not None:
             # file_uploader keeps the last upload across reruns, so only (re)validate
-            # it once per distinct file — the parsed result is staged as "pending"
+            # it once per distinct file: the parsed result is staged as "pending"
             # until the user explicitly clicks Apply, it's never applied automatically.
             fingerprint = (uploaded.name, uploaded.size)
             if st.session_state.get("_dd_custom_upload_fp") != fingerprint:
@@ -215,7 +216,7 @@ def render() -> None:
 
             errors = st.session_state.get("_dd_custom_upload_error")
             if errors:
-                st.error("Upload rejected — fix the following issue(s) and re-upload:")
+                st.error("Upload rejected. Fix the following issue(s) and re-upload:")
                 for msg in errors[:15]:
                     st.markdown(f"- {msg}")
                 if len(errors) > 15:
@@ -229,7 +230,7 @@ def render() -> None:
                     | set(pending.get("wind_cf", {}))
                 )
                 st.info(
-                    f"File validated for weather year(s) {pending_years} — **not applied yet**. "
+                    f"File validated for weather year(s) {pending_years}, **not applied yet**. "
                     "Click below to use it in the next run."
                 )
                 if st.button("Apply custom timeseries", type="primary", key="dd_apply_custom"):
@@ -239,7 +240,7 @@ def render() -> None:
 
     # ── Download button ───────────────────────────────────────────────────────
     if not needs_download:
-        st.success("All data already cached — nothing to download.")
+        st.success("All data already cached, nothing to download.")
         return
 
     if not tokens_present:
@@ -279,7 +280,7 @@ def _do_download(
     done = 0
     bar = st.progress(0, text="Preparing…")
 
-    # ENTSO-E prices — all missing years for the scenario's bidding zone
+    # ENTSO-E prices: all missing years for the scenario's bidding zone
     from ppa.data.entsoe_client import fetch_day_ahead_prices
     for year in missing_price_years:
         bar.progress(done / total_steps, text=f"Fetching {year} {zone} day-ahead prices…")
@@ -291,7 +292,7 @@ def _do_download(
             st.error(f"ENTSO-E {zone} {year} download failed: {exc}")
             return
 
-    # renewables.ninja CF profiles — PV and wind at their own asset locations
+    # renewables.ninja CF profiles: PV and wind at their own asset locations
     from ppa.data import renewables_ninja as rn
     pv_lat, pv_lon = pv_location
     for year in missing_pv_years:

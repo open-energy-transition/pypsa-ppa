@@ -108,7 +108,7 @@ def make_supply_mix_day_chart(
     return _dual_axis_supply_mix(
         df,
         x_col="time",
-        title=f"Dispatch — {chosen_day}",
+        title=f"Dispatch: {chosen_day}",
         ppaload_mw=ppaload_mw,
     )
 
@@ -202,7 +202,7 @@ def make_price_series_chart(prices: "pd.Series | pd.DataFrame", title: str = "Ma
 
 
 def make_price_vs_ppa_chart(ts: "pd.DataFrame", ppa_price: float = 100.0) -> go.Figure:
-    """Spot price time series with a flat PPA reference line — illustrates price certainty."""
+    """Spot price time series with a flat PPA reference line: illustrates price certainty."""
     fig = go.Figure()
 
     # Shade negative-price hours to highlight market stress
@@ -279,7 +279,7 @@ def make_availability_profile_chart(ts: "pd.DataFrame") -> go.Figure:
         fillcolor="rgba(21,101,192,0.06)", line_width=0,
     )
     fig.update_layout(
-        title="Average renewable availability by hour of day — central Germany",
+        title="Average renewable availability by hour of day: central Germany",
         xaxis=dict(title="Hour of day", tickvals=list(range(0, 24, 3))),
         yaxis=dict(title="Capacity factor (0–1)", range=[0, 1]),
         height=320,
@@ -339,7 +339,7 @@ def make_ppa_obligation_chart(
 
     fig.update_layout(
         barmode="stack",
-        title=f"PPA delivery obligation — {ppaload_mw:.0f} MW flat offtake",
+        title=f"PPA delivery obligation: {ppaload_mw:.0f} MW flat offtake",
         xaxis=dict(title="Share of total contracted load (%)", range=[0, 160], ticksuffix="%"),
         yaxis=dict(showticklabels=False),
         height=200,
