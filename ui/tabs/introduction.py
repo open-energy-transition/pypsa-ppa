@@ -194,7 +194,7 @@ delivery link makes the model treat delivery as commercially valuable: the core 
     # ── Network structure ─────────────────────────────────────────────────────
     st.subheader("Network structure")
     st.markdown(
-        "The six-bus commercial network used in this app connects physical generation assets "
+        "The seven-bus commercial network used in this app connects physical generation assets "
         "to contractual outcomes through a central IPP aggregation point. "
         "The diagram below shows the base scenario configuration: it updates live "
         "to reflect the active case study once you select one."

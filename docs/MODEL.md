@@ -10,30 +10,32 @@ The model is built with [PyPSA](https://pypsa.readthedocs.io) and [linopy](https
 
 ## Network topology
 
-Six buses, all on a single "AC" carrier:
+Seven buses, all on a single "AC" carrier:
 
 | Bus | What sits on it |
 |---|---|
 | `Bus_OnshoreWind` | `Gen_OnshoreWind` |
-| `Bus_PVBESS` | `Gen_PV` and the battery, `SU_BESS` |
+| `Bus_PV` | `Gen_PV` |
+| `Bus_REBESS` | the battery, `SU_BESS`, the shared collection point for wind and PV |
 | `Bus_IPPGeneration` | nothing directly; it's a hub where all generation converges before being sold or delivered |
 | `Bus_BuyFromMarket` | `Gen_BuyFromMarket`, the market-purchase source |
 | `Bus_SellToMarket` | `Gen_SellToMarket`, a sink for merchant sales |
 | `Bus_PPAOfftake` | `Load_PPAOfftake` (the contracted demand), plus `Gen_Penalty` and `Gen_AllowedShortfall` |
 
-Five one-directional links move power between them:
+Six one-directional links move power between them:
 
 | Link | From → to | Marginal cost |
 |---|---|---|
-| `OnshoreWind_to_IPPGeneration` | Wind → hub | 0 |
-| `PVBESS_to_IPPGeneration` | PV/BESS bus → hub | 0 |
+| `OnshoreWind_to_REBESS` | Wind → collection bus | 0 |
+| `PV_to_REBESS` | PV → collection bus | 0 |
+| `REBESS_to_IPPGeneration` | Collection bus → hub | 0 |
 | `BuyFromMarket_to_IPPGeneration` | Market buy → hub | 0 |
 | `IPPGen_to_SellToMarket` | Hub → market sale | 0 |
 | `IPPGen_to_PPAOfftake` | Hub → offtaker | `transmission_cost_eur_mwh − ppa_price` |
 
-Because these are PyPSA links, flow only goes one way (bus0 to bus1), and PV and the battery share a bus that only has one outgoing link to the hub. Put together, **the battery can only ever charge from PV generation on the same bus** (net of whatever isn't exported that hour), with no path to charge from wind or from the market.
+Wind and PV both feed `Bus_REBESS`, where the battery sits, so **the battery can charge from either wind or PV generation**, whatever is available on that bus in a given hour. Because these are PyPSA links, flow only goes one way (bus0 to bus1), and `Bus_REBESS` has exactly one outgoing link toward the hub. Nothing flows back into it from `Bus_IPPGeneration`, so market purchases still have no path to charge the battery, only the renewables fleet can.
 
-This mirrors a common real-world project structure: solar and storage co-located as one hybrid asset behind a shared grid connection, with wind developed and metered separately. It's a useful detail to keep in mind when comparing case studies, since it means the battery's value depends entirely on how much the contract rewards shifting solar output specifically, not on overall portfolio flexibility.
+This matches how a co-located wind, solar and storage plant would actually be run: the battery sits behind the same connection point as the generation, and can arbitrage or firm up output from whichever resource is producing, but it isn't a grid-charging asset.
 
 The last link is where the PPA revenue actually shows up: its marginal cost is `transmission_cost − ppa_price`, so every MWh that flows across it earns the model `ppa_price` and costs `transmission_cost`, both applied to delivered energy regardless of whether it came from wind, PV, the battery, or a market purchase.
 
