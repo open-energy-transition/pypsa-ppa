@@ -113,9 +113,9 @@ The full variable list, objective function and every constraint, with file and l
 Two separate models live in this toolkit:
 
 - A quick unlevered LCOE/IRR/NPV check, shown right in the Optimization and Results tabs.
-- A full levered project-finance model (the Financial Model tab): debt sized to a DSCR target across contracted and uncontracted revenue, tax with loss carry-forward, book and tax depreciation, Project IRR and Equity IRR, and a live-formula Excel export with a full hourly sheet per simulated year.
+- A full levered project-finance model (the Financial Model tab): devex paid as a lump sum at FID, debt sized to a DSCR target across contracted and uncontracted revenue, tax with loss carry-forward, book and tax depreciation, Project IRR and Equity IRR, a full balance sheet and cash flow statement with a balance check, and a live-formula Excel export with a full hourly sheet per simulated year.
 
-The levered model was ported from an Excel-based project-finance workbook and validated against it: on a reference scenario it reproduces gearing, Project IRR and Equity IRR within about 0.3 percentage points.
+The levered model was ported from an Excel-based project-finance workbook and originally validated against it (gearing, Project IRR and Equity IRR within about 0.3 percentage points). It has since diverged deliberately from that benchmark — devex timing was changed from a multi-year development spend to a lump sum at FID — so treat that figure as historical rather than a live guarantee.
 
 The Sensitivity Analysis tab runs on top of this model's inputs; it varies 24 financial parameters across capex, opex, revenue, indexation, debt and tax, and updates results instantly without touching PyPSA. Anything that would actually change dispatch, like capacity or delivery share, still needs a re-run in the Optimization tab.
 
