@@ -62,11 +62,11 @@ class Scenario:
     price_escalation_rate: float = 0.02  # annual escalation applied to base market prices
 
     # Technology degradation (compound per year, applied from year 1 onward)
-    pv_degradation_rate: float = 0.005    # 0.5%/yr — industry standard for crystalline Si
+    pv_degradation_rate: float = 0.005    # 0.5%/yr: industry standard for crystalline Si
     wind_degradation_rate: float = 0.002  # 0.2%/yr
     bess_degradation_rate: float = 0.020  # 2.0%/yr usable capacity fade
 
-    # European locations. lat/lon is the *offtaker* (consumer) location — it
+    # European locations. lat/lon is the *offtaker* (consumer) location: it
     # determines the bidding zone whose day-ahead prices are used. PV and wind
     # assets may sit elsewhere; None means "same as the offtaker".
     lat: float = 51.5
@@ -80,10 +80,10 @@ class Scenario:
     bidding_zone_override: str = ""
     # Combined transmission / grid-use charge (€/MWh) on every MWh delivered to
     # the offtaker, covering all network levels between generation sites and
-    # consumer — charged regardless of whether they share a bidding zone.
+    # consumer: charged regardless of whether they share a bidding zone.
     transmission_cost_eur_mwh: float = 0.0
 
-    # Financial — European 2024 benchmarks
+    # Financial: European 2024 benchmarks
     wind_capex_per_kw: float = 1200.0   # €/kW, EU onshore wind
     pv_capex_per_kw: float = 750.0      # €/kW, EU utility-scale PV
     bess_capex_per_kwh: float = 380.0   # €/kWh, EU BESS
@@ -179,7 +179,7 @@ CASE_STUDIES: list[CaseStudy] = [
         storyline=(
             "A first-mover IPP signs a 10-year PPA with a cement plant at €90/MWh. "
             "The portfolio is wind-dominant with no storage, and shortfalls cannot be covered from the "
-            "market — a clean baseline to understand penalty exposure. The cement load (real measured "
+            "market, a clean baseline for understanding penalty exposure. The cement load (real measured "
             "sector data) runs steadily on weekdays but drops sharply over the weekend."
         ),
         question=(
@@ -210,8 +210,8 @@ CASE_STUDIES: list[CaseStudy] = [
         icon="☀️",
         storyline=(
             "A developer pairs a large PV array with a 4-hour BESS serving a green hydrogen electrolyser. "
-            "The electrolyser's flexible demand naturally aligns with solar generation — ramping up at midday "
-            "and backing off during evening grid peaks — making it an ideal PPA offtaker for a solar-heavy portfolio. "
+            "The electrolyser's flexible demand naturally aligns with solar generation, ramping up at midday "
+            "and backing off during evening grid peaks, which makes it an ideal PPA offtaker for a solar-heavy portfolio. "
             "Market purchases are disabled to maintain renewable additionality. "
         ),
         question=(
@@ -240,12 +240,12 @@ CASE_STUDIES: list[CaseStudy] = [
         storyline=(
             "An aggressive IPP structure serves a steel plant running near-baseload (~97% load factor, "
             "real measured sector data) with a 90% delivery obligation and a strict 2× penalty. "
-            "A generous 15% market buy allowance provides an escape valve — but at a punishing 50% "
+            "A generous 15% market buy allowance provides an escape valve, but at a punishing 50% "
             "bid-offer spread, every purchased MWh comes at a steep premium. "
         ),
         question=(
             "When the portfolio falls short, is buying through the wide market spread cheaper than "
-            "paying the 2× penalty — and can BESS reduce the need for either?"
+            "paying the 2× penalty, and can BESS reduce the need for either?"
         ),
         overrides={
             "name": "Merchant Hybrid",
@@ -271,7 +271,7 @@ CASE_STUDIES: list[CaseStudy] = [
         icon="🏢",
         storyline=(
             "A European corporation signs a 15-year PPA for its data-centre fleet at €105/MWh. "
-            "The data-centre load is near-flat with a modest business-hours peak — a demanding obligation "
+            "The data-centre load is near-flat with a modest business-hours peak, a demanding obligation "
             "for an RE portfolio. Market supplementation is capped at 1% to preserve additionality claims. "
         ),
         question=(

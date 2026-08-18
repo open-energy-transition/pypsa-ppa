@@ -1,21 +1,21 @@
 """Levered project-finance model for renewable PPA portfolios.
 
 This is a streamlined Python port of the detailed ``Aus247RE_FM`` Excel financial
-model. It keeps the substance of a project-finance appraisal — multi-year build,
+model. It keeps the substance of a project-finance appraisal: multi-year build,
 indexed revenue, DSCR-sculpted debt sizing across contracted/uncontracted
 tranches, book & tax depreciation, income tax with loss carry-forward, and a
-full set of returns (Project IRR via FCFF, Equity IRR via FCFE) — while dropping
+full set of returns (Project IRR via FCFF, Equity IRR via FCFE): while dropping
 the workbook's Australian-specific scenario-sweep tables, working-capital
 schedule and other fluff that the model's own *Simplifications* sheet already
 flags as out of scope.
 
 The model is driven by two input objects:
 
-* :class:`EnergyInputs` — the per-year energy results coming out of the PyPSA
+* :class:`EnergyInputs`: the per-year energy results coming out of the PyPSA
   optimisation (generation, PPA vs. excess split by solar/non-solar hours,
   capture prices, …). Build these from an ``OptimizationResult`` with
   :func:`energy_inputs_from_result`.
-* :class:`ProjectFinanceInputs` — all the financial assumptions (costs, debt,
+* :class:`ProjectFinanceInputs`: all the financial assumptions (costs, debt,
   tax, depreciation, timing). Defaults are European 2024 benchmarks; every value
   is user-editable in the dashboard.
 """
@@ -26,12 +26,12 @@ from dataclasses import dataclass, field
 
 import numpy as np
 
-try:  # optional — only needed by energy_inputs_from_result
+try:  # optional: only needed by energy_inputs_from_result
     from ppa.results import OptimizationResult
 except Exception:  # pragma: no cover
     OptimizationResult = object  # type: ignore
 
-SOLAR_HOUR_START = 9   # inclusive — "solar hours" defined as 09:00–17:00
+SOLAR_HOUR_START = 9   # inclusive: "solar hours" defined as 09:00–17:00
 SOLAR_HOUR_END = 17    # exclusive
 
 
@@ -58,7 +58,7 @@ class EnergyInputs:
     excess_nonsolar_gwh: float     # surplus sold to market, non-solar hours
     penalty_gwh: float             # undelivered volume incurring penalty
 
-    # After the PPA expires — all generation is sold merchant
+    # After the PPA expires: all generation is sold merchant
     total_solar_gwh: float         # total generation in solar hours
     total_nonsolar_gwh: float      # total generation in non-solar hours
 
@@ -450,7 +450,7 @@ def run_project_finance(
     merch_nonsolar_rev = ppa_flag * e.excess_nonsolar_gwh * GWh * merch_nonsolar / M
     lgc_rev = ppa_flag * (e.excess_solar_gwh + e.excess_nonsolar_gwh) * GWh * lgc / M
 
-    # Post-PPA period — all generation sold merchant
+    # Post-PPA period: all generation sold merchant
     post_solar_rev = nonppa_flag * e.total_solar_gwh * GWh * merch_solar / M
     post_nonsolar_rev = nonppa_flag * e.total_nonsolar_gwh * GWh * merch_nonsolar / M
     post_lgc_rev = nonppa_flag * (e.total_solar_gwh + e.total_nonsolar_gwh) * GWh * lgc / M
@@ -504,7 +504,7 @@ def run_project_finance(
 
     # ── Funding & IDC ────────────────────────────────────────────────────────
     # Funding waterfall: equity funds development spend; at financial close (the
-    # first construction period) debt is drawn and front-loaded — it refinances
+    # first construction period) debt is drawn and front-loaded: it refinances
     # the development spend and funds construction up to the debt limit, with
     # equity supplying the residual at the end. Front-loading debt makes interest
     # during construction (IDC) accrue from financial close; IDC is charged on the
@@ -628,7 +628,7 @@ def run_project_finance(
     # Simple payback on FCFE (years from ops start to cumulative >= 0)
     payback = _payback(fcfe)
 
-    # LCOE — annuitised capital + opex over generation
+    # LCOE: annuitised capital + opex over generation
     annuity = (1 - (1 + p.discount_rate) ** -p.operating_life) / p.discount_rate
     annual_gen_mwh = (e.total_solar_gwh + e.total_nonsolar_gwh) * 1000.0
     lcoe = (
@@ -694,7 +694,7 @@ def _cap_depreciation(dep: np.ndarray, base: float) -> np.ndarray:
 
 
 def _payback(fcfe: np.ndarray) -> float:
-    """Years until cumulative equity cash flow turns — and stays — positive.
+    """Years until cumulative equity cash flow turns: and stays: positive.
 
     Uses the *last* sign change so that transient swings during construction
     (e.g. development costs refinanced by debt at financial close) don't produce

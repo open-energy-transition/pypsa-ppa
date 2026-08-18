@@ -10,6 +10,7 @@ matplotlib==3.10.9
 scipy==1.17.1
 streamlit==1.57.0
 pypsatopo==1.1.2
+entsoe-py==0.8.0
 xarray==2026.2.0
 netcdf4==1.7.4
 geopandas==1.1.3

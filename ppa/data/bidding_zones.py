@@ -4,7 +4,7 @@ The lookup is nearest-anchor: each bidding zone is represented by a handful of
 anchor points (major cities / load centres) and a coordinate is assigned to the
 zone of its closest anchor. This handles jagged borders and multi-zone
 countries (IT, NO, SE, DK) far better than bounding boxes, but it is still an
-approximation near borders — the UI therefore lets the user override the
+approximation near borders: the UI therefore lets the user override the
 derived zone explicitly.
 
 Zone codes match the ``entsoe-py`` area codes accepted by
@@ -121,7 +121,7 @@ _ANCHORS: dict[str, list[tuple[float, float]]] = {
 
 
 def _distance_sq(lat: float, lon: float, alat: float, alon: float) -> float:
-    """Squared equirectangular distance — fine for ranking nearby anchors."""
+    """Squared equirectangular distance: fine for ranking nearby anchors."""
     dlat = lat - alat
     dlon = (lon - alon) * math.cos(math.radians((lat + alat) / 2.0))
     return dlat * dlat + dlon * dlon

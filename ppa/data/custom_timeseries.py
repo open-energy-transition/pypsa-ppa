@@ -56,7 +56,7 @@ def build_template(
     """Build a long-format CSV template, pre-filled with cached data where available.
 
     Years with no cached data for a given series are left blank (NaN) for the
-    user to fill in. Cache-only reads — never triggers a network download.
+    user to fill in. Cache-only reads: never triggers a network download.
     """
     from ppa.data import renewables_ninja as rn
     from ppa.data.entsoe_client import fetch_day_ahead_prices, list_cached_years as list_cached_price_years
@@ -145,7 +145,7 @@ def _validate_year(year: int, group: pd.DataFrame) -> list[str]:
     actual_ts = group["timestamp_utc"].astype(str).to_numpy()
     if not (actual_ts == expected_ts).all():
         errors.append(
-            f"Year {year}: timestamp_utc doesn't match the expected hourly sequence — "
+            f"Year {year}: timestamp_utc doesn't match the expected hourly sequence: "
             "don't edit or reorder the year/hour_of_year/timestamp_utc columns."
         )
 
@@ -173,7 +173,7 @@ def parse_and_validate(csv_bytes: bytes) -> dict[str, dict[int, pd.Series]]:
     Returns ``{"price": {year: Series}, "pv_cf": {year: Series}, "wind_cf": {year: Series}}``
     for the years present in the file. Raises ``TemplateValidationError`` (with a
     list of human-readable issues) if anything is missing, misaligned, or out of
-    range — no partial results are applied on failure.
+    range: no partial results are applied on failure.
     """
     try:
         df = pd.read_csv(io.BytesIO(csv_bytes), sep=None, engine="python")

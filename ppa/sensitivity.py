@@ -1,6 +1,6 @@
 """Sensitivity analysis helpers for the project-finance model.
 
-All parameters here are pure financial-model inputs — no PyPSA re-run is
+All parameters here are pure financial-model inputs: no PyPSA re-run is
 needed. Parameters that would require a new optimisation (capacities,
 delivery share, BESS round-trip efficiency) are intentionally excluded.
 """
@@ -32,7 +32,7 @@ class SensParam:
     fmt: str = ".2f"    # numeric format for display
 
 
-# Full catalogue — ordered by group then impact
+# Full catalogue: ordered by group then impact
 PARAMS: list[SensParam] = [
     # CAPEX
     SensParam("Wind build cost (€m/MW)",  "onsw_build_cost",   "CAPEX"),
@@ -55,10 +55,10 @@ PARAMS: list[SensParam] = [
     # Debt & sizing
     SensParam("Debt rate (%)",            "debt_rate",         "Debt", pct=20),
     SensParam("Debt tenor (yrs)",         "debt_tenor",        "Debt", pct=20),
-    SensParam("DSCR — contracted",        "dscr_contracted",   "Debt", pct=20),
-    SensParam("DSCR — uncontracted",      "dscr_uncontracted", "Debt", pct=20),
-    SensParam("Max gearing — contracted", "max_gearing_contracted",   "Debt", pct=15),
-    SensParam("Max gearing — uncontracted", "max_gearing_uncontracted", "Debt", pct=20),
+    SensParam("DSCR, contracted",        "dscr_contracted",   "Debt", pct=20),
+    SensParam("DSCR, uncontracted",      "dscr_uncontracted", "Debt", pct=20),
+    SensParam("Max gearing, contracted", "max_gearing_contracted",   "Debt", pct=15),
+    SensParam("Max gearing, uncontracted", "max_gearing_uncontracted", "Debt", pct=20),
     # Tax & depreciation
     SensParam("Corporate tax rate",       "corp_tax_rate",     "Tax / Dep.", pct=25),
     SensParam("Book depreciation rate",   "book_depreciation_rate", "Tax / Dep.", pct=25),
@@ -79,7 +79,7 @@ def run_what_if(
     """Run the financial model with *overrides* applied to *base_finance*.
 
     Keys of *overrides* must be valid field names on :class:`ProjectFinanceInputs`.
-    No PyPSA re-run is required — only financial parameters are modified.
+    No PyPSA re-run is required: only financial parameters are modified.
     """
     finance = dataclasses.replace(base_finance, **overrides)
     return run_project_finance(finance, base_energy)

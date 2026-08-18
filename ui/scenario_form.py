@@ -41,7 +41,7 @@ def render_scenario_form(initial: Scenario) -> Scenario:
     with st.expander("Portfolio assets", expanded=True):
         if optimize_capacity:
             st.info(
-                "⚡ **Capacity co-optimization is ON** — the sliders below are ignored. "
+                "⚡ **Capacity co-optimization is ON**: the sliders below are ignored. "
                 "The optimizer sizes each technology up to its max build limit; "
                 "BESS duration is fixed at the MWh/MW ratio below."
             )
@@ -130,7 +130,7 @@ def render_scenario_form(initial: Scenario) -> Scenario:
         load_profile = PROFILE_KEYS[_profile_labels.index(_selected_label)]
         _info = PROFILE_INFO[load_profile]
         cols[1].caption(
-            f"**Typical load factor: {_info['typical_lf']}** — {_info['description']}"
+            f"**Typical load factor: {_info['typical_lf']}**: {_info['description']}"
         )
 
     with st.expander("Market interaction", expanded=True):
@@ -185,7 +185,7 @@ def render_scenario_form(initial: Scenario) -> Scenario:
             st.session_state.setdefault(_k, _v)
 
         # Apply a map click from the previous rerun (st_folium stores its state
-        # under its widget key). Rounded to 0.01° — the CF cache granularity.
+        # under its widget key). Rounded to 0.01°: the CF cache granularity.
         _click = (st.session_state.get("sf_loc_map") or {}).get("last_clicked")
         if _click:
             _sig = (round(_click["lat"], 6), round(_click["lng"], 6))
@@ -227,11 +227,11 @@ def render_scenario_form(initial: Scenario) -> Scenario:
                 options=_zone_options,
                 index=_zone_idx,
                 format_func=lambda z: (
-                    f"Auto — {auto_zone} ({zone_label(auto_zone)})" if z == "auto"
+                    f"Auto: {auto_zone} ({zone_label(auto_zone)})" if z == "auto"
                     else f"{z} ({zone_label(z)})"
                 ),
                 key="sf_bidding_zone",
-                help="Derived from the offtaker location (nearest-zone approximation) — "
+                help="Derived from the offtaker location (nearest-zone approximation): "
                      "override it if the site is close to a zone border.",
             )
             bidding_zone_override = "" if zone_choice == "auto" else zone_choice
@@ -242,7 +242,7 @@ def render_scenario_form(initial: Scenario) -> Scenario:
                 key="sf_transmission_cost",
                 help="Combined transmission / grid-use charge across all network levels between "
                     "the generation sites and the offtaker, applied to every MWh delivered under "
-                    "the PPA. Enter the total (combined) value — it is charged regardless of "
+                    "the PPA. Enter the total (combined) value. It's charged regardless of "
                     "whether assets and offtaker are in the same bidding zone or different ones.",
             )
 
@@ -292,7 +292,7 @@ def render_scenario_form(initial: Scenario) -> Scenario:
                     zoom=5, height=300, color="color",
                 )
                 st.caption(
-                    "🔵 Offtaker · 🟡 PV · 🟢 Wind — install `streamlit-folium` "
+                    "🔵 Offtaker · 🟡 PV · 🟢 Wind. Install `streamlit-folium` "
                     "to place locations by clicking the map."
                 )
             else:

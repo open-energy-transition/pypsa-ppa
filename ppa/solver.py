@@ -32,7 +32,7 @@ def solve(
 
     load = n.loads.dynamic.p_set["Load_PPAOfftake"]
 
-    # In a multi-year sizing LP the caps must bind per calendar year — one
+    # In a multi-year sizing LP the caps must bind per calendar year: one
     # aggregate constraint over 25 years would let the optimizer concentrate all
     # shortfall/buys into the worst weather years. Single-year runs keep the
     # original single aggregate constraint (identical behavior).
@@ -43,7 +43,7 @@ def solve(
         snapshot_groups = [("", ts.index)]
 
     for suffix, snaps in snapshot_groups:
-        # Constraint 1 — allowed shortfall cap (aggregate over period)
+        # Constraint 1: allowed shortfall cap (aggregate over period)
         period_load_mwh = float(load.loc[snaps].sum())
         allowed_shortfall_expr = gen_p.loc[snaps, "Gen_AllowedShortfall"].sum()
         m.add_constraints(
@@ -51,7 +51,7 @@ def solve(
             name=f"AllowedShortfall_Limit{suffix}",
         )
 
-        # Constraint 2 — market buy cap relative to PPA delivery (only when enabled)
+        # Constraint 2: market buy cap relative to PPA delivery (only when enabled)
         if s.enable_market_buy and s.market_buy_share > 0:
             buy_expr = gen_p.loc[snaps, "Gen_BuyFromMarket"].sum()
             delivery_expr = link_p.loc[snaps, "IPPGen_to_PPAOfftake"].sum()
@@ -62,7 +62,7 @@ def solve(
 
     # io_api="direct": hand the problem to HiGHS in memory instead of writing an
     # LP file and reading it back. Identical optimum, but ~265 MB less peak RSS
-    # (~1000 → ~735 MB per solve) and faster — matters on the ~1 GB Streamlit
+    # (~1000 → ~735 MB per solve) and faster: matters on the ~1 GB Streamlit
     # Cloud tier. assign_all_duals is left at its default (False): duals are never
     # consumed anywhere in the app, so materialising 300k+ of them is dead work.
     # Solver algorithm note: parallel interior point ("solver": "ipm") was

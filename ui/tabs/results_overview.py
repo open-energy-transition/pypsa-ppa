@@ -121,8 +121,8 @@ def _render_single_day_overview() -> None:
     st.subheader("Key performance indicators")
     st.caption(
         "Financial figures here use a simplified unlevered model. For a full levered "
-        "project-finance appraisal — debt sizing, depreciation, tax, Equity IRR, and an "
-        "Excel export — run the **Financial Model** tab."
+        "project-finance appraisal, including debt sizing, depreciation, tax, Equity IRR, and an "
+        "Excel export, run the **Financial Model** tab."
     )
     cols = st.columns(4)
     cols[0].metric(
@@ -148,7 +148,7 @@ def _render_single_day_overview() -> None:
             help=f"Levelised Cost of Energy at {s.discount_rate:.0%} WACC",
         )
     else:
-        cols[3].metric("LCOE", "—", help="Run with financial analysis enabled")
+        cols[3].metric("LCOE", "N/A", help="Run with financial analysis enabled")
 
     cols = st.columns(4)
     cols[0].metric(
@@ -165,7 +165,7 @@ def _render_single_day_overview() -> None:
         st.subheader("Offtaker procurement comparison")
         st.caption(
             "How much would the offtaker have paid under alternative sourcing strategies? "
-            "Effective €/MWh for the modelled period — covers shortfall hours at spot for the PPA column."
+            "Effective €/MWh for the modelled period: covers shortfall hours at spot for the PPA column."
         )
         cols = st.columns(4)
         cols[0].metric(

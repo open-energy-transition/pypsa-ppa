@@ -192,7 +192,7 @@ def _collect_inputs(seed: ProjectFinanceInputs, multi_year: bool) -> ProjectFina
         )
         if multi_year and escalate_merchant:
             st.caption(
-                "⚠️ Merchant prices are already escalated by the multi-year energy run — "
+                "⚠️ Merchant prices are already escalated by the multi-year energy run: "
                 "leaving this on double-counts price growth."
             )
 
@@ -205,12 +205,12 @@ def _collect_inputs(seed: ProjectFinanceInputs, multi_year: bool) -> ProjectFina
             wacc = _num("Discount rate / WACC (%)", f + "wacc", seed.discount_rate, step=0.1, fmt="%.2f", pct=True)
         with cols[1]:
             st.markdown("**DSCR**")
-            dscr_c = _num("DSCR — contracted", f + "dscr_c", seed.dscr_contracted, step=0.05, fmt="%.2f")
-            dscr_u = _num("DSCR — uncontracted", f + "dscr_u", seed.dscr_uncontracted, step=0.05, fmt="%.2f")
+            dscr_c = _num("DSCR, contracted", f + "dscr_c", seed.dscr_contracted, step=0.05, fmt="%.2f")
+            dscr_u = _num("DSCR, uncontracted", f + "dscr_u", seed.dscr_uncontracted, step=0.05, fmt="%.2f")
         with cols[2]:
             st.markdown("**Gearing**")
-            gear_c = _num("Max gearing — contracted (%)", f + "gear_c", seed.max_gearing_contracted, step=1.0, fmt="%.1f", pct=True)
-            gear_u = _num("Max gearing — uncontracted (%)", f + "gear_u", seed.max_gearing_uncontracted, step=1.0, fmt="%.1f", pct=True)
+            gear_c = _num("Max gearing, contracted (%)", f + "gear_c", seed.max_gearing_contracted, step=1.0, fmt="%.1f", pct=True)
+            gear_u = _num("Max gearing, uncontracted (%)", f + "gear_u", seed.max_gearing_uncontracted, step=1.0, fmt="%.1f", pct=True)
         with cols[3]:
             st.markdown("**Depreciation & tax**")
             book_dep = _num("Book depreciation (%/yr)", f + "book_dep", seed.book_depreciation_rate, step=0.1, fmt="%.2f", pct=True)
@@ -347,7 +347,7 @@ def render() -> None:
     energy, results_list, multi_year = _energy_source()
     if energy is None:
         st.info(
-            "No energy results yet. Run an optimization in the **Optimization** tab first — "
+            "No energy results yet. Run an optimization in the **Optimization** tab first: "
             "its generation, PPA delivery and merchant volumes feed this model.",
             icon="⚙️",
         )
@@ -415,14 +415,14 @@ def render() -> None:
         # st.subheader("Export")
         n_years = len(results_list)
         st.caption(
-            "Download a streamlined, **live** Excel workbook — one **Hourly** sheet per "
+            "Download a streamlined, **live** Excel workbook: one **Hourly** sheet per "
             f"simulated year ({n_years}) with full hourly dispatch, the Energy totals rolled "
             "up from those hours, and the revenue→tax→cash-flow chain and IRRs as formulas."
         )
         if n_years > 12:
             st.caption(
-                f"⚠️ {n_years} years × 8 760 hours makes a quite large workbook — does take a moment "
-                "to build it to be available for download afterwards."
+                f"⚠️ {n_years} years × 8,760 hours means a fairly large workbook, so it can take a "
+                "moment to build before it's ready to download."
             )
         try:
             xlsx = export_financial_model(result.inputs, result.energy, result, year_results=results_list)

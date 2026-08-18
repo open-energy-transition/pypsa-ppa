@@ -26,14 +26,14 @@ st.markdown(
     # PyPSA-based PPA Explorer
     """
 )
-with st.popover("Disclaimer", width="stretch", icon="⚠️"):
-    st.write(
-        """
-        The content of this document/web page is intended for the exclusive use of **Open Energy Transition (OET)**'s client and other contractually agreed recipients.
-        It may only be made available in whole or in part to third parties with the client's consent and on a non-reliance basis.
-        **Open Energy Transition** is not liable to third parties for the completeness and accuracy of the information provided therein.
-        """
-    )
+st.warning(
+    "**Proof of concept.** This is a research and demonstration tool for exploring PPA "
+    "structures and portfolio economics, not a production planning system. Market data, "
+    "cost assumptions and results are illustrative and should not be used to make real "
+    "investment, procurement or legal decisions. Provided as-is, with no warranty of "
+    "accuracy or fitness for any purpose.",
+    icon="🚧",
+)
 
 tabs = st.tabs([
     "| 👋 Welcome",

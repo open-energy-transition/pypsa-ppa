@@ -57,7 +57,7 @@ def weather_cycle_years(
         return requested_years, None
 
     note = (
-        f"Sizing LP horizon set to {cycle} year(s) — one full cycle of the "
+        f"Sizing LP horizon set to {cycle} year(s): one full cycle of the "
         f"{n_weather_years} cached weather year(s) and {n_price_years} price "
         f"year(s). Later years repeat the same profiles, so a "
         f"{requested_years}-year sizing LP would add cost but almost no new "
@@ -109,7 +109,7 @@ def build_sizing_timeseries(
     Reuses `build_year_timeseries` per simulation year, so weather-year cycling
     and price escalation match the per-year simulation exactly. Wind/PV
     degradation is baked into the CF columns per year (mirrors
-    `ppa.multi_year._degraded_scenario`, which scales p_nom instead — equivalent
+    `ppa.multi_year._degraded_scenario`, which scales p_nom instead: equivalent
     for the LP since p_nom × p_max_pu bounds output either way).
     """
     available_weather_years = sorted(pv_cf_by_year.keys())
@@ -166,7 +166,7 @@ def optimize_capacities(ts: pd.DataFrame, scenario: Scenario) -> SizedCapacities
     hours.
 
     BESS energy capacity fade cannot be time-varied on a StorageUnit, so the
-    horizon-average degradation factor is applied to the fixed duration — a
+    horizon-average degradation factor is applied to the fixed duration: a
     slight de-rating that approximates multi-year usable-capacity fade.
     """
     resolution_h = max(1, int(scenario.sizing_resolution_h))
@@ -246,7 +246,7 @@ def run_sizing_subprocess(
     The solve is one blocking native HiGHS call, so it cannot be interrupted
     in-process (Streamlit's Stop button, Ctrl+C and SIGTERM are all deferred
     until the solver returns). Running it in a child process makes it
-    cancellable — `heartbeat` is invoked every `poll_interval` seconds and may
+    cancellable: `heartbeat` is invoked every `poll_interval` seconds and may
     raise (e.g. a Streamlit StopException); the child is then killed by the
     finally block. Killing the child also returns the LP's multi-GB memory to
     the OS immediately instead of leaving it in the app process.
@@ -277,7 +277,7 @@ def run_sizing_subprocess(
                     break
                 raise RuntimeError(
                     "Sizing subprocess died without returning a result "
-                    "(likely killed by the OS — out of memory?)."
+                    "(likely killed by the OS: out of memory?)."
                 )
             if heartbeat is not None:
                 heartbeat()  # may raise (user cancelled) → finally kills child

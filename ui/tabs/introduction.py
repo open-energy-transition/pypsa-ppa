@@ -20,9 +20,9 @@ def _load_ts():
 def render() -> None:
     st.title("📖 Introduction to PPAs and PyPSA")
     st.markdown(
-        "A primer on **Power Purchase Agreements** (PPAs) — what they are, how they work, and why energy "
-        "system modelling adds value for both developers and offtakers — and **Python for Power "
-        "System Analysis** ([PyPSA](https://pypsa.org/)) — what it can do and how to use it within this project."
+        "A primer on **Power Purchase Agreements** (PPAs): what they are, how they work, and why energy "
+        "system modelling adds value for both developers and offtakers: and **Python for Power "
+        "System Analysis** ([PyPSA](https://pypsa.org/)): what it can do and how to use it within this project."
     )
     # st.markdown("---")
 
@@ -31,7 +31,7 @@ def render() -> None:
     st.markdown(
         """
 A **Power Purchase Agreement (PPA)** is a long-term contract between a power producer and a buyer
-(the *offtaker*) that sets out the terms under which electricity is sold — including the price,
+(the *offtaker*) that sets out the terms under which electricity is sold: including the price,
 volume, delivery obligations, and what happens when those obligations are not met.
 
 PPAs have become a central instrument in the global energy transition:
@@ -41,8 +41,8 @@ PPAs have become a central instrument in the global energy transition:
   PPA, a merchant project must absorb the full volatility of wholesale electricity prices, which
   makes financing harder and more expensive.
 
-- **Supporting corporate clean energy procurement.** Large energy consumers — data centres,
-  manufacturers, retailers — use PPAs to source renewable electricity at contracted prices,
+- **Supporting corporate clean energy procurement.** Large energy consumers: data centres,
+  manufacturers, retailers: use PPAs to source renewable electricity at contracted prices,
   supporting net-zero commitments and RE100 targets.
 
 - **Managing price and volume risk.** PPAs allow both producers and buyers to hedge against spot
@@ -63,7 +63,7 @@ PPAs have become a central instrument in the global energy transition:
             "Real European day-ahead wholesale prices (German DE-LU market) can swing from "
             "deeply negative (oversupply) to hundreds of euros per MWh (scarcity events) within "
             "the same day. A PPA fixes the revenue stream for the generator at the contracted "
-            "tariff — insulating both parties from this volatility."
+            "tariff: insulating both parties from this volatility."
         )
 
     st.subheader("PPA structures vary widely")
@@ -84,7 +84,7 @@ PPAs have become a central instrument in the global energy transition:
     st.subheader("Delivery obligations and penalty structure")
     st.markdown(
         "Most PPAs specify a minimum delivery obligation over the contract period. "
-        "Below is an example structure — the same parameters used in this app's base scenario."
+        "Below is an example structure: the same parameters used in this app's base scenario."
     )
     st.plotly_chart(
         make_ppa_obligation_chart(
@@ -112,20 +112,20 @@ PPAs have become a central instrument in the global energy transition:
         """
 | Term | Meaning |
 |---|---|
-| **MW** | Megawatt — a unit of *power* (rate of energy flow at an instant) |
-| **MWh** | Megawatt-hour — a unit of *energy* (volume). Revenue and costs are expressed per MWh. |
-| **MWac** | Megawatt AC — the AC-side output capacity of a solar inverter |
+| **MW** | Megawatt: a unit of *power* (rate of energy flow at an instant) |
+| **MWh** | Megawatt-hour: a unit of *energy* (volume). Revenue and costs are expressed per MWh. |
+| **MWac** | Megawatt AC: the AC-side output capacity of a solar inverter |
 | **Capacity factor** | Actual output as a fraction of maximum possible output |
-| **IPP** | Independent Power Producer — owns and operates generation assets |
+| **IPP** | Independent Power Producer: owns and operates generation assets |
 | **Offtaker** | The buyer in a PPA |
-| **BESS** | Battery Energy Storage System — co-located storage used to shift generation in time |
-| **ENTSO-E** | European Network of Transmission System Operators for Electricity — source of day-ahead wholesale prices |
-| **Spot price** | Real-time wholesale electricity price — can spike very high or go negative |
+| **BESS** | Battery Energy Storage System: co-located storage used to shift generation in time |
+| **ENTSO-E** | European Network of Transmission System Operators for Electricity: source of day-ahead wholesale prices |
+| **Spot price** | Real-time wholesale electricity price: can spike very high or go negative |
 | **Merchant revenue** | Revenue from selling into the spot market at prevailing prices |
-| **LCOE** | Levelised Cost of Energy — total lifetime costs ÷ total lifetime energy (€/MWh) |
+| **LCOE** | Levelised Cost of Energy: total lifetime costs ÷ total lifetime energy (€/MWh) |
 | **Tariff** | The contracted price per MWh paid by the offtaker under the PPA, fixed at signing for the duration of the contract. The tariff is a revenue-side figure: it is what the project actually earns per MWh delivered. The LCOE is a cost-side figure: it is what the project needs to earn to recover its capital and operating costs over its lifetime. A project is commercially viable when its PPA tariff exceeds its LCOE, with the margin representing the return to investors. Unlike the spot price, the tariff does not fluctuate, which is what makes it valuable for project finance. |
-| **IRR** | Internal Rate of Return — the discount rate at which project NPV = 0 |
-| **WACC** | Weighted Average Cost of Capital — blended required return on debt and equity |
+| **IRR** | Internal Rate of Return: the discount rate at which project NPV = 0 |
+| **WACC** | Weighted Average Cost of Capital: blended required return on debt and equity |
         """
     )
 
@@ -136,16 +136,16 @@ PPAs have become a central instrument in the global energy transition:
     st.markdown(
         """
 [PyPSA](https://pypsa.org/) is often used to model entire energy grids, but it can also model **how particular plants
-operate under PPAs**. In this framing, we model the *commercial flows of power* — dispatch is
+operate under PPAs**. In this framing, we model the *commercial flows of power*: dispatch is
 optimised against the conditions of the offtake contract.
 
 This is useful for renewable energy developers who are building grid-connected plants and intend
 to sell power under an offtake agreement. PyPSA modelling can be used to:
 
-- **Size the plant and storage configuration** — how much wind, solar, and battery do you need?
-- **Test dispatch strategies** — when should the BESS charge vs. dispatch?
-- **Compare PPA structures** — what delivery obligation can the portfolio reliably meet?
-- **Quantify risk** — what is the expected penalty exposure under different market price scenarios?
+- **Size the plant and storage configuration**: how much wind, solar, and battery do you need?
+- **Test dispatch strategies**: when should the BESS charge vs. dispatch?
+- **Compare PPA structures**: what delivery obligation can the portfolio reliably meet?
+- **Quantify risk**: what is the expected penalty exposure under different market price scenarios?
         """
     )
 
@@ -159,7 +159,7 @@ to sell power under an offtake agreement. PyPSA modelling can be used to:
         )
         st.caption(
             "Solar peaks sharply around midday and is zero overnight. Wind is more distributed "
-            "but still variable. A PPA with a **flat 100 MW load** requires delivery at all hours — "
+            "but still variable. A PPA with a **flat 100 MW load** requires delivery at all hours: "
             "including nights and cloudy, low-wind periods. This mismatch is what makes storage "
             "and market interaction valuable: the BESS can absorb surplus afternoon solar and "
             "discharge it during the early-evening demand window when solar has dropped off."
@@ -179,13 +179,13 @@ contractual economics of the PPA.
 |---|---|
 | **Bus** | A node where energy must balance each hour |
 | **Generator** | A source of power (wind, solar) or a commercial construct (penalty, shortfall allowance) |
-| **Load** | A fixed power demand — the PPA offtake obligation |
-| **StorageUnit** | The BESS — absorbs and releases power with a state of charge that persists across hours |
+| **Load** | A fixed power demand: the PPA offtake obligation |
+| **StorageUnit** | The BESS: absorbs and releases power with a state of charge that persists across hours |
 | **Link** | A directed connection between buses, with optional marginal cost representing contract value |
 
 The key parameter driving every dispatch decision is **`marginal_cost`**: the optimiser minimises
 total cost across all components and all hours. Setting `marginal_cost = -ppa_price` on the PPA
-delivery link makes the model treat delivery as commercially valuable — the core of the formulation.
+delivery link makes the model treat delivery as commercially valuable: the core of the formulation.
         """
     )
 
@@ -194,9 +194,9 @@ delivery link makes the model treat delivery as commercially valuable — the co
     # ── Network structure ─────────────────────────────────────────────────────
     st.subheader("Network structure")
     st.markdown(
-        "The six-bus commercial network used in this app connects physical generation assets "
+        "The seven-bus commercial network used in this app connects physical generation assets "
         "to contractual outcomes through a central IPP aggregation point. "
-        "The diagram below shows the base scenario configuration — it updates live "
+        "The diagram below shows the base scenario configuration: it updates live "
         "to reflect the active case study once you select one."
     )
 
@@ -219,13 +219,13 @@ delivery link makes the model treat delivery as commercially valuable — the co
 - `Bus_BuyFromMarket` → spot market purchase
 
 **Commercial aggregation (centre)**
-- `Bus_IPPGeneration` — all generation converges here before dispatch decisions are made.
+- `Bus_IPPGeneration`: all generation converges here before dispatch decisions are made.
   Market purchases enter here rather than at `Bus_REBESS`, and every link is
   unidirectional, so grid energy can never charge the battery.
 
 **Contractual outcomes (right)**
-- `Bus_PPAOfftake` — PPA delivery point; load must balance each hour via delivery, shortfall, or penalty
-- `Bus_SellToMarket` — excess generation sold at spot
+- `Bus_PPAOfftake`: PPA delivery point; load must balance each hour via delivery, shortfall, or penalty
+- `Bus_SellToMarket`: excess generation sold at spot
             """
         )
     with cols[1]:
@@ -240,7 +240,7 @@ to merchant sales in most hours.
 **Balancing at `Bus_PPAOfftake`**
 
 When the portfolio cannot fully deliver, two generators balance the load:
-- `Gen_AllowedShortfall` — near-zero cost, but capped in aggregate (the permitted gap)
-- `Gen_Penalty` — costs 1.5× the tariff; used only after the shortfall cap is exhausted
+- `Gen_AllowedShortfall`: near-zero cost, but capped in aggregate (the permitted gap)
+- `Gen_Penalty`: costs 1.5× the tariff; used only after the shortfall cap is exhausted
             """
         )

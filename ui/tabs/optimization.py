@@ -1,4 +1,4 @@
-"""Optimization tab — run simulation or single-day reference optimization."""
+"""Optimization tab: run simulation or single-day reference optimization."""
 from __future__ import annotations
 
 import pandas as pd
@@ -90,7 +90,7 @@ def _render_scenario_summary(s) -> None:
         with cols[3]:
             st.markdown("**Simulation**")
             st.markdown(
-                f"- Offtaker: **{s.lat:.2f}°N, {s.lon:.2f}°E** — zone **{s.bidding_zone}**"
+                f"- Offtaker: **{s.lat:.2f}°N, {s.lon:.2f}°E**: zone **{s.bidding_zone}**"
             )
             if s.pv_location != (s.lat, s.lon):
                 st.markdown(f"- PV site: **{s.pv_location[0]:.2f}°N, {s.pv_location[1]:.2f}°E**")
@@ -140,7 +140,7 @@ def _render_data_status(s) -> tuple[bool, bool]:
             label = f"ENTSO-E prices ({zone}): {len(cached_price_years)} / {len(PRICE_YEARS)} years cached"
             st.warning(f"{label} (missing: {missing})") if missing else st.success(f"{label} ✓")
         else:
-            st.warning(f"No ENTSO-E prices cached for zone {zone} — go to **Get Data** tab")
+            st.warning(f"No ENTSO-E prices cached for zone {zone}. Go to **Get Data** tab")
         if custom.get("price"):
             st.caption(f"+ custom price data for year(s): {sorted(custom['price'])}")
 
@@ -152,7 +152,7 @@ def _render_data_status(s) -> tuple[bool, bool]:
         else:
             st.warning(
                 f"No CF profiles cached for PV ({pv_lat:.2f}, {pv_lon:.2f}) + "
-                f"wind ({wind_lat:.2f}, {wind_lon:.2f}) — go to **Download Data** tab"
+                f"wind ({wind_lat:.2f}, {wind_lon:.2f}). Go to **Download Data** tab"
             )
         custom_cf_years = sorted(set(custom.get("pv_cf", {})) & set(custom.get("wind_cf", {})))
         if custom_cf_years:
@@ -254,10 +254,10 @@ def _run_simulation(scenario, max_workers: int) -> None:
         scenario = apply_sizing(scenario, sized)
         state.set_optimized_sizes(sized)
         status_text.success(
-            f"Optimized portfolio — Wind {sized.onsw_mw:.0f} MW · "
+            f"Optimized portfolio: Wind {sized.onsw_mw:.0f} MW · "
             f"Solar {sized.pv_mw:.0f} MW · BESS {sized.bess_mw:.0f} MW / "
             f"{sized.bess_mwh:.0f} MWh (sized over {sized.sizing_years_used} year(s) "
-            f"at {sized.resolution_h}h resolution) — running hourly dispatch..."
+            f"at {sized.resolution_h}h resolution): running hourly dispatch..."
         )
 
     def _on_progress(done: int, total: int, sim_year: int) -> None:
@@ -301,7 +301,7 @@ def _render_results(fin, n_years: int) -> None:
         if n_years == 1:
             y = fin.yearly[0]
             st.caption(
-                f"Year {y.year} — PPA revenue €{y.ppa_revenue/1e6:.2f}M | "
+                f"Year {y.year}: PPA revenue €{y.ppa_revenue/1e6:.2f}M | "
                 f"Merchant €{y.merch_revenue/1e6:.2f}M | "
                 f"Delivery {y.fulfilled_share:.1%} | "
                 f"Net CF €{y.net_cashflow/1e6:.2f}M"
@@ -456,7 +456,7 @@ def render() -> None:
         if s.optimize_capacity and state.has_optimized_sizes():
             sized = state.get_optimized_sizes()
             st.info(
-                f"⚡ **Optimized portfolio** — Wind **{sized.onsw_mw:.0f} MW** · "
+                f"⚡ **Optimized portfolio**: Wind **{sized.onsw_mw:.0f} MW** · "
                 f"Solar **{sized.pv_mw:.0f} MW** · BESS **{sized.bess_mw:.0f} MW / "
                 f"{sized.bess_mwh:.0f} MWh** (sized over {sized.sizing_years_used} year(s) "
                 f"at {getattr(sized, 'resolution_h', 1)}h resolution; dispatch & financials run hourly)"
@@ -515,7 +515,7 @@ def render() -> None:
                                 s = apply_sizing(s, sized)
                                 state.set_optimized_sizes(sized)
                                 st.info(
-                                    f"Optimized portfolio — Wind {sized.onsw_mw:.0f} MW · "
+                                    f"Optimized portfolio: Wind {sized.onsw_mw:.0f} MW · "
                                     f"Solar {sized.pv_mw:.0f} MW · BESS {sized.bess_mw:.0f} MW / "
                                     f"{sized.bess_mwh:.0f} MWh (sized on the reference month)"
                                 )
@@ -534,4 +534,4 @@ def render() -> None:
                         except Exception as exc:
                             st.error(f"Optimization failed: {exc}")
                         else:
-                            st.success(f"Complete — {status} / {condition}. See Results tabs.")
+                            st.success(f"Complete: {status} / {condition}. See Results tabs.")
