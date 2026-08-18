@@ -213,11 +213,15 @@ delivery link makes the model treat delivery as commercially valuable: the core 
             """
 **Physical assets (left)**
 - `Bus_OnshoreWind` → wind generator
-- `Bus_PVBESS` → solar + battery storage
+- `Bus_PV` → solar generator
+- `Bus_REBESS` → renewables collection bus; wind and PV both feed it and the battery
+  sits here, so the BESS can charge from either resource
 - `Bus_BuyFromMarket` → spot market purchase
 
 **Commercial aggregation (centre)**
-- `Bus_IPPGeneration`: all generation converges here before dispatch decisions are made
+- `Bus_IPPGeneration`: all generation converges here before dispatch decisions are made.
+  Market purchases enter here rather than at `Bus_REBESS`, and every link is
+  unidirectional, so grid energy can never charge the battery.
 
 **Contractual outcomes (right)**
 - `Bus_PPAOfftake`: PPA delivery point; load must balance each hour via delivery, shortfall, or penalty

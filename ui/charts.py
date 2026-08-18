@@ -8,14 +8,14 @@ from ppa.results import RevenueBreakdown
 from ppa.scenario import Scenario
 
 _COLORS = {
-    "Wind": "#388E3C",
+    "Wind (direct)": "#388E3C",
     "PV (direct)": "#F57C00",
     "BESS discharge": "#1565C0",
     "Buy from market": "#546E7A",
     "BESS charging": "#90CAF9",
 }
 
-_POSITIVE_COLS = ["Wind", "PV (direct)", "BESS discharge", "Buy from market"]
+_POSITIVE_COLS = ["Wind (direct)", "PV (direct)", "BESS discharge", "Buy from market"]
 _NEGATIVE_COL = "BESS charging"
 
 
@@ -538,6 +538,14 @@ def make_portfolio_flow_chart(scenario: Scenario) -> go.Figure:
     _arrow(XA + BW / 2, 4.6,  XM - BW / 2, 4.1)
     if s.include_bess:
         _arrow(XA + BW / 2, 3.2, XM - BW / 2, 3.8)
+        # Charging rail down the left of the asset column: the BESS shares a bus with
+        # both renewables, so wind and PV surplus can charge it. Nothing flows back
+        # from the aggregation bus, so market purchases can never charge the battery.
+        rail_x = XA - BW / 2 - 0.5
+        _arrow(XA - BW / 2, 5.8, rail_x, 5.2, lc="#90CAF9")
+        _arrow(XA - BW / 2, 4.5, rail_x, 4.1, lc="#90CAF9")
+        _arrow(rail_x, 5.2, rail_x, 3.3, lc="#90CAF9")
+        _arrow(rail_x, 3.3, XA - BW / 2, 3.2, label="charge", lc="#90CAF9")
     if s.enable_market_buy:
         _arrow(XA + BW / 2, 1.5, XM - BW / 2, 3.6,
                label=f"≤ {s.market_buy_share:.0%} of delivery", lc="#546E7A")

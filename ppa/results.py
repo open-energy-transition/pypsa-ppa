@@ -183,11 +183,17 @@ def extract_results(
 
 
 def build_supply_mix_df(dispatch: DispatchSeries, ts: pd.DataFrame | None = None) -> pd.DataFrame:
-    pv_direct = dispatch.pv_gen - dispatch.bess_store
+    # The BESS charges from the shared renewables bus, so charging energy is
+    # attributed to wind and PV pro rata to their output in each snapshot; the
+    # remainder is what each resource delivered directly. Keeps the stack additive.
+    re_total = dispatch.wind_gen + dispatch.pv_gen
+    pv_share = (dispatch.pv_gen / re_total.where(re_total > 0)).fillna(0.0)
+    pv_direct = dispatch.pv_gen - dispatch.bess_store * pv_share
+    wind_direct = dispatch.wind_gen - dispatch.bess_store * (1.0 - pv_share)
     idx = ts.index if ts is not None else dispatch.wind_gen.index
     df = pd.DataFrame(
         {
-            "Wind": dispatch.wind_gen.values,
+            "Wind (direct)": wind_direct.clip(lower=0).values,
             "PV (direct)": pv_direct.clip(lower=0).values,
             "BESS discharge": dispatch.bess_dispatch.values,
             "Buy from market": dispatch.market_buy.values,
