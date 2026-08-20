@@ -15,35 +15,40 @@ max_bes_hours = 8
 
 def render_scenario_form(initial: Scenario) -> Scenario:
     """Render all scenario controls and return a new Scenario from widget values."""
+    st.subheader("Capacity sizing approach")
+    sizing_mode = st.radio(
+        "How should asset capacities be determined?",
+        options=["Specify asset capacities manually", "Optimize asset capacities"],
+        index=1 if initial.optimize_capacity else 0,
+        key="sf_sizing_mode",
+        horizontal=True,
+        help=(
+            "Optimize: let PyPSA size wind, solar and BESS together with dispatch "
+            "(least-cost portfolio to serve the PPA), up to the max build limits "
+            "you set below. BESS duration is fixed at the MWh/MW ratio you choose."
+        ),
+    )
+    optimize_capacity = sizing_mode == "Optimize asset capacities"
+
     st.subheader("Feature toggles")
 
     cols = st.columns(4)
-    
+
     include_bess = cols[0].toggle("Include BESS", value=initial.include_bess, key="sf_include_bess")
     enable_market_buy = cols[1].toggle("Enable market buy", value=initial.enable_market_buy, key="sf_enable_market_buy")
     enable_market_sell = cols[2].toggle("Enable market sell", value=initial.enable_market_sell, key="sf_enable_market_sell")
     enable_shortfall = cols[3].toggle("Enable shortfall allowance", value=initial.enable_shortfall, key="sf_enable_shortfall")
-    
+
     cols = st.columns(4)
     enable_penalty = cols[0].toggle("Enable penalty regime", value=initial.enable_penalty, key="sf_enable_penalty")
     run_financial_analysis = cols[1].toggle("Run financial analysis", value=initial.run_financial_analysis, key="sf_run_financial_analysis")
-    optimize_capacity = cols[2].toggle(
-        "Co-optimize capacities & dispatch",
-        value=initial.optimize_capacity,
-        key="sf_optimize_capacity",
-        help=(
-            "Let PyPSA size wind, solar and BESS together with dispatch "
-            "(least-cost portfolio to serve the PPA). The fixed MW values below "
-            "are ignored; set per-technology max build limits instead."
-        ),
-    )
 
-    with st.expander("Portfolio assets", expanded=True):
-        if optimize_capacity:
+    if optimize_capacity:
+        with st.expander("Capacity optimization settings", expanded=True):
             st.info(
-                "⚡ **Capacity co-optimization is ON**: the sliders below are ignored. "
-                "The optimizer sizes each technology up to its max build limit; "
-                "BESS duration is fixed at the MWh/MW ratio below."
+                "⚡ **Capacity optimization is ON**: the optimizer sizes each "
+                "technology up to its max build limit below; BESS duration is "
+                "fixed at the MWh/MW ratio you set."
             )
             cols = st.columns(4)
             max_build_wind_mw = cols[0].number_input(
@@ -74,26 +79,32 @@ def render_scenario_form(initial: Scenario) -> Scenario:
                     "resolution for dispatch and financials."
                 ),
             )
-        else:
-            max_build_wind_mw = initial.max_build_wind_mw
-            max_build_pv_mw = initial.max_build_pv_mw
-            max_build_bess_mw = initial.max_build_bess_mw
-            sizing_resolution_h = initial.sizing_resolution_h
+            bess_mwh = st.slider(
+                "BESS energy (MWh)", 0, max_cap_per_technology * max_bes_hours,
+                int(initial.bess_mwh), step=20, key="sf_bess_mwh",
+                help="Only the MWh/MW ratio (duration) is used by the optimizer.",
+            )
+        onsw_mw = initial.onsw_mw
+        pv_mw = initial.pv_mw
+        bess_mw = initial.bess_mw
+    else:
+        max_build_wind_mw = initial.max_build_wind_mw
+        max_build_pv_mw = initial.max_build_pv_mw
+        max_build_bess_mw = initial.max_build_bess_mw
+        sizing_resolution_h = initial.sizing_resolution_h
 
-        cols = st.columns(4)
-        onsw_mw = cols[0].slider("Onshore wind (MW)", 0, max_cap_per_technology, int(initial.onsw_mw), step=10, key="sf_onsw_mw",
-                                 disabled=optimize_capacity)
-        pv_mw = cols[1].slider("Solar PV (MWac)", 0, max_cap_per_technology, int(initial.pv_mw), step=10, key="sf_pv_mw",
-                               disabled=optimize_capacity)
-        bess_mw = cols[2].slider(
-            "BESS power (MW)", 0, max_cap_per_technology, int(initial.bess_mw), step=10,
-            key="sf_bess_mw", disabled=optimize_capacity,
-        )
-        bess_mwh = cols[3].slider(
-            "BESS energy (MWh)", 0, max_cap_per_technology*max_bes_hours, int(initial.bess_mwh), step=20,
-            key="sf_bess_mwh",
-            help="With co-optimization on, only the MWh/MW ratio (duration) is used." if optimize_capacity else None,
-        )
+        with st.expander("Portfolio assets", expanded=True):
+            cols = st.columns(4)
+            onsw_mw = cols[0].slider("Onshore wind (MW)", 0, max_cap_per_technology, int(initial.onsw_mw), step=10, key="sf_onsw_mw")
+            pv_mw = cols[1].slider("Solar PV (MWac)", 0, max_cap_per_technology, int(initial.pv_mw), step=10, key="sf_pv_mw")
+            bess_mw = cols[2].slider(
+                "BESS power (MW)", 0, max_cap_per_technology, int(initial.bess_mw), step=10,
+                key="sf_bess_mw",
+            )
+            bess_mwh = cols[3].slider(
+                "BESS energy (MWh)", 0, max_cap_per_technology*max_bes_hours, int(initial.bess_mwh), step=20,
+                key="sf_bess_mwh",
+            )
 
     with st.expander("PPA contract terms", expanded=True):
         cols = st.columns(4)
@@ -133,7 +144,8 @@ def render_scenario_form(initial: Scenario) -> Scenario:
             f"**Typical load factor: {_info['typical_lf']}**: {_info['description']}"
         )
 
-    with st.expander("Market interaction", expanded=True):
+    with st.expander("Advanced options", expanded=False):
+        st.markdown("#### Market interaction")
         cols = st.columns(4)
         market_buy_share = cols[0].slider(
             "Market buy cap (% of delivery)", 0, 100,
@@ -145,7 +157,8 @@ def render_scenario_form(initial: Scenario) -> Scenario:
             value=float(initial.market_spread), step=0.05, key="sf_market_spread",
         )
 
-    with st.expander("Financial assumptions", expanded=True):
+        st.divider()
+        st.markdown("#### Financial assumptions")
         cols = st.columns(4)
         wind_capex_per_kw = cols[0].number_input("Wind CAPEX ($/kW)", 500.0, 5000.0,
                                                    float(initial.wind_capex_per_kw), 50.0, key="sf_wind_capex")
@@ -167,7 +180,8 @@ def render_scenario_form(initial: Scenario) -> Scenario:
         project_life_yrs = cols[3].number_input("Project life (years)", 5, 40,
                                             int(initial.project_life_yrs), 1, key="sf_project_life")
 
-    with st.expander("Project Locations & Market Zone", expanded=True):
+        st.divider()
+        st.markdown("#### Project Locations & Market Zone")
         from ppa.data.bidding_zones import SUPPORTED_ZONES, bidding_zone_for, zone_label
 
         # Seed the coordinate widgets once from the scenario; afterwards their
@@ -316,7 +330,8 @@ def render_scenario_form(initial: Scenario) -> Scenario:
                     key="sf_loc_map", returned_objects=["last_clicked"],
                 )
 
-    with st.expander("Simulation", expanded=True):
+        st.divider()
+        st.markdown("#### Simulation")
         cols = st.columns(4)
         simulation_years = int(cols[0].number_input(
             "Simulation years", 1, 40, int(initial.simulation_years), 1, key="sf_sim_years",
@@ -348,7 +363,8 @@ def render_scenario_form(initial: Scenario) -> Scenario:
             0.1, format="%.1f", key="sf_bess_deg",
         ) / 100.0
 
-    with st.expander("Counterfactual sourcing", expanded=True):
+        st.divider()
+        st.markdown("#### Counterfactual sourcing")
         cols = st.columns(4)
         enable_counterfactual = cols[0].toggle(
             "Compare to counterfactual strategies",
@@ -370,7 +386,9 @@ def render_scenario_form(initial: Scenario) -> Scenario:
             key="sf_cal_hedge_fraction",
             help="Share of load hedged at CAL Y+1; remainder sourced at spot.",
         ) / 100.0
-    with st.expander("Reference day selection", expanded=True):
+
+        st.divider()
+        st.markdown("#### Reference day selection")
         cols = st.columns(4)
         # Chosen day selector (use available days from loaded timeseries)
         ts = state.get_timeseries()
