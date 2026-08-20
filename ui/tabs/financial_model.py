@@ -97,7 +97,13 @@ def _collect_inputs(seed: ProjectFinanceInputs, multi_year: bool) -> ProjectFina
             bess_conn = _num("BESS ", f + "bess_conn", seed.bess_connection_cost, step=0.01, fmt="%.3f", label_visibility="collapsed")
 
         cols = st.columns(4)
-        cols[0].markdown("**Devex** (€/MW, €M/MWh):")
+        cols[0].markdown(
+            "**Devex** (€/MW, €M/MWh):",
+            help=(
+                "Expected cost of reaching FID. Paid as a single lump sum per technology "
+                "in the FID period (below), funded 100% by equity."
+            ),
+        )
 
         with cols[1]:
             onsw_devex = _num("Onshore wind  ", f + "onsw_devex", seed.onsw_devex, step=0.01, fmt="%.3f", label_visibility="collapsed")
@@ -126,12 +132,15 @@ def _collect_inputs(seed: ProjectFinanceInputs, multi_year: bool) -> ProjectFina
         with cols[1]:
             anc = _num("Ancillary (% of revenue)", f + "anc", seed.ancillary_pct, step=0.1, fmt="%.2f", pct=True, label_visibility="collapsed")
 
-    with st.expander("📅 Timing (development, construction, life)", expanded=False):
+    with st.expander("📅 Timing (FID, construction, life)", expanded=False):
         cols = st.columns(4, vertical_alignment="bottom")
         with cols[0]:
             st.markdown("**Overall Settings (yrs)**")
         with cols[1]:
-            dev_start = int(_num("Development start period", f + "dev_start", seed.development_start, step=1))
+            fid_period = int(_num(
+                "FID period", f + "fid_period", seed.fid_period, step=1,
+                help="Period devex is paid (100% equity) and construction begins.",
+            ))
         with cols[2]:
             duration = int(_num("Model duration (yrs)", f + "duration", seed.model_duration, step=1))
         with cols[3]:
@@ -141,16 +150,6 @@ def _collect_inputs(seed: ProjectFinanceInputs, multi_year: bool) -> ProjectFina
         cols[1].markdown("**Wind**")
         cols[2].markdown("**Solar PV**")
         cols[3].markdown("**BESS**")
-
-        cols = st.columns(4, vertical_alignment="bottom")
-        with cols[0]:
-            st.markdown("**Development (yrs)**")
-        with cols[1]:
-            onsw_dev = int(_num("Onshore wind", f + "onsw_dev", seed.onsw_dev_years, step=1, label_visibility="collapsed"))
-        with cols[2]:
-            pv_dev = int(_num("Solar PV", f + "pv_dev", seed.pv_dev_years, step=1, label_visibility="collapsed"))
-        with cols[3]:
-            bess_dev = int(_num("BESS", f + "bess_dev", seed.bess_dev_years, step=1, label_visibility="collapsed"))
 
         cols = st.columns(4, vertical_alignment="bottom")
         with cols[0]:
@@ -222,8 +221,7 @@ def _collect_inputs(seed: ProjectFinanceInputs, multi_year: bool) -> ProjectFina
         onsw_connection_cost=onsw_conn, pv_connection_cost=pv_conn, bess_connection_cost=bess_conn,
         onsw_devex=onsw_devex, pv_devex=pv_devex, bess_devex=bess_devex,
         onsw_fixed_om=onsw_om, pv_fixed_om=pv_om, bess_fixed_om=bess_om, ancillary_pct=anc,
-        model_duration=duration, development_start=dev_start,
-        onsw_dev_years=onsw_dev, pv_dev_years=pv_dev, bess_dev_years=bess_dev,
+        model_duration=duration, fid_period=fid_period,
         onsw_constr_years=onsw_con, pv_constr_years=pv_con, bess_constr_years=bess_con,
         operating_life=life,
         ppa_tenor=tenor, ppa_tariff=tariff, penalty_multiple=pen, lgc_price=lgc,
@@ -257,6 +255,13 @@ def _render_results(r) -> None:
         pb = f"{r.payback_years:.1f} yrs" if r.payback_years < 1e8 else "n/a"
         cols[3].metric("Equity payback / LCOE", f"{pb} · €{r.lcoe:,.0f}/MWh")
 
+        bs_ok = r.max_bs_check < 1e-3
+        st.metric(
+            "Balance sheet check",
+            f"{'✅ balances' if bs_ok else '⚠️ imbalance'} (max |A−L−E| = €{r.max_bs_check:,.4f}m)",
+            help="Assets should equal Liabilities + Equity in every period.",
+        )
+
     sc = r.schedule
     periods = r.periods
     ops = sc["ops_flag"].astype(bool)
@@ -265,11 +270,18 @@ def _render_results(r) -> None:
     cols = st.columns(2)
 
     with st.expander("**Annual results**", expanded=True):
-        tab_chart1, tab_chart2, tab_chart3, tab_chart4 = st.tabs([
-            "| Cumulative equity cash flow (FCFE)", 
-            "| Revenue: contracted vs uncontracted", 
+        (
+            tab_chart1, tab_chart2, tab_chart3,
+            tab_capex, tab_revenue, tab_pl, tab_bs, tab_cf,
+        ) = st.tabs([
+            "| Cumulative equity cash flow (FCFE)",
+            "| Revenue: contracted vs uncontracted",
             "| Debt service & DSCR",
-            "| Annual schedule table",
+            "| Capex & devex by technology",
+            "| Revenue by type",
+            "| P&L statement",
+            "| Balance sheet",
+            "| Cash flow statement",
         ])
         with tab_chart1:
             # Cumulative equity cash flow
@@ -312,24 +324,97 @@ def _render_results(r) -> None:
                             legend=dict(orientation="h", y=1.15))
             st.plotly_chart(fig, width="stretch")
 
-        with tab_chart4:
-            # Annual schedule table
+        with tab_capex:
+            st.markdown("**Capex & devex by technology (€m)**")
             df = pd.DataFrame({
                 "Period": periods.astype(int),
-                "Net contracted rev": sc["net_contracted_rev"],
-                "Net uncontracted rev": sc["net_uncontracted_rev"],
+                "Devex: Wind": sc["devex_onsw"],
+                "Devex: Solar PV": sc["devex_pv"],
+                "Devex: BESS": sc["devex_bess"],
+                "Devex: total": sc["devex"],
+                "Capex: Wind": sc["capex_onsw"],
+                "Capex: Solar PV": sc["capex_pv"],
+                "Capex: BESS": sc["capex_bess"],
+                "Capex: total": sc["capex"],
+                "Total capital spend": sc["total_capital_spend"],
+            }).round(3)
+            st.dataframe(df.set_index("Period"), width="stretch", height="content")
+
+        with tab_revenue:
+            st.markdown("**Revenue by type: volume × price = revenue**")
+            df = pd.DataFrame({
+                "Period": periods.astype(int),
+                "PPA volume (GWh)": sc["vol_ppa_gwh"],
+                "PPA price (€/MWh)": sc["price_ppa"],
+                "PPA revenue (€m)": sc["rev_ppa"],
+                "Penalty volume (GWh)": sc["vol_penalty_gwh"],
+                "Penalty price (€/MWh)": sc["price_penalty"],
+                "Penalty cost (€m)": -sc["cost_penalty"],
+                "Merchant solar volume (GWh)": sc["vol_merchant_solar_gwh"],
+                "Merchant solar price (€/MWh)": sc["price_merchant_solar"],
+                "Merchant solar revenue (€m)": sc["rev_merchant_solar"],
+                "Merchant non-solar volume (GWh)": sc["vol_merchant_nonsolar_gwh"],
+                "Merchant non-solar price (€/MWh)": sc["price_merchant_nonsolar"],
+                "Merchant non-solar revenue (€m)": sc["rev_merchant_nonsolar"],
+                "LGC volume (GWh)": sc["vol_lgc_gwh"],
+                "LGC price (€/MWh)": sc["price_lgc"],
+                "LGC revenue (€m)": sc["rev_lgc"],
+                "Total revenue (€m)": sc["total_rev"],
+            }).round(3)
+            st.dataframe(df.set_index("Period"), width="stretch", height="content")
+
+        with tab_pl:
+            st.markdown("**Profit & loss statement (€m)**")
+            df = pd.DataFrame({
+                "Period": periods.astype(int),
+                "Net contracted revenue": sc["net_contracted_rev"],
+                "Net uncontracted revenue": sc["net_uncontracted_rev"],
+                "Total revenue": sc["total_rev"],
                 "Opex": -sc["opex"],
                 "EBITDA": sc["ebitda"],
-                "Interest": -sc["interest"],
-                "Loan repay": -sc["loan_repay"],
-                "Book dep": -sc["book_dep"],
-                "Tax": -sc["tax"],
-                "PAT": sc["pat"],
-                "FCFF": sc["fcff"],
-                "FCFE": sc["fcfe"],
+                "Book depreciation": -sc["book_dep"],
+                "EBIT": sc["ebitda"] - sc["book_dep"],
+                "Interest expense": -sc["interest"],
+                "Profit before tax": sc["pbt"],
+                "Income tax": -sc["tax"],
+                "Profit after tax": sc["pat"],
+            }).round(2)
+            st.dataframe(df.set_index("Period"), width="stretch", height="content")
+
+        with tab_bs:
+            st.markdown("**Balance sheet (€m, closing balances)**")
+            df = pd.DataFrame({
+                "Period": periods.astype(int),
+                "PP&E, net": sc["ppe_net"],
+                "Cash": sc["cash_balance"],
+                "Total assets": sc["total_assets"],
+                "Debt": sc["debt_balance"],
+                "Total liabilities": sc["total_liabilities"],
+                "Share capital": sc["share_capital"],
+                "Retained earnings": sc["retained_earnings"],
+                "Total equity": sc["total_equity_bs"],
+                "Check (A − L − E)": sc["bs_check"],
+            }).round(4)
+            st.dataframe(df.set_index("Period"), width="stretch", height="content")
+            if r.max_bs_check >= 1e-3:
+                st.warning(
+                    f"Balance sheet does not balance in every period (max |A−L−E| = "
+                    f"€{r.max_bs_check:,.4f}m). Check the check column above."
+                )
+
+        with tab_cf:
+            st.markdown("**Cash flow statement (€m)**")
+            df = pd.DataFrame({
+                "Period": periods.astype(int),
+                "Cash from operations": sc["cfo"],
+                "Cash from investing": sc["cfi"],
+                "Cash from financing": sc["cff"],
+                "Net cash flow": sc["net_cash_flow"],
+                "Cash balance": sc["cash_balance"],
+                "FCFF (project)": sc["fcff"],
+                "FCFE (equity)": sc["fcfe"],
                 "DSCR": sc["dscr"],
-            })
-            df = df[(df["Period"] >= 1)].round(2)
+            }).round(3)
             st.dataframe(df.set_index("Period"), width="stretch", height="content")
 
 
