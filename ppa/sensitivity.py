@@ -4,6 +4,7 @@ All parameters here are pure financial-model inputs: no PyPSA re-run is
 needed. Parameters that would require a new optimisation (capacities,
 delivery share, BESS round-trip efficiency) are intentionally excluded.
 """
+
 from __future__ import annotations
 
 import dataclasses
@@ -22,54 +23,61 @@ from ppa.financial_model import (
 
 # ── Tornado parameter catalogue ────────────────────────────────────────────────
 
+
 @dataclass(frozen=True)
 class SensParam:
     """Specification of one sensitivity parameter."""
-    label: str          # human-readable name for charts/tables
-    field: str          # field name on ProjectFinanceInputs
-    group: str          # grouping for display (CAPEX, OPEX, Debt, Revenue, …)
-    pct: float = 25.0   # default ±% range around the base value
-    fmt: str = ".2f"    # numeric format for display
+
+    label: str  # human-readable name for charts/tables
+    field: str  # field name on ProjectFinanceInputs
+    group: str  # grouping for display (CAPEX, OPEX, Debt, Revenue, …)
+    pct: float = 25.0  # default ±% range around the base value
+    fmt: str = ".2f"  # numeric format for display
 
 
 # Full catalogue: ordered by group then impact
 PARAMS: list[SensParam] = [
     # CAPEX
-    SensParam("Wind build cost (€m/MW)",  "onsw_build_cost",   "CAPEX"),
-    SensParam("Solar build cost (€m/MW)", "pv_build_cost",     "CAPEX"),
-    SensParam("BESS build cost (€m/MWh)", "bess_build_cost",   "CAPEX"),
+    SensParam("Wind build cost (€m/MW)", "onsw_build_cost", "CAPEX"),
+    SensParam("Solar build cost (€m/MW)", "pv_build_cost", "CAPEX"),
+    SensParam("BESS build cost (€m/MWh)", "bess_build_cost", "CAPEX"),
     # OPEX
-    SensParam("Wind fixed O&M (€m/MW)",   "onsw_fixed_om",     "OPEX"),
-    SensParam("Solar fixed O&M (€m/MW)",  "pv_fixed_om",       "OPEX"),
-    SensParam("BESS fixed O&M (€m/MWh)",  "bess_fixed_om",     "OPEX"),
-    SensParam("Ancillary cost (% rev)",   "ancillary_pct",     "OPEX"),
+    SensParam("Wind fixed O&M (€m/MW)", "onsw_fixed_om", "OPEX"),
+    SensParam("Solar fixed O&M (€m/MW)", "pv_fixed_om", "OPEX"),
+    SensParam("BESS fixed O&M (€m/MWh)", "bess_fixed_om", "OPEX"),
+    SensParam("Ancillary cost (% rev)", "ancillary_pct", "OPEX"),
     # Revenue
-    SensParam("PPA tariff (€/MWh)",       "ppa_tariff",        "Revenue"),
-    SensParam("Penalty multiple (×)",     "penalty_multiple",  "Revenue", pct=30),
-    SensParam("LGC / GO price (€/MWh)",   "lgc_price",         "Revenue", pct=50),
+    SensParam("PPA tariff (€/MWh)", "ppa_tariff", "Revenue"),
+    SensParam("Penalty multiple (×)", "penalty_multiple", "Revenue", pct=30),
+    SensParam("LGC / GO price (€/MWh)", "lgc_price", "Revenue", pct=50),
     # Indexation
-    SensParam("PPA indexation (%/yr)",    "ppa_indexation",    "Indexation", pct=50),
-    SensParam("Cost inflation (%/yr)",    "cost_inflation",    "Indexation", pct=50),
-    SensParam("Solar price infl. (%/yr)", "solar_price_inflation",   "Indexation", pct=50),
-    SensParam("Non-solar price infl. (%/yr)", "nonsolar_price_inflation", "Indexation", pct=50),
+    SensParam("PPA indexation (%/yr)", "ppa_indexation", "Indexation", pct=50),
+    SensParam("Cost inflation (%/yr)", "cost_inflation", "Indexation", pct=50),
+    SensParam(
+        "Solar price infl. (%/yr)", "solar_price_inflation", "Indexation", pct=50
+    ),
+    SensParam(
+        "Non-solar price infl. (%/yr)", "nonsolar_price_inflation", "Indexation", pct=50
+    ),
     # Debt & sizing
-    SensParam("Debt rate (%)",            "debt_rate",         "Debt", pct=20),
-    SensParam("Debt tenor (yrs)",         "debt_tenor",        "Debt", pct=20),
-    SensParam("DSCR, contracted",        "dscr_contracted",   "Debt", pct=20),
-    SensParam("DSCR, uncontracted",      "dscr_uncontracted", "Debt", pct=20),
-    SensParam("Max gearing, contracted", "max_gearing_contracted",   "Debt", pct=15),
+    SensParam("Debt rate (%)", "debt_rate", "Debt", pct=20),
+    SensParam("Debt tenor (yrs)", "debt_tenor", "Debt", pct=20),
+    SensParam("DSCR, contracted", "dscr_contracted", "Debt", pct=20),
+    SensParam("DSCR, uncontracted", "dscr_uncontracted", "Debt", pct=20),
+    SensParam("Max gearing, contracted", "max_gearing_contracted", "Debt", pct=15),
     SensParam("Max gearing, uncontracted", "max_gearing_uncontracted", "Debt", pct=20),
     # Tax & depreciation
-    SensParam("Corporate tax rate",       "corp_tax_rate",     "Tax / Dep.", pct=25),
-    SensParam("Book depreciation rate",   "book_depreciation_rate", "Tax / Dep.", pct=25),
-    SensParam("Tax depreciation rate",    "tax_depreciation_rate",  "Tax / Dep.", pct=25),
-    SensParam("WACC / discount rate",     "discount_rate",     "Tax / Dep.", pct=20),
+    SensParam("Corporate tax rate", "corp_tax_rate", "Tax / Dep.", pct=25),
+    SensParam("Book depreciation rate", "book_depreciation_rate", "Tax / Dep.", pct=25),
+    SensParam("Tax depreciation rate", "tax_depreciation_rate", "Tax / Dep.", pct=25),
+    SensParam("WACC / discount rate", "discount_rate", "Tax / Dep.", pct=20),
 ]
 
 PARAM_BY_FIELD: dict[str, SensParam] = {p.field: p for p in PARAMS}
 
 
 # ── Core helpers ───────────────────────────────────────────────────────────────
+
 
 def run_what_if(
     base_energy: EnergyInputs,
@@ -157,21 +165,25 @@ def run_tornado(
     return rows, base_val, zero_rows
 
 
-def tornado_to_dataframe(rows: list[TornadoRow], base_val: float, metric: str) -> pd.DataFrame:
+def tornado_to_dataframe(
+    rows: list[TornadoRow], base_val: float, metric: str
+) -> pd.DataFrame:
     """Tidy DataFrame suitable for display or export."""
     is_pct = metric in ("project_irr", "equity_irr", "gearing")
     scale = 100.0 if is_pct else 1.0
     unit = "%" if is_pct else ""
     records = []
     for r in rows:
-        records.append({
-            "Group": r.group,
-            "Parameter": r.param,
-            "Base": r.base_val,
-            "Low (−)": r.low_val,
-            "High (+)": r.high_val,
-            f"Result @ low {unit}".strip(): r.low_metric * scale,
-            f"Result @ high {unit}".strip(): r.high_metric * scale,
-            f"Swing {unit}".strip(): r.swing * scale,
-        })
+        records.append(
+            {
+                "Group": r.group,
+                "Parameter": r.param,
+                "Base": r.base_val,
+                "Low (−)": r.low_val,
+                "High (+)": r.high_val,
+                f"Result @ low {unit}".strip(): r.low_metric * scale,
+                f"Result @ high {unit}".strip(): r.high_metric * scale,
+                f"Swing {unit}".strip(): r.swing * scale,
+            }
+        )
     return pd.DataFrame(records)

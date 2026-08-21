@@ -1,4 +1,5 @@
 """Assemble a full-year hourly timeseries for one simulation year from cached CF + price data."""
+
 from __future__ import annotations
 
 from pathlib import Path
@@ -6,7 +7,7 @@ from pathlib import Path
 import pandas as pd
 
 from ppa.data.entsoe_client import escalate_prices, CACHE_DIR as ENTSOE_CACHE, DE_LU
-from ppa.data.renewables_ninja import AVAILABLE_YEARS, CACHE_DIR as NINJA_CACHE
+from ppa.data.renewables_ninja import CACHE_DIR as NINJA_CACHE
 from ppa.industrial_profiles import get_load_series
 
 
@@ -67,7 +68,9 @@ def load_reference_month_ts(
     Slices one month out of :func:`load_illustration_ts` (zonal ENTSO-E prices +
     renewables.ninja CFs) so the reference LP stays quick (~one month of hours)
     while using European market data. Returns ``None`` if the cache is missing."""
-    ts = load_illustration_ts(year, lat, lon, zone=zone, wind_lat=wind_lat, wind_lon=wind_lon)
+    ts = load_illustration_ts(
+        year, lat, lon, zone=zone, wind_lat=wind_lat, wind_lon=wind_lon
+    )
     if ts is None:
         return None
     return ts[ts.index.month == month]
@@ -105,8 +108,15 @@ def build_year_timeseries(
     pv_series = _align_to_index(pv_cf, year_index, fill_value=0.0)
     wind_series = _align_to_index(wind_cf, year_index, fill_value=0.0)
 
-    escalated = escalate_prices(base_prices, from_year=weather_year, to_year=sim_year, rate=price_escalation_rate)
-    price_series = _align_to_index(escalated, year_index, fill_value=float(escalated.median()))
+    escalated = escalate_prices(
+        base_prices,
+        from_year=weather_year,
+        to_year=sim_year,
+        rate=price_escalation_rate,
+    )
+    price_series = _align_to_index(
+        escalated, year_index, fill_value=float(escalated.median())
+    )
 
     # PyPSA requires timezone-naive snapshots; strip UTC tz while keeping UTC semantics
     naive_index = year_index.tz_localize(None)
@@ -133,10 +143,13 @@ def pick_weather_year(sim_year_idx: int, available_years: list[int]) -> int:
 
 def _hours_in_year(year: int) -> int:
     import calendar
+
     return 8784 if calendar.isleap(year) else 8760
 
 
-def _align_to_index(series: pd.Series, target_index: pd.DatetimeIndex, fill_value: float) -> pd.Series:
+def _align_to_index(
+    series: pd.Series, target_index: pd.DatetimeIndex, fill_value: float
+) -> pd.Series:
     """
     Assign CF values positionally onto target_index (hour-of-year semantics, not calendar date).
 

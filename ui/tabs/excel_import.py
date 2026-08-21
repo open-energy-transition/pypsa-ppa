@@ -6,7 +6,7 @@ import streamlit as st
 def render() -> None:
     st.markdown(
         """
-## Excel Import 
+## Excel Import
 
 To be added :-).
         """

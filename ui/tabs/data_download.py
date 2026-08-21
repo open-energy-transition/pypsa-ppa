@@ -1,4 +1,5 @@
 """Download European market and weather data for the active scenario locations."""
+
 from __future__ import annotations
 
 import time
@@ -44,8 +45,15 @@ def render() -> None:
     zone = scenario.bidding_zone
 
     from ppa.data.bidding_zones import zone_label
-    from ppa.data.entsoe_client import list_cached_years as list_cached_price_years, AVAILABLE_YEARS as PRICE_YEARS
-    from ppa.data.renewables_ninja import list_cached_pv_years, list_cached_wind_years, AVAILABLE_YEARS
+    from ppa.data.entsoe_client import (
+        list_cached_years as list_cached_price_years,
+        AVAILABLE_YEARS as PRICE_YEARS,
+    )
+    from ppa.data.renewables_ninja import (
+        list_cached_pv_years,
+        list_cached_wind_years,
+        AVAILABLE_YEARS,
+    )
 
     cached_price_years = list_cached_price_years(country_code=zone)
     missing_prices = [y for y in PRICE_YEARS if y not in cached_price_years]
@@ -86,7 +94,9 @@ def render() -> None:
 
         with cols[0]:
             st.markdown("**ENTSO-E Transparency Platform**")
-            st.caption("Free registration: [ENTSO-E's Transparency Platform](https://transparency.entsoe.eu/)")
+            st.caption(
+                "Free registration: [ENTSO-E's Transparency Platform](https://transparency.entsoe.eu/)"
+            )
 
         with cols[1]:
             entsoe_token = st.text_input(
@@ -100,7 +110,9 @@ def render() -> None:
 
         with cols[2]:
             st.markdown("**Renewables.ninja**")
-            st.caption("Free registration: [Renewables.ninja](https://www.renewables.ninja/register)")
+            st.caption(
+                "Free registration: [Renewables.ninja](https://www.renewables.ninja/register)"
+            )
 
         with cols[3]:
             ninja_token = st.text_input(
@@ -124,11 +136,17 @@ def render() -> None:
         with cols[1]:
             if not missing_prices:
                 st.success(f"All {len(PRICE_YEARS)} years cached ✓ ")
-                st.caption(f"Available: {', '.join(str(y) for y in cached_price_years)}")
+                st.caption(
+                    f"Available: {', '.join(str(y) for y in cached_price_years)}"
+                )
             elif cached_price_years:
-                st.warning(f"{len(cached_price_years)}/{len(PRICE_YEARS)} years cached. Missing: {missing_prices}")
+                st.warning(
+                    f"{len(cached_price_years)}/{len(PRICE_YEARS)} years cached. Missing: {missing_prices}"
+                )
             else:
-                st.warning(f"No years cached for zone {zone}. Will download: {PRICE_YEARS}")
+                st.warning(
+                    f"No years cached for zone {zone}. Will download: {PRICE_YEARS}"
+                )
 
         with cols[2]:
             st.markdown("**Renewables.ninja normalized renewable profiles**")
@@ -136,14 +154,22 @@ def render() -> None:
         with cols[3]:
             for label, cached, missing in [
                 (f"PV ({pv_lat:.2f}, {pv_lon:.2f})", cached_pv_years, missing_pv),
-                (f"Wind ({wind_lat:.2f}, {wind_lon:.2f})", cached_wind_years, missing_wind),
+                (
+                    f"Wind ({wind_lat:.2f}, {wind_lon:.2f})",
+                    cached_wind_years,
+                    missing_wind,
+                ),
             ]:
                 if not missing:
                     st.success(f"{label}: all {len(AVAILABLE_YEARS)} years cached ✓")
                 elif cached:
-                    st.warning(f"{label}: {len(cached)}/{len(AVAILABLE_YEARS)} years cached. Missing: {missing}")
+                    st.warning(
+                        f"{label}: {len(cached)}/{len(AVAILABLE_YEARS)} years cached. Missing: {missing}"
+                    )
                 else:
-                    st.warning(f"{label}: no years cached. Will download: {AVAILABLE_YEARS}")
+                    st.warning(
+                        f"{label}: no years cached. Will download: {AVAILABLE_YEARS}"
+                    )
 
     # ── Custom timeseries import ────────────────────────────────────────────────
     from ppa.data.custom_timeseries import (
@@ -197,7 +223,9 @@ def render() -> None:
             key="dd_download_custom_template",
         )
 
-        uploaded = st.file_uploader("Re-upload edited CSV", type=["csv"], key="dd_custom_upload")
+        uploaded = st.file_uploader(
+            "Re-upload edited CSV", type=["csv"], key="dd_custom_upload"
+        )
         if uploaded is not None:
             # file_uploader keeps the last upload across reruns, so only (re)validate
             # it once per distinct file: the parsed result is staged as "pending"
@@ -233,7 +261,9 @@ def render() -> None:
                     f"File validated for weather year(s) {pending_years}, **not applied yet**. "
                     "Click below to use it in the next run."
                 )
-                if st.button("Apply custom timeseries", type="primary", key="dd_apply_custom"):
+                if st.button(
+                    "Apply custom timeseries", type="primary", key="dd_apply_custom"
+                ):
                     state.set_custom_timeseries(pending)
                     st.session_state.pop("_dd_custom_upload_pending", None)
                     st.rerun()
@@ -276,24 +306,32 @@ def _do_download(
     missing_pv_years: list[int],
     missing_wind_years: list[int],
 ) -> None:
-    total_steps = len(missing_price_years) + len(missing_pv_years) + len(missing_wind_years)
+    total_steps = (
+        len(missing_price_years) + len(missing_pv_years) + len(missing_wind_years)
+    )
     done = 0
     bar = st.progress(0, text="Preparing…")
 
     # ENTSO-E prices: all missing years for the scenario's bidding zone
     from ppa.data.entsoe_client import fetch_day_ahead_prices
+
     for year in missing_price_years:
-        bar.progress(done / total_steps, text=f"Fetching {year} {zone} day-ahead prices…")
+        bar.progress(
+            done / total_steps, text=f"Fetching {year} {zone} day-ahead prices…"
+        )
         try:
             fetch_day_ahead_prices(year, entsoe_token, country_code=zone)
             done += 1
-            bar.progress(done / total_steps, text=f"ENTSO-E {zone} {year} prices downloaded ✓")
+            bar.progress(
+                done / total_steps, text=f"ENTSO-E {zone} {year} prices downloaded ✓"
+            )
         except Exception as exc:
             st.error(f"ENTSO-E {zone} {year} download failed: {exc}")
             return
 
     # renewables.ninja CF profiles: PV and wind at their own asset locations
     from ppa.data import renewables_ninja as rn
+
     pv_lat, pv_lon = pv_location
     for year in missing_pv_years:
         bar.progress(done / total_steps, text=f"Downloading solar PV CF for {year}…")

@@ -1,0 +1,25 @@
+name: Tests
+
+on:
+  pull_request:
+    branches: ["main"]
+  push:
+    branches: ["main"]
+
+jobs:
+  test:
+    name: Run test suite
+    runs-on: ubuntu-latest
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v7
+
+    - name: Set up pixi
+      uses: prefix-dev/setup-pixi@v0.10.1
+      with:
+        pixi-version: v0.69.0
+        cache: true
+        locked: true
+
+    - name: Run tests
+      run: pixi run test

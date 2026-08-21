@@ -69,15 +69,16 @@ def compute_counterfactuals(
     ppa_delivery = result.dispatch.ppa_delivery  # hourly MW delivered by IPP
     undelivered = (load_mw - ppa_delivery).clip(lower=0.0)
     hourly_ppa_cost = (
-        scenario.ppa_price * ppa_delivery * dt
-        + spot_price * undelivered * dt
+        scenario.ppa_price * ppa_delivery * dt + spot_price * undelivered * dt
     )
     ppa_offtaker_cost = float(hourly_ppa_cost.sum())
 
     # --- Effective $/MWh ---
     spot_avg_price = spot_cost / total_load_mwh if total_load_mwh > 0 else 0.0
     blended_avg_price = blended_cost / total_load_mwh if total_load_mwh > 0 else 0.0
-    ppa_effective_price = ppa_offtaker_cost / total_load_mwh if total_load_mwh > 0 else 0.0
+    ppa_effective_price = (
+        ppa_offtaker_cost / total_load_mwh if total_load_mwh > 0 else 0.0
+    )
 
     # --- Savings vs PPA (positive = that strategy costs more than PPA) ---
     ppa_saving_vs_spot = spot_cost - ppa_offtaker_cost

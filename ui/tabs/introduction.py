@@ -201,6 +201,7 @@ delivery link makes the model treat delivery as commercially valuable: the core 
     )
 
     from ui import state as _state
+
     active_scenario = _state.get_scenario() or BASE_SCENARIO
     st.plotly_chart(
         make_portfolio_flow_chart(active_scenario),

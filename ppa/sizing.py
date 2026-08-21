@@ -8,6 +8,7 @@ writes the optimal capacities back into a fixed-capacity Scenario that the
 existing per-year *hourly* simulation (`ppa.multi_year.run_multi_year`) and
 financials consume unchanged.
 """
+
 from __future__ import annotations
 
 import dataclasses
@@ -67,7 +68,9 @@ def weather_cycle_years(
     return cycle, note
 
 
-def clamp_sizing_years(requested_years: int, resolution_h: float = 1.0) -> tuple[int, str | None]:
+def clamp_sizing_years(
+    requested_years: int, resolution_h: float = 1.0
+) -> tuple[int, str | None]:
     """Clamp the sizing-LP horizon to what fits in available RAM.
 
     A single-year *hourly* solve peaks ~`_PER_WORKER_MEM_MB` MB and linopy LP
@@ -134,7 +137,9 @@ def build_sizing_timeseries(
         )
         # Bake technology degradation into the capacity factors for this year
         ts["ts_PVGen"] = ts["ts_PVGen"] * (1.0 - scenario.pv_degradation_rate) ** idx
-        ts["ts_WindGen"] = ts["ts_WindGen"] * (1.0 - scenario.wind_degradation_rate) ** idx
+        ts["ts_WindGen"] = (
+            ts["ts_WindGen"] * (1.0 - scenario.wind_degradation_rate) ** idx
+        )
         frames.append(ts)
 
     sizing_ts = pd.concat(frames)
@@ -173,7 +178,8 @@ def optimize_capacities(ts: pd.DataFrame, scenario: Scenario) -> SizedCapacities
     ts = coarsen_timeseries(ts, resolution_h)
     n_years = max(1, round(len(ts) * resolution_h / 8760))
     avg_bess_factor = (
-        sum((1.0 - scenario.bess_degradation_rate) ** i for i in range(n_years)) / n_years
+        sum((1.0 - scenario.bess_degradation_rate) ** i for i in range(n_years))
+        / n_years
     )
 
     sizing_scn = dataclasses.replace(

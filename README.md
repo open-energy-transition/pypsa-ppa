@@ -2,7 +2,7 @@
 
 A [PyPSA](https://pypsa.readthedocs.io)-based toolkit for exploring how a renewable energy Power Purchase Agreement (PPA) actually performs once you put real weather and market prices behind it.
 
-> **Proof of concept.** This is a research and demonstration tool, not a production planning system. Data, cost assumptions and results throughout are illustrative. Nothing here should be used to make real investment, procurement or legal decisions without independent verification. It's provided as-is, with no warranty; see [LICENSE](LICENSE).
+> **Proof of concept.** This is a research and demonstration tool, not a production planning system. Data, cost assumptions and results throughout are illustrative. Nothing here should be used to make real investment, procurement or legal decisions without independent verification. Claude was used to support some parts of the prototyping efforts, primarily on the UI side, although all produced code was reviewed by human contributors in the PR process. It's provided as-is, with no warranty; see [LICENSE](LICENSE).
 
 ## What this actually does
 
@@ -42,7 +42,15 @@ pixi run app
 
 Opens at `http://localhost:8501`.
 
-### 4. Run the worked-example notebook
+### 4. Run the tests
+
+```bash
+pixi run test
+```
+
+Runs the full suite (`tests/`) in well under a minute; no network access or API tokens required (data-download tests mock HTTP, everything else uses tiny in-memory fixtures).
+
+### 5. Run the worked-example notebook
 
 ```bash
 pixi run notebook
@@ -206,7 +214,7 @@ Managed by pixi from conda-forge, with a matching `requirements.txt` for pip-bas
 
 Worth knowing before you rely on this for anything beyond exploration:
 
-- There's no automated test suite yet. Changes are checked manually and against the financial model's source workbook.
+- The automated test suite (`pixi run test`, in `tests/`) covers the core modules (scenario, network, solver, sizing, financial model, data download, etc.) and a Streamlit launch smoke test, but not per-tab UI behaviour. Financial-model changes are still cross-checked manually against the source workbook.
 - The capacity sizing LP is a time-coarsened approximation, not an exact hourly solve (see [docs/MODEL.md](docs/MODEL.md)).
 - Cached weather and price data currently spans 2018-2024; multi-year simulations beyond that cycle through the cached years.
 - Great Britain isn't supported as a bidding zone, since ENTSO-E doesn't publish GB day-ahead prices post-Brexit.

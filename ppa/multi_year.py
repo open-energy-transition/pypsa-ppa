@@ -1,4 +1,5 @@
 """Multi-year parallel simulation runner."""
+
 from __future__ import annotations
 
 import dataclasses
@@ -102,9 +103,9 @@ def _degraded_scenario(scenario: Scenario, year_idx: int) -> Scenario:
     reduces usable energy capacity.
     Even the first year has on average already half a degradation to consider.
     """
-    pv_factor = (1.0 - scenario.pv_degradation_rate) ** (year_idx+0.5)
-    wind_factor = (1.0 - scenario.wind_degradation_rate) ** (year_idx+0.5)
-    bess_factor = (1.0 - scenario.bess_degradation_rate) ** (year_idx+0.5)
+    pv_factor = (1.0 - scenario.pv_degradation_rate) ** (year_idx + 0.5)
+    wind_factor = (1.0 - scenario.wind_degradation_rate) ** (year_idx + 0.5)
+    bess_factor = (1.0 - scenario.bess_degradation_rate) ** (year_idx + 0.5)
 
     return dataclasses.replace(
         scenario,
@@ -200,7 +201,9 @@ def run_multi_year(
             progress_callback(completed, n_years, first_sim_year + year_idx)
 
     workers = _safe_worker_count(max_workers, n_years)
-    st.caption(f"Based on available RAM running {n_years} year-simulations with {workers} parallel worker(s) ...")
+    st.caption(
+        f"Based on available RAM running {n_years} year-simulations with {workers} parallel worker(s) ..."
+    )
 
     if workers <= 1:
         # Serial, in-process. Required on memory-constrained hosts (e.g. Streamlit
