@@ -546,9 +546,6 @@ def _render_results(r) -> None:
     periods = r.periods
     ops = sc["ops_flag"].astype(bool)
 
-    # st.markdown("---")
-    cols = st.columns(2)
-
     with st.expander("**Annual results**", expanded=True):
         (
             tab_chart1,

@@ -305,7 +305,7 @@ def _write_hourly_sheets(wb: Workbook, year_results: list) -> dict[str, list[str
         sell = d.market_sell.to_numpy()
         ppa = d.ppa_delivery.to_numpy()
         pen = d.penalty_gen.to_numpy()
-        prices.to_numpy()
+        prices = prices.to_numpy()
         total = wind + pv + bess_dis
         index = d.wind_gen.index
         hours = index.hour
