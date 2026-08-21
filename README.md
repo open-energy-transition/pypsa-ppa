@@ -2,7 +2,7 @@
 
 A [PyPSA](https://pypsa.readthedocs.io)-based toolkit for exploring how a renewable energy Power Purchase Agreement (PPA) actually performs once you put real weather and market prices behind it.
 
-> **Proof of concept.** This is a research and demonstration tool, not a production planning system. Data, cost assumptions and results throughout are illustrative. Nothing here should be used to make real investment, procurement or legal decisions without independent verification. It's provided as-is, with no warranty; see [LICENSE](LICENSE).
+> **Proof of concept.** This is a research and demonstration tool, not a production planning system. Data, cost assumptions and results throughout are illustrative. Nothing here should be used to make real investment, procurement or legal decisions without independent verification. Claude was used to support some parts of the prototyping efforts, primarily on the UI side, although all produced code was reviewed by human contributors in the PR process. It's provided as-is, with no warranty; see [LICENSE](LICENSE).
 
 ## What this actually does
 
