@@ -1,4 +1,5 @@
 """Optimization tab: run simulation or single-day reference optimization."""
+
 from __future__ import annotations
 
 import pandas as pd
@@ -11,9 +12,13 @@ from ui import state
 
 # ── timeseries loader (European reference-month path) ──────────────────────────
 
+
 @st.cache_data
-def _cached_reference_ts(pv_lat: float, pv_lon: float, wind_lat: float, wind_lon: float, zone: str):
+def _cached_reference_ts(
+    pv_lat: float, pv_lon: float, wind_lat: float, wind_lon: float, zone: str
+):
     from ppa.data.european_data import load_reference_month_ts
+
     return load_reference_month_ts(
         lat=pv_lat, lon=pv_lon, zone=zone, wind_lat=wind_lat, wind_lon=wind_lon
     )
@@ -37,6 +42,7 @@ def _get_timeseries(scenario):
 
 # ── scenario summary ──────────────────────────────────────────────────────────
 
+
 def _render_scenario_summary(s) -> None:
     with st.expander("Scenario summary", expanded=False):
         cols = st.columns(4)
@@ -51,14 +57,18 @@ def _render_scenario_summary(s) -> None:
                 )
                 st.markdown(f"- Sizing LP resolution: **{s.sizing_resolution_h}h**")
                 if s.include_bess:
-                    st.markdown(f"- BESS duration: **{s.bess_max_hours:.1f} h** (fixed)")
+                    st.markdown(
+                        f"- BESS duration: **{s.bess_max_hours:.1f} h** (fixed)"
+                    )
                 else:
                     st.markdown("- BESS: *disabled*")
             else:
                 st.markdown(f"- Wind: **{s.onsw_mw:.0f} MW**")
                 st.markdown(f"- Solar: **{s.pv_mw:.0f} MWac**")
                 if s.include_bess:
-                    st.markdown(f"- BESS: **{s.effective_bess_mw:.0f} MW / {s.effective_bess_mwh:.0f} MWh**")
+                    st.markdown(
+                        f"- BESS: **{s.effective_bess_mw:.0f} MW / {s.effective_bess_mwh:.0f} MWh**"
+                    )
                 else:
                     st.markdown("- BESS: *disabled*")
 
@@ -68,7 +78,9 @@ def _render_scenario_summary(s) -> None:
             st.markdown(f"- Tariff: **€{s.ppa_price:.0f}/MWh**")
             st.markdown(f"- Required delivery: **{s.required_delivery_share:.0%}**")
             if s.enable_penalty:
-                st.markdown(f"- Penalty: **{s.pen_mult:.1f}×** = €{s.penalty_price:.0f}/MWh")
+                st.markdown(
+                    f"- Penalty: **{s.pen_mult:.1f}×** = €{s.penalty_price:.0f}/MWh"
+                )
             else:
                 st.markdown("- Penalty: *disabled*")
 
@@ -93,11 +105,17 @@ def _render_scenario_summary(s) -> None:
                 f"- Offtaker: **{s.lat:.2f}°N, {s.lon:.2f}°E**: zone **{s.bidding_zone}**"
             )
             if s.pv_location != (s.lat, s.lon):
-                st.markdown(f"- PV site: **{s.pv_location[0]:.2f}°N, {s.pv_location[1]:.2f}°E**")
+                st.markdown(
+                    f"- PV site: **{s.pv_location[0]:.2f}°N, {s.pv_location[1]:.2f}°E**"
+                )
             if s.wind_location != (s.lat, s.lon):
-                st.markdown(f"- Wind site: **{s.wind_location[0]:.2f}°N, {s.wind_location[1]:.2f}°E**")
+                st.markdown(
+                    f"- Wind site: **{s.wind_location[0]:.2f}°N, {s.wind_location[1]:.2f}°E**"
+                )
             if s.transmission_cost_eur_mwh > 0:
-                st.markdown(f"- Transmission: **€{s.transmission_cost_eur_mwh:.1f}/MWh** delivered")
+                st.markdown(
+                    f"- Transmission: **€{s.transmission_cost_eur_mwh:.1f}/MWh** delivered"
+                )
             if s.simulation_years == 1:
                 st.markdown(f"- Mode: **1-year** ({s.first_sim_year})")
             else:
@@ -115,9 +133,17 @@ def _render_scenario_summary(s) -> None:
 
 # ── data status (compact) ─────────────────────────────────────────────────────
 
+
 def _render_data_status(s) -> tuple[bool, bool]:
-    from ppa.data.entsoe_client import list_cached_years as list_cached_price_years, AVAILABLE_YEARS as PRICE_YEARS
-    from ppa.data.renewables_ninja import list_cached_pv_years, list_cached_wind_years, AVAILABLE_YEARS
+    from ppa.data.entsoe_client import (
+        list_cached_years as list_cached_price_years,
+        AVAILABLE_YEARS as PRICE_YEARS,
+    )
+    from ppa.data.renewables_ninja import (
+        list_cached_pv_years,
+        list_cached_wind_years,
+        AVAILABLE_YEARS,
+    )
 
     zone = s.bidding_zone
     pv_lat, pv_lon = s.pv_location
@@ -131,16 +157,22 @@ def _render_data_status(s) -> tuple[bool, bool]:
         set(list_cached_pv_years(lat=pv_lat, lon=pv_lon))
         & set(list_cached_wind_years(lat=wind_lat, lon=wind_lon))
     )
-    cf_ok = len(cached_cf_years) > 0 or (bool(custom.get("pv_cf")) and bool(custom.get("wind_cf")))
+    cf_ok = len(cached_cf_years) > 0 or (
+        bool(custom.get("pv_cf")) and bool(custom.get("wind_cf"))
+    )
 
     cols = st.columns(2)
     with cols[0]:
         if prices_ok:
             missing = [y for y in PRICE_YEARS if y not in cached_price_years]
             label = f"ENTSO-E prices ({zone}): {len(cached_price_years)} / {len(PRICE_YEARS)} years cached"
-            st.warning(f"{label} (missing: {missing})") if missing else st.success(f"{label} ✓")
+            st.warning(f"{label} (missing: {missing})") if missing else st.success(
+                f"{label} ✓"
+            )
         else:
-            st.warning(f"No ENTSO-E prices cached for zone {zone}. Go to **Get Data** tab")
+            st.warning(
+                f"No ENTSO-E prices cached for zone {zone}. Go to **Get Data** tab"
+            )
         if custom.get("price"):
             st.caption(f"+ custom price data for year(s): {sorted(custom['price'])}")
 
@@ -148,13 +180,17 @@ def _render_data_status(s) -> tuple[bool, bool]:
         if cf_ok:
             missing = [y for y in AVAILABLE_YEARS if y not in cached_cf_years]
             label = f"CF profiles: {len(cached_cf_years)} /{len(AVAILABLE_YEARS)} years cached"
-            st.warning(f"{label} (missing: {missing})") if missing else st.success(f"{label} ✓")
+            st.warning(f"{label} (missing: {missing})") if missing else st.success(
+                f"{label} ✓"
+            )
         else:
             st.warning(
                 f"No CF profiles cached for PV ({pv_lat:.2f}, {pv_lon:.2f}) + "
                 f"wind ({wind_lat:.2f}, {wind_lon:.2f}). Go to **Download Data** tab"
             )
-        custom_cf_years = sorted(set(custom.get("pv_cf", {})) & set(custom.get("wind_cf", {})))
+        custom_cf_years = sorted(
+            set(custom.get("pv_cf", {})) & set(custom.get("wind_cf", {}))
+        )
         if custom_cf_years:
             st.caption(f"+ custom CF data for year(s): {custom_cf_years}")
 
@@ -163,9 +199,13 @@ def _render_data_status(s) -> tuple[bool, bool]:
 
 # ── Simulation runner ────────────────────────────────────────────────
 
+
 def _run_simulation(scenario, max_workers: int) -> None:
     from ppa.data import renewables_ninja as rn
-    from ppa.data.entsoe_client import fetch_day_ahead_prices, list_cached_years as list_cached_price_years
+    from ppa.data.entsoe_client import (
+        fetch_day_ahead_prices,
+        list_cached_years as list_cached_price_years,
+    )
     from ppa.multi_year import run_multi_year
     from ppa.financials import run_multi_year_financial_analysis
 
@@ -197,7 +237,9 @@ def _run_simulation(scenario, max_workers: int) -> None:
     # Fall back to any available price year if a CF year has no matching price year
     # (prices_by_year is cycled the same way as CF in pick_weather_year)
     if not prices_by_year:
-        raise RuntimeError(f"No ENTSO-E prices cached for zone {zone}. Go to **Get Data** tab first.")
+        raise RuntimeError(
+            f"No ENTSO-E prices cached for zone {zone}. Go to **Get Data** tab first."
+        )
 
     progress_bar = st.progress(0, text="Starting optimization ...")
     status_text = st.empty()
@@ -286,40 +328,44 @@ def _run_simulation(scenario, max_workers: int) -> None:
 
 # ── multi-year results display ────────────────────────────────────────────────
 
+
 def _render_results(fin, n_years: int) -> None:
     with st.expander("Optimization results", expanded=True):
         cols = st.columns(5)
         irr_str = f"{fin.irr:.1%}" if fin.irr == fin.irr else "N/A"
         lcoe_str = f"€{fin.lcoe:.1f}/MWh" if fin.lcoe == fin.lcoe else "N/A"
-        payback_str = f"{fin.simple_payback:.1f} yrs" if fin.simple_payback < 1e8 else "N/A"
-        cols[0].metric("NPV", f"€{fin.npv/1e6:.1f}M")
+        payback_str = (
+            f"{fin.simple_payback:.1f} yrs" if fin.simple_payback < 1e8 else "N/A"
+        )
+        cols[0].metric("NPV", f"€{fin.npv / 1e6:.1f}M")
         cols[1].metric("Project IRR", irr_str)
         cols[2].metric("LCOE", lcoe_str)
         cols[3].metric("Simple Payback", payback_str)
-        cols[4].metric("Lifetime Net Revenue", f"€{fin.total_lifetime_revenue/1e6:.1f}M")
+        cols[4].metric(
+            "Lifetime Net Revenue", f"€{fin.total_lifetime_revenue / 1e6:.1f}M"
+        )
 
         if n_years == 1:
             y = fin.yearly[0]
             st.caption(
-                f"Year {y.year}: PPA revenue €{y.ppa_revenue/1e6:.2f}M | "
-                f"Merchant €{y.merch_revenue/1e6:.2f}M | "
+                f"Year {y.year}: PPA revenue €{y.ppa_revenue / 1e6:.2f}M | "
+                f"Merchant €{y.merch_revenue / 1e6:.2f}M | "
                 f"Delivery {y.fulfilled_share:.1%} | "
-                f"Net CF €{y.net_cashflow/1e6:.2f}M"
+                f"Net CF €{y.net_cashflow / 1e6:.2f}M"
             )
             return
 
     # st.markdown("---")
     with st.expander("Charts & data tables", expanded=True):
-        tab_charts, tab_table = st.tabs([
-            "| Charts", 
-            "| Year-by-Year Table"
-        ])
+        tab_charts, tab_table = st.tabs(["| Charts", "| Year-by-Year Table"])
         with tab_charts:
-            tab_chart1, tab_chart2, tab_chart3 = st.tabs([
-                "| Cumulative NPV", 
-                "| Annual Revenue Breakdown", 
-                "| PPA Delivery Rate"
-            ])
+            tab_chart1, tab_chart2, tab_chart3 = st.tabs(
+                [
+                    "| Cumulative NPV",
+                    "| Annual Revenue Breakdown",
+                    "| PPA Delivery Rate",
+                ]
+            )
             with tab_chart1:
                 _render_npv_chart(fin)
             with tab_chart2:
@@ -334,15 +380,21 @@ def _render_results(fin, n_years: int) -> None:
 def _render_npv_chart(fin) -> None:
     years = [y.year for y in fin.yearly]
     fig = go.Figure()
-    fig.add_trace(go.Scatter(
-        x=years, y=[round(v / 1e6, 2) for v in fin.cumulative_npv],
-        mode="lines+markers", name="Cumulative NPV",
-        line=dict(color="#2196F3", width=2),
-    ))
+    fig.add_trace(
+        go.Scatter(
+            x=years,
+            y=[round(v / 1e6, 2) for v in fin.cumulative_npv],
+            mode="lines+markers",
+            name="Cumulative NPV",
+            line=dict(color="#2196F3", width=2),
+        )
+    )
     fig.add_hline(y=0, line_dash="dash", line_color="gray")
     fig.update_layout(
         title="Cumulative NPV over Project Life",
-        xaxis_title="Year", yaxis_title="NPV (€M)", height=400,
+        xaxis_title="Year",
+        yaxis_title="NPV (€M)",
+        height=400,
     )
     st.plotly_chart(fig, width="stretch")
 
@@ -350,15 +402,50 @@ def _render_npv_chart(fin) -> None:
 def _render_revenue_chart(fin) -> None:
     years = [y.year for y in fin.yearly]
     fig = go.Figure()
-    fig.add_trace(go.Bar(x=years, y=[round(y.ppa_revenue / 1e6, 2) for y in fin.yearly], name="PPA revenue"))
-    fig.add_trace(go.Bar(x=years, y=[round(y.merch_revenue / 1e6, 2) for y in fin.yearly], name="Merchant revenue"))
-    fig.add_trace(go.Bar(x=years, y=[round(-y.market_buy_cost / 1e6, 2) for y in fin.yearly], name="Market buy cost"))
-    fig.add_trace(go.Bar(x=years, y=[round(-y.penalty_cost / 1e6, 2) for y in fin.yearly], name="Penalty cost"))
-    fig.add_trace(go.Bar(x=years, y=[round(-y.transmission_cost / 1e6, 2) for y in fin.yearly], name="Transmission cost"))
-    fig.add_trace(go.Bar(x=years, y=[round(-y.opex / 1e6, 2) for y in fin.yearly], name="OPEX"))
+    fig.add_trace(
+        go.Bar(
+            x=years,
+            y=[round(y.ppa_revenue / 1e6, 2) for y in fin.yearly],
+            name="PPA revenue",
+        )
+    )
+    fig.add_trace(
+        go.Bar(
+            x=years,
+            y=[round(y.merch_revenue / 1e6, 2) for y in fin.yearly],
+            name="Merchant revenue",
+        )
+    )
+    fig.add_trace(
+        go.Bar(
+            x=years,
+            y=[round(-y.market_buy_cost / 1e6, 2) for y in fin.yearly],
+            name="Market buy cost",
+        )
+    )
+    fig.add_trace(
+        go.Bar(
+            x=years,
+            y=[round(-y.penalty_cost / 1e6, 2) for y in fin.yearly],
+            name="Penalty cost",
+        )
+    )
+    fig.add_trace(
+        go.Bar(
+            x=years,
+            y=[round(-y.transmission_cost / 1e6, 2) for y in fin.yearly],
+            name="Transmission cost",
+        )
+    )
+    fig.add_trace(
+        go.Bar(x=years, y=[round(-y.opex / 1e6, 2) for y in fin.yearly], name="OPEX")
+    )
     fig.update_layout(
-        barmode="relative", title="Annual Revenue Breakdown",
-        xaxis_title="Year", yaxis_title="€M", height=400,
+        barmode="relative",
+        title="Annual Revenue Breakdown",
+        xaxis_title="Year",
+        yaxis_title="€M",
+        height=400,
     )
     st.plotly_chart(fig, width="stretch")
 
@@ -366,15 +453,21 @@ def _render_revenue_chart(fin) -> None:
 def _render_delivery_chart(fin) -> None:
     years = [y.year for y in fin.yearly]
     fig = go.Figure()
-    fig.add_trace(go.Scatter(
-        x=years, y=[round(y.fulfilled_share,3) * 100 for y in fin.yearly],
-        mode="lines+markers", name="PPA Delivery Rate",
-        line=dict(color="#4CAF50", width=2),
-    ))
+    fig.add_trace(
+        go.Scatter(
+            x=years,
+            y=[round(y.fulfilled_share, 3) * 100 for y in fin.yearly],
+            mode="lines+markers",
+            name="PPA Delivery Rate",
+            line=dict(color="#4CAF50", width=2),
+        )
+    )
     fig.update_layout(
         title="PPA Delivery Rate by Year",
-        xaxis_title="Year", yaxis_title="Delivery Rate (%)",
-        yaxis=dict(range=[0, 105]), height=400,
+        xaxis_title="Year",
+        yaxis_title="Delivery Rate (%)",
+        yaxis=dict(range=[0, 105]),
+        height=400,
     )
     st.plotly_chart(fig, width="stretch")
 
@@ -396,10 +489,13 @@ def _render_yearly_table(fin) -> None:
         }
         for y in fin.yearly
     ]
-    st.dataframe(pd.DataFrame(rows).set_index("Year"), width="stretch", height="content")
+    st.dataframe(
+        pd.DataFrame(rows).set_index("Year"), width="stretch", height="content"
+    )
 
 
 # ── main render ───────────────────────────────────────────────────────────────
+
 
 def render() -> None:
     st.title("⚙️ Optimization")
@@ -428,7 +524,10 @@ def render() -> None:
             )
         with cols[1]:
             max_workers = st.selectbox(
-                "Parallel workers", [1, 2, 4, 8, 16, 24, 30], index=2, key="opt_max_workers",
+                "Parallel workers",
+                [1, 2, 4, 8, 16, 24, 30],
+                index=2,
+                key="opt_max_workers",
                 help=(
                     "Max parallel year-solves. Automatically capped to the available "
                     "CPU and RAM (~1.2 GB per worker), so memory-limited hosts like "
@@ -465,7 +564,9 @@ def render() -> None:
 
     # ── Single-day reference optimization (European reference month) ──────────
     # st.markdown("---")
-    with st.expander("Single-day reference optimization (European reference month)", expanded=False):
+    with st.expander(
+        "Single-day reference optimization (European reference month)", expanded=False
+    ):
         st.caption(
             f"Runs the LP over a representative European month ({s.bidding_zone} prices + "
             "renewables.ninja capacity factors, falling back to the German reference cache "
@@ -474,22 +575,34 @@ def render() -> None:
         )
         ts = _get_timeseries(s)
         if ts is None:
-            st.error("Could not load the European reference timeseries from `data/cache/`.")
+            st.error(
+                "Could not load the European reference timeseries from `data/cache/`."
+            )
         else:
             from ppa.data_loader import get_available_days
+
             errors = validate_scenario(s, available_days=get_available_days(ts))
             if errors:
                 for err in errors:
                     st.error(err)
-                st.warning("Fix the above issues in **Case Study Definition** before running.")
+                st.warning(
+                    "Fix the above issues in **Case Study Definition** before running."
+                )
             else:
                 cols = st.columns([1, 3])
                 with cols[0]:
-                    single_run = st.button("▶ Run Single-Day", type="secondary", width="stretch", key="opt_run_single")
+                    single_run = st.button(
+                        "▶ Run Single-Day",
+                        type="secondary",
+                        width="stretch",
+                        key="opt_run_single",
+                    )
                 with cols[1]:
                     if state.has_result():
                         r = state.get_result()
-                        st.success(f"Last run: **{r.solver_status}** / **{r.solver_condition}**")
+                        st.success(
+                            f"Last run: **{r.solver_status}** / **{r.solver_condition}**"
+                        )
 
                 if single_run:
                     with st.spinner("Solving... (typically 5–15 s)"):
@@ -526,7 +639,12 @@ def render() -> None:
                             state.set_result(result)
 
                             if s.run_financial_analysis:
-                                fin = run_financial_analysis(s, result.summary, result.revenue, result.n_period_hours)
+                                fin = run_financial_analysis(
+                                    s,
+                                    result.summary,
+                                    result.revenue,
+                                    result.n_period_hours,
+                                )
                                 state.set_financial(fin)
                             if s.enable_counterfactual:
                                 cf = compute_counterfactuals(ts_prep, s, result)
@@ -534,4 +652,6 @@ def render() -> None:
                         except Exception as exc:
                             st.error(f"Optimization failed: {exc}")
                         else:
-                            st.success(f"Complete: {status} / {condition}. See Results tabs.")
+                            st.success(
+                                f"Complete: {status} / {condition}. See Results tabs."
+                            )

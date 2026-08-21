@@ -1,4 +1,5 @@
 """Download and cache wind/solar capacity-factor profiles from renewables.ninja."""
+
 from __future__ import annotations
 
 import io

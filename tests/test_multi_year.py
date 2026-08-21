@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import dataclasses
 
 import pytest
 
@@ -15,8 +14,12 @@ from ppa.scenario import Scenario
 
 def test_degraded_scenario_applies_half_year_head_start():
     scenario = Scenario(
-        pv_mw=100.0, onsw_mw=100.0, bess_mwh=100.0,
-        pv_degradation_rate=0.01, wind_degradation_rate=0.02, bess_degradation_rate=0.03,
+        pv_mw=100.0,
+        onsw_mw=100.0,
+        bess_mwh=100.0,
+        pv_degradation_rate=0.01,
+        wind_degradation_rate=0.02,
+        bess_degradation_rate=0.03,
     )
     degraded_0 = _degraded_scenario(scenario, year_idx=0)
     # Even "year 0" carries half a year of degradation, per the docstring.
@@ -60,16 +63,25 @@ def test_run_multi_year_rejects_optimize_capacity_scenario(tiny_ts):
         )
 
 
-def test_run_multi_year_serial_two_years_returns_one_result_per_year(tiny_ts, monkeypatch):
+def test_run_multi_year_serial_two_years_returns_one_result_per_year(
+    tiny_ts, monkeypatch
+):
     """Exercises run_multi_year's own orchestration (degradation, serial dispatch,
     progress callback) using the tiny 48h fixture in place of a real full-year
     timeseries: build_year_timeseries is stubbed out so each per-year LP solve
     stays fast, since run_multi_year always requests a full 8760h year otherwise."""
-    monkeypatch.setattr("ppa.multi_year.build_year_timeseries", lambda **kwargs: tiny_ts)
+    monkeypatch.setattr(
+        "ppa.multi_year.build_year_timeseries", lambda **kwargs: tiny_ts
+    )
 
     scenario = Scenario(
-        onsw_mw=120.0, pv_mw=100.0, bess_mw=20.0, bess_mwh=80.0, ppaload_mw=100.0,
-        simulation_years=2, first_sim_year=2025,
+        onsw_mw=120.0,
+        pv_mw=100.0,
+        bess_mw=20.0,
+        bess_mwh=80.0,
+        ppaload_mw=100.0,
+        simulation_years=2,
+        first_sim_year=2025,
     )
     pv_cf = tiny_ts["ts_PVGen"]
     wind_cf = tiny_ts["ts_WindGen"]
@@ -83,7 +95,9 @@ def test_run_multi_year_serial_two_years_returns_one_result_per_year(tiny_ts, mo
         prices_by_year={2023: prices},
         first_sim_year=2025,
         max_workers=1,  # force the serial, in-process path
-        progress_callback=lambda done, total, year: progress_calls.append((done, total, year)),
+        progress_callback=lambda done, total, year: progress_calls.append(
+            (done, total, year)
+        ),
     )
 
     assert len(results) == 2

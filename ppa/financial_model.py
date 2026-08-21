@@ -33,8 +33,8 @@ try:  # optional: only needed by energy_inputs_from_result
 except Exception:  # pragma: no cover
     OptimizationResult = object  # type: ignore
 
-SOLAR_HOUR_START = 9   # inclusive: "solar hours" defined as 09:00–17:00
-SOLAR_HOUR_END = 17    # exclusive
+SOLAR_HOUR_START = 9  # inclusive: "solar hours" defined as 09:00–17:00
+SOLAR_HOUR_END = 17  # exclusive
 
 
 # ── Inputs ─────────────────────────────────────────────────────────────────
@@ -55,14 +55,14 @@ class EnergyInputs:
     load_mw: float
 
     # During the PPA contract
-    ppa_gwh: float                 # delivered to offtaker under the PPA
-    excess_solar_gwh: float        # surplus sold to market, solar hours
-    excess_nonsolar_gwh: float     # surplus sold to market, non-solar hours
-    penalty_gwh: float             # undelivered volume incurring penalty
+    ppa_gwh: float  # delivered to offtaker under the PPA
+    excess_solar_gwh: float  # surplus sold to market, solar hours
+    excess_nonsolar_gwh: float  # surplus sold to market, non-solar hours
+    penalty_gwh: float  # undelivered volume incurring penalty
 
     # After the PPA expires: all generation is sold merchant
-    total_solar_gwh: float         # total generation in solar hours
-    total_nonsolar_gwh: float      # total generation in non-solar hours
+    total_solar_gwh: float  # total generation in solar hours
+    total_nonsolar_gwh: float  # total generation in non-solar hours
 
     # Capture / purchase prices (real, €/MWh)
     sell_solar_price: float
@@ -81,9 +81,9 @@ class ProjectFinanceInputs:
     source model's units; the dashboard converts the familiar €/kW figures."""
 
     # ── Build cost (€m/MW, €m/MWh for BESS) ─────────────────────────────────
-    onsw_build_cost: float = 1.20      # €m/MW   (1200 €/kW)
-    pv_build_cost: float = 0.75        # €m/MW   (750 €/kW)
-    bess_build_cost: float = 0.38      # €m/MWh  (380 €/kWh)
+    onsw_build_cost: float = 1.20  # €m/MW   (1200 €/kW)
+    pv_build_cost: float = 0.75  # €m/MW   (750 €/kW)
+    bess_build_cost: float = 0.38  # €m/MWh  (380 €/kWh)
 
     # ── Connection cost ─────────────────────────────────────────────────────
     onsw_connection_cost: float = 0.10
@@ -95,32 +95,32 @@ class ProjectFinanceInputs:
     # single lump sum per technology in the FID period, funded 100% by equity
     # (never refinanced by debt), rather than spread over a multi-year
     # development phase.
-    onsw_devex: float = 0.13           # €m/MW   (~10% of build)
-    pv_devex: float = 0.083            # €m/MW
-    bess_devex: float = 0.043          # €m/MWh
+    onsw_devex: float = 0.13  # €m/MW   (~10% of build)
+    pv_devex: float = 0.083  # €m/MW
+    bess_devex: float = 0.043  # €m/MWh
 
     # ── Fixed O&M (€m/MW p.a., €m/MWh p.a. for BESS) ────────────────────────
     onsw_fixed_om: float = 0.025
     pv_fixed_om: float = 0.010
-    bess_fixed_om: float = 0.010       # €m/MWh
-    ancillary_pct: float = 0.01        # % of revenue
+    bess_fixed_om: float = 0.010  # €m/MWh
+    ancillary_pct: float = 0.01  # % of revenue
 
     # ── Timing (years) ──────────────────────────────────────────────────────
     model_duration: int = 40
-    fid_period: int = 1                # period devex is paid; construction starts here
+    fid_period: int = 1  # period devex is paid; construction starts here
     onsw_constr_years: int = 2
     pv_constr_years: int = 1
     bess_constr_years: int = 1
     operating_life: int = 30
 
     # ── Revenue ─────────────────────────────────────────────────────────────
-    ppa_tenor: int = 15                # PPA contract length (years)
-    ppa_tariff: float = 100.0          # €/MWh (base, pre-indexation)
-    penalty_multiple: float = 1.5      # penalty tariff = multiple × PPA tariff
-    lgc_price: float = 5.0             # €/MWh green-certificate revenue on excess
+    ppa_tenor: int = 15  # PPA contract length (years)
+    ppa_tariff: float = 100.0  # €/MWh (base, pre-indexation)
+    penalty_multiple: float = 1.5  # penalty tariff = multiple × PPA tariff
+    lgc_price: float = 5.0  # €/MWh green-certificate revenue on excess
 
     # ── Indexation (% p.a.) ─────────────────────────────────────────────────
-    indexation_offset_years: int = 2   # years of escalation already elapsed at period 1
+    indexation_offset_years: int = 2  # years of escalation already elapsed at period 1
     cost_inflation: float = 0.02
     ppa_indexation: float = 0.02
     solar_price_inflation: float = 0.01
@@ -185,14 +185,14 @@ class ProjectFinanceResult:
     equity_irr: float
     npv_project: float
     gearing: float
-    total_capex: float            # €m, nominal incl. devex & IDC
-    total_debt: float             # €m, incl. IDC
-    total_equity: float           # €m
+    total_capex: float  # €m, nominal incl. devex & IDC
+    total_debt: float  # €m, incl. IDC
+    total_equity: float  # €m
     min_dscr: float
     avg_dscr: float
     payback_years: float
-    lcoe: float                   # €/MWh
-    max_bs_check: float            # €m, max |assets - liabilities - equity|; should be ~0
+    lcoe: float  # €/MWh
+    max_bs_check: float  # €m, max |assets - liabilities - equity|; should be ~0
 
     # Per-period schedules (length = model_duration); index 0 = period 1
     periods: np.ndarray = field(repr=False, default=None)  # type: ignore
@@ -244,9 +244,7 @@ def energy_inputs_from_result(
     sell_nonsolar = _price(~solar_mask)
 
     buy_vol = float(d.market_buy.sum())
-    buy_price = (
-        float((d.market_buy * prices).sum()) / buy_vol if buy_vol > 0 else 0.0
-    )
+    buy_price = float((d.market_buy * prices).sum()) / buy_vol if buy_vol > 0 else 0.0
 
     return EnergyInputs(
         onsw_mw=s.onsw_mw,
@@ -308,8 +306,8 @@ def energy_inputs_from_results(results: list) -> EnergyInputs:
 @dataclass
 class _Timeline:
     duration: int
-    constr_end: int       # period at which construction finishes
-    ops_start: int        # first operating period
+    constr_end: int  # period at which construction finishes
+    ops_start: int  # first operating period
     ops_end: int
     ppa_end: int
     debt_end: int
@@ -329,10 +327,14 @@ def _build_timeline(p: ProjectFinanceInputs) -> _Timeline:
     ops_end = ops_start + p.operating_life - 1
     ppa_end = ops_start + p.ppa_tenor - 1
     debt_end = ops_start + p.debt_tenor - 1
-    return _Timeline(p.model_duration, constr_end, ops_start, ops_end, ppa_end, debt_end)
+    return _Timeline(
+        p.model_duration, constr_end, ops_start, ops_end, ppa_end, debt_end
+    )
 
 
-def _spread(total: float, first: int, last: int, n: int, mult: np.ndarray) -> np.ndarray:
+def _spread(
+    total: float, first: int, last: int, n: int, mult: np.ndarray
+) -> np.ndarray:
     """Spread ``total`` evenly across periods [first, last] (1-based, inclusive),
     indexing each instalment by the cost-inflation multiplier ``mult``."""
     out = np.zeros(n)
@@ -346,6 +348,7 @@ def _spread(total: float, first: int, last: int, n: int, mult: np.ndarray) -> np
 
 def _irr(cashflows: np.ndarray) -> float:
     """IRR via bisection on NPV (robust, no SciPy dependency)."""
+
     def npv(rate: float) -> float:
         t = np.arange(len(cashflows))
         return float(np.sum(cashflows / (1.0 + rate) ** t))
@@ -446,15 +449,19 @@ def run_project_finance(
     lgc = p.lgc_price * ppa_idx
 
     GWh = 1000.0  # GWh → MWh
-    M = 1e6       # €/€m
+    M = 1e6  # €/€m
 
     # Volumes by type (PPA-period and post-PPA merchant volumes combined; the
     # two regimes are mutually exclusive in time, so each line is non-zero in
     # only one of them at a time).
     vol_ppa_gwh = ppa_flag * e.ppa_gwh
     vol_penalty_gwh = ppa_flag * e.penalty_gwh
-    vol_merchant_solar_gwh = ppa_flag * e.excess_solar_gwh + nonppa_flag * e.total_solar_gwh
-    vol_merchant_nonsolar_gwh = ppa_flag * e.excess_nonsolar_gwh + nonppa_flag * e.total_nonsolar_gwh
+    vol_merchant_solar_gwh = (
+        ppa_flag * e.excess_solar_gwh + nonppa_flag * e.total_solar_gwh
+    )
+    vol_merchant_nonsolar_gwh = (
+        ppa_flag * e.excess_nonsolar_gwh + nonppa_flag * e.total_nonsolar_gwh
+    )
     vol_lgc_gwh = vol_merchant_solar_gwh + vol_merchant_nonsolar_gwh
 
     # Revenue by type = volume × price, summing to total revenue.
@@ -495,7 +502,9 @@ def run_project_finance(
     def npv_to_ops(series: np.ndarray) -> float:
         total = 0.0
         for period in range(tl.ops_start, tl.debt_end + 1):
-            total += series[period - 1] / (1.0 + p.debt_rate) ** (period - tl.ops_start + 1)
+            total += series[period - 1] / (1.0 + p.debt_rate) ** (
+                period - tl.ops_start + 1
+            )
         return total
 
     contracted_debt_cap = npv_to_ops(tgt_ds_contracted)
@@ -564,7 +573,9 @@ def run_project_finance(
         contracted_debt = debt_at_ops
     uncontracted_debt = debt_at_ops - contracted_debt
 
-    def repay_tranche(opening: float, tgt_ds: np.ndarray) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
+    def repay_tranche(
+        opening: float, tgt_ds: np.ndarray
+    ) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
         bal = opening
         interest = zeros()
         repay = zeros()
@@ -586,8 +597,10 @@ def run_project_finance(
     loan_repay = rep_c + rep_u
 
     # ── Schedule 4: Depreciation ─────────────────────────────────────────────
-    book_base = nominal_capex_total + float(idc.sum())  # devex + capex + IDC capitalised
-    tax_base = float(capex.sum())                       # capex only (devex expensed for tax)
+    book_base = nominal_capex_total + float(
+        idc.sum()
+    )  # devex + capex + IDC capitalised
+    tax_base = float(capex.sum())  # capex only (devex expensed for tax)
     book_dep = ops_flag * min(1.0, 1.0) * book_base * p.book_depreciation_rate
     tax_dep = ops_flag * tax_base * p.tax_depreciation_rate
     # cap cumulative depreciation at the asset base
@@ -639,29 +652,36 @@ def run_project_finance(
     # No dividends/distributions are modelled yet: all profit and cash generated
     # is retained, so retained earnings and the cash balance simply accumulate.
     # Cash flow statement, standard three sections:
-    cfo = ops_flag * (ebitda - interest_exp - tax)         # operating
-    cfi = -total_capital_spend                              # investing (devex + capex)
-    cff = debt_draw + equity_spend - loan_repay              # financing
+    cfo = ops_flag * (ebitda - interest_exp - tax)  # operating
+    cfi = -total_capital_spend  # investing (devex + capex)
+    cff = debt_draw + equity_spend - loan_repay  # financing
     net_cash_flow = cfo + cfi + cff
     cash_balance = np.cumsum(net_cash_flow)
 
     # Balance sheet, standard roll-forwards (all cumulative from period 1):
-    ppe_net = np.cumsum(capex + devex + idc - book_dep)      # net PP&E (incl. capitalised IDC)
-    debt_balance = np.cumsum(debt_draw + idc - loan_repay)   # interest doesn't reduce principal
-    share_capital = np.cumsum(equity_spend)                  # cumulative equity contributed
-    retained_earnings = np.cumsum(pat)                        # no distributions yet
+    ppe_net = np.cumsum(
+        capex + devex + idc - book_dep
+    )  # net PP&E (incl. capitalised IDC)
+    debt_balance = np.cumsum(
+        debt_draw + idc - loan_repay
+    )  # interest doesn't reduce principal
+    share_capital = np.cumsum(equity_spend)  # cumulative equity contributed
+    retained_earnings = np.cumsum(pat)  # no distributions yet
 
     total_assets = ppe_net + cash_balance
     total_liabilities = debt_balance
     total_equity_bs = share_capital + retained_earnings
-    bs_check = total_assets - total_liabilities - total_equity_bs  # should be ~0 every period
+    bs_check = (
+        total_assets - total_liabilities - total_equity_bs
+    )  # should be ~0 every period
 
     # LCOE: annuitised capital + opex over generation
     annuity = (1 - (1 + p.discount_rate) ** -p.operating_life) / p.discount_rate
     annual_gen_mwh = (e.total_solar_gwh + e.total_nonsolar_gwh) * 1000.0
     lcoe = (
         (nominal_capex_total * M / annuity + fixed_om * M) / annual_gen_mwh
-        if annual_gen_mwh > 0 else float("nan")
+        if annual_gen_mwh > 0
+        else float("nan")
     )
 
     schedule = {

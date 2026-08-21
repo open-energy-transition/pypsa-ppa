@@ -12,7 +12,7 @@ from ui.charts import make_supply_mix_24h_chart, make_revenue_breakdown_chart
 def _render_multi_year_overview(fin) -> None:
     # Effective scenario: after a sizing run this carries the optimized
     # capacities the results were actually produced with, not the slider values.
-    s = state.get_effective_scenario()
+    state.get_effective_scenario()
 
     # ── Lifetime KPIs ─────────────────────────────────────────────────────────
     st.subheader("Lifetime KPIs")
@@ -49,10 +49,22 @@ def _render_multi_year_overview(fin) -> None:
             width="stretch",
         )
     with cols[1]:
-        avg_delivery = sum(y.fulfilled_share for y in fin.yearly) / len(fin.yearly) if fin.yearly else 0.0
+        avg_delivery = (
+            sum(y.fulfilled_share for y in fin.yearly) / len(fin.yearly)
+            if fin.yearly
+            else 0.0
+        )
         total_gen_gwh = fin.total_lifetime_generation_mwh / 1e3
-        avg_wind_gwh = sum(y.wind_gen_mwh for y in fin.yearly) / len(fin.yearly) / 1e3 if fin.yearly else 0.0
-        avg_pv_gwh = sum(y.pv_gen_mwh for y in fin.yearly) / len(fin.yearly) / 1e3 if fin.yearly else 0.0
+        avg_wind_gwh = (
+            sum(y.wind_gen_mwh for y in fin.yearly) / len(fin.yearly) / 1e3
+            if fin.yearly
+            else 0.0
+        )
+        avg_pv_gwh = (
+            sum(y.pv_gen_mwh for y in fin.yearly) / len(fin.yearly) / 1e3
+            if fin.yearly
+            else 0.0
+        )
         gen_rows = [
             ("Avg annual PPA delivery rate", f"{avg_delivery:.1%}"),
             ("Total lifetime generation", f"{total_gen_gwh:.0f} GWh"),
@@ -70,16 +82,22 @@ def _render_multi_year_overview(fin) -> None:
     st.subheader("Cumulative NPV")
     years = [y.year for y in fin.yearly]
     fig = go.Figure()
-    fig.add_trace(go.Scatter(
-        x=years, y=[v / 1e6 for v in fin.cumulative_npv],
-        mode="lines+markers", name="Cumulative NPV",
-        line=dict(color="#2196F3", width=2),
-        fill="tozeroy",
-        fillcolor="rgba(33,150,243,0.08)",
-    ))
+    fig.add_trace(
+        go.Scatter(
+            x=years,
+            y=[v / 1e6 for v in fin.cumulative_npv],
+            mode="lines+markers",
+            name="Cumulative NPV",
+            line=dict(color="#2196F3", width=2),
+            fill="tozeroy",
+            fillcolor="rgba(33,150,243,0.08)",
+        )
+    )
     fig.add_hline(y=0, line_dash="dash", line_color="gray")
     fig.update_layout(
-        xaxis_title="Year", yaxis_title="NPV (€M)", height=400,
+        xaxis_title="Year",
+        yaxis_title="NPV (€M)",
+        height=400,
         margin=dict(t=10, b=40),
     )
     st.plotly_chart(fig, width="stretch")
@@ -204,11 +222,18 @@ def _render_single_day_overview() -> None:
 
     compliance = {
         "Constraint": ["Allowed shortfall cap", "Market buy cap"],
-        "Actual (MWh)": [f"{summary.allowed_shortfall_mwh:,.0f}", f"{summary.market_buy_to_ppa_mwh:,.0f}"],
+        "Actual (MWh)": [
+            f"{summary.allowed_shortfall_mwh:,.0f}",
+            f"{summary.market_buy_to_ppa_mwh:,.0f}",
+        ],
         "Limit (MWh)": [f"{allowed_limit:,.0f}", f"{buy_limit:,.0f}"],
         "Status": [
-            "✅ Satisfied" if summary.allowed_shortfall_mwh <= allowed_limit + 1 else "❌ Violated",
-            "✅ Satisfied" if summary.market_buy_to_ppa_mwh <= buy_limit + 1 else "❌ Violated",
+            "✅ Satisfied"
+            if summary.allowed_shortfall_mwh <= allowed_limit + 1
+            else "❌ Violated",
+            "✅ Satisfied"
+            if summary.market_buy_to_ppa_mwh <= buy_limit + 1
+            else "❌ Violated",
         ],
     }
     st.dataframe(pd.DataFrame(compliance), hide_index=True, width="stretch")
@@ -277,6 +302,7 @@ def _render_single_day_overview() -> None:
     ts = state.get_timeseries()
     if ts is not None:
         from ppa.data_loader import prepare_timeseries
+
         ts_prep = prepare_timeseries(ts, s)
 
         cols = st.columns([3, 2])

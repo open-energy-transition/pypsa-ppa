@@ -6,7 +6,6 @@ import pandas as pd
 import pytest
 
 from ppa.network import build_network
-from ppa.scenario import Scenario
 from ppa.solver import solve
 
 
@@ -19,7 +18,9 @@ def test_solve_dispatch_network_reaches_optimum(tiny_ts, base_scenario):
 
 def test_solve_respects_allowed_shortfall_cap(tiny_ts, base_scenario):
     """AllowedShortfall_Limit constraint: shortfall energy <= allowed_shortfall_share * load."""
-    scn = dataclasses.replace(base_scenario, required_delivery_share=0.5, enable_shortfall=True)
+    scn = dataclasses.replace(
+        base_scenario, required_delivery_share=0.5, enable_shortfall=True
+    )
     n = build_network(tiny_ts, scn)
     solve(n, scn, tiny_ts)
 
@@ -32,7 +33,11 @@ def test_solve_respects_allowed_shortfall_cap(tiny_ts, base_scenario):
 def test_solve_respects_market_buy_share_cap(tiny_ts, base_scenario):
     """BuyFromMarket_Limit constraint: buy volume <= market_buy_share * PPA delivery."""
     scn = dataclasses.replace(
-        base_scenario, enable_market_buy=True, market_buy_share=0.05, onsw_mw=10.0, pv_mw=10.0
+        base_scenario,
+        enable_market_buy=True,
+        market_buy_share=0.05,
+        onsw_mw=10.0,
+        pv_mw=10.0,
     )
     n = build_network(tiny_ts, scn)
     solve(n, scn, tiny_ts)
@@ -47,10 +52,14 @@ def test_solve_with_market_buy_disabled_forces_zero_purchases(tiny_ts, base_scen
     n = build_network(tiny_ts, scn)
     status, condition = solve(n, scn, tiny_ts)
     assert status == "ok"
-    assert float(n.generators.dynamic.p["Gen_BuyFromMarket"].sum()) == pytest.approx(0.0)
+    assert float(n.generators.dynamic.p["Gen_BuyFromMarket"].sum()) == pytest.approx(
+        0.0
+    )
 
 
-def test_solve_full_bess_charge_discharge_cycle_is_energy_consistent(tiny_ts, base_scenario):
+def test_solve_full_bess_charge_discharge_cycle_is_energy_consistent(
+    tiny_ts, base_scenario
+):
     n = build_network(tiny_ts, base_scenario)
     solve(n, base_scenario, tiny_ts)
 
@@ -59,7 +68,9 @@ def test_solve_full_bess_charge_discharge_cycle_is_energy_consistent(tiny_ts, ba
     assert (soc <= base_scenario.bess_mwh + 1e-6).all()
 
 
-def test_solve_multi_year_snapshot_groups_bind_shortfall_per_calendar_year(base_scenario):
+def test_solve_multi_year_snapshot_groups_bind_shortfall_per_calendar_year(
+    base_scenario,
+):
     """The allowed-shortfall cap must bind separately for each calendar year,
     not in aggregate across the whole sizing horizon (see solver.py's
     per-year snapshot_groups). Distinguishing scenario: year 2023 has zero

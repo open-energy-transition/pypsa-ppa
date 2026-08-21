@@ -1,26 +1,42 @@
 from __future__ import annotations
 
-import dataclasses
 
 import pytest
 
 from ppa.financial_model import EnergyInputs, ProjectFinanceInputs, run_project_finance
-from ppa.sensitivity import PARAM_BY_FIELD, PARAMS, run_tornado, run_what_if, tornado_to_dataframe
+from ppa.sensitivity import (
+    PARAM_BY_FIELD,
+    PARAMS,
+    run_tornado,
+    run_what_if,
+    tornado_to_dataframe,
+)
 
 
 @pytest.fixture
 def base_energy() -> EnergyInputs:
     return EnergyInputs(
-        onsw_mw=100.0, pv_mw=100.0, bess_mw=20.0, bess_mwh=80.0, load_mw=100.0,
-        ppa_gwh=600.0, excess_solar_gwh=50.0, excess_nonsolar_gwh=30.0, penalty_gwh=10.0,
-        total_solar_gwh=300.0, total_nonsolar_gwh=400.0,
-        sell_solar_price=40.0, sell_nonsolar_price=60.0,
+        onsw_mw=100.0,
+        pv_mw=100.0,
+        bess_mw=20.0,
+        bess_mwh=80.0,
+        load_mw=100.0,
+        ppa_gwh=600.0,
+        excess_solar_gwh=50.0,
+        excess_nonsolar_gwh=30.0,
+        penalty_gwh=10.0,
+        total_solar_gwh=300.0,
+        total_nonsolar_gwh=400.0,
+        sell_solar_price=40.0,
+        sell_nonsolar_price=60.0,
     )
 
 
 @pytest.fixture
 def base_finance() -> ProjectFinanceInputs:
-    return ProjectFinanceInputs(model_duration=15, operating_life=10, debt_tenor=8, ppa_tenor=8)
+    return ProjectFinanceInputs(
+        model_duration=15, operating_life=10, debt_tenor=8, ppa_tenor=8
+    )
 
 
 def test_run_what_if_overrides_a_single_field(base_energy, base_finance):
@@ -37,7 +53,9 @@ def test_run_what_if_does_not_mutate_base_inputs(base_energy, base_finance):
 
 def test_param_catalogue_fields_all_exist_on_inputs(base_finance):
     for p in PARAMS:
-        assert hasattr(base_finance, p.field), f"{p.field} missing from ProjectFinanceInputs"
+        assert hasattr(base_finance, p.field), (
+            f"{p.field} missing from ProjectFinanceInputs"
+        )
 
 
 def test_param_by_field_is_indexed_consistently():
@@ -45,8 +63,14 @@ def test_param_by_field_is_indexed_consistently():
         assert PARAM_BY_FIELD[p.field] is p
 
 
-def test_run_tornado_small_subset_returns_rows_sorted_by_swing_descending(base_energy, base_finance):
-    subset = [PARAM_BY_FIELD["ppa_tariff"], PARAM_BY_FIELD["corp_tax_rate"], PARAM_BY_FIELD["debt_rate"]]
+def test_run_tornado_small_subset_returns_rows_sorted_by_swing_descending(
+    base_energy, base_finance
+):
+    subset = [
+        PARAM_BY_FIELD["ppa_tariff"],
+        PARAM_BY_FIELD["corp_tax_rate"],
+        PARAM_BY_FIELD["debt_rate"],
+    ]
     rows, base_val, zero_rows = run_tornado(base_energy, base_finance, params=subset)
 
     swings = [r.swing for r in rows]
@@ -68,14 +92,18 @@ def test_run_tornado_int_field_stays_integer_at_low_and_high(base_energy, base_f
 
 def test_run_tornado_base_val_matches_direct_run(base_energy, base_finance):
     subset = [PARAM_BY_FIELD["ppa_tariff"]]
-    _, base_val, _ = run_tornado(base_energy, base_finance, params=subset, metric="project_irr")
+    _, base_val, _ = run_tornado(
+        base_energy, base_finance, params=subset, metric="project_irr"
+    )
     direct = run_project_finance(base_finance, base_energy)
     assert base_val == pytest.approx(direct.project_irr)
 
 
 def test_tornado_to_dataframe_scales_percent_metrics(base_energy, base_finance):
     subset = [PARAM_BY_FIELD["ppa_tariff"]]
-    rows, base_val, _ = run_tornado(base_energy, base_finance, params=subset, metric="project_irr")
+    rows, base_val, _ = run_tornado(
+        base_energy, base_finance, params=subset, metric="project_irr"
+    )
     df = tornado_to_dataframe(rows, base_val, metric="project_irr")
     if len(df) == 0:
         pytest.skip("ppa_tariff swing below threshold for this fixture")

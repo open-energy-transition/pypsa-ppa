@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import dataclasses
 
 import numpy as np
 import pandas as pd
@@ -21,21 +20,27 @@ from ppa.sizing import (
 
 
 def test_weather_cycle_years_no_cap_when_cycle_covers_requested_years():
-    years, note = weather_cycle_years(requested_years=5, n_weather_years=6, n_price_years=6)
+    years, note = weather_cycle_years(
+        requested_years=5, n_weather_years=6, n_price_years=6
+    )
     assert years == 5
     assert note is None
 
 
 def test_weather_cycle_years_caps_at_lcm_of_weather_and_price_years():
     # lcm(3, 6) = 6, less than the 10 requested -> capped, with an explanatory note.
-    years, note = weather_cycle_years(requested_years=10, n_weather_years=3, n_price_years=6)
+    years, note = weather_cycle_years(
+        requested_years=10, n_weather_years=3, n_price_years=6
+    )
     assert years == 6
     assert note is not None
     assert "6 year" in note
 
 
 def test_weather_cycle_years_clamps_minimum_to_one():
-    years, note = weather_cycle_years(requested_years=0, n_weather_years=5, n_price_years=5)
+    years, note = weather_cycle_years(
+        requested_years=0, n_weather_years=5, n_price_years=5
+    )
     assert years == 1
 
 
@@ -131,8 +136,14 @@ def test_apply_sizing_treats_solver_noise_bess_as_not_built():
 def test_apply_sizing_preserves_include_bess_false():
     scenario = Scenario(optimize_capacity=True, include_bess=False)
     sized = SizedCapacities(
-        onsw_mw=100.0, pv_mw=100.0, bess_mw=50.0, bess_mwh=200.0,
-        status="ok", condition="optimal", sizing_years_used=1, horizon_clamped=False,
+        onsw_mw=100.0,
+        pv_mw=100.0,
+        bess_mw=50.0,
+        bess_mwh=200.0,
+        status="ok",
+        condition="optimal",
+        sizing_years_used=1,
+        horizon_clamped=False,
     )
     result = apply_sizing(scenario, sized)
     # include_bess was already False on the scenario; sizing can't turn it back on.
@@ -142,7 +153,9 @@ def test_apply_sizing_preserves_include_bess_false():
 # ── optimize_capacities (real tiny LP solve) ─────────────────────────────────
 
 
-def test_optimize_capacities_builds_only_the_cheaper_resource_when_only_it_helps(tiny_ts):
+def test_optimize_capacities_builds_only_the_cheaper_resource_when_only_it_helps(
+    tiny_ts,
+):
     """PV-only weather (wind CF forced to 0): the sizing LP should build PV
     and skip wind entirely, even though both are allowed up to a generous cap."""
     ts = tiny_ts.copy()

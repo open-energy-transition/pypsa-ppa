@@ -45,7 +45,9 @@ def test_align_to_index_pads_shorter_source_by_tiling_last_day():
 
 def test_build_year_timeseries_produces_expected_columns_and_length():
     weather_year = 2020
-    idx = pd.date_range(f"{weather_year}-01-01", periods=_hours_in_year(weather_year), freq="h")
+    idx = pd.date_range(
+        f"{weather_year}-01-01", periods=_hours_in_year(weather_year), freq="h"
+    )
     pv_cf = pd.Series(0.3, index=idx)
     wind_cf = pd.Series(0.4, index=idx)
     prices = pd.Series(50.0, index=idx)
@@ -67,12 +69,14 @@ def test_build_year_timeseries_produces_expected_columns_and_length():
     assert (ts["ts_PVGen"] == 0.3).all()
     assert (ts["ppaload_mw"] == 100.0).all()
     # Prices escalated 5 years at 2%
-    assert ts["ts_MktPrice"].iloc[0] == pytest.approx(50.0 * 1.02 ** 5)
+    assert ts["ts_MktPrice"].iloc[0] == pytest.approx(50.0 * 1.02**5)
 
 
 def test_build_year_timeseries_applies_load_profile():
     weather_year = 2020
-    idx = pd.date_range(f"{weather_year}-01-01", periods=_hours_in_year(weather_year), freq="h")
+    idx = pd.date_range(
+        f"{weather_year}-01-01", periods=_hours_in_year(weather_year), freq="h"
+    )
     flat = pd.Series(0.5, index=idx)
 
     ts = build_year_timeseries(

@@ -52,7 +52,13 @@ def test_maxbuy_mw_respects_toggle():
 
 
 def test_maxsell_mw_sums_installed_capacity():
-    s = Scenario(enable_market_sell=True, onsw_mw=100.0, pv_mw=50.0, bess_mw=10.0, include_bess=True)
+    s = Scenario(
+        enable_market_sell=True,
+        onsw_mw=100.0,
+        pv_mw=50.0,
+        bess_mw=10.0,
+        include_bess=True,
+    )
     assert s.maxsell_mw == pytest.approx(160.0)
 
 
@@ -144,21 +150,28 @@ def test_validate_scenario_flags_unknown_load_profile():
 
 
 def test_validate_scenario_flags_no_generation_when_not_sizing():
-    s = dataclasses.replace(BASE_SCENARIO, optimize_capacity=False, onsw_mw=0.0, pv_mw=0.0)
+    s = dataclasses.replace(
+        BASE_SCENARIO, optimize_capacity=False, onsw_mw=0.0, pv_mw=0.0
+    )
     errors = validate_scenario(s)
     assert any("wind or solar" in e for e in errors)
 
 
 def test_validate_scenario_sizing_mode_requires_positive_build_cap():
     s = dataclasses.replace(
-        BASE_SCENARIO, optimize_capacity=True, max_build_wind_mw=0.0, max_build_pv_mw=0.0
+        BASE_SCENARIO,
+        optimize_capacity=True,
+        max_build_wind_mw=0.0,
+        max_build_pv_mw=0.0,
     )
     errors = validate_scenario(s)
     assert any("max build" in e for e in errors)
 
 
 def test_validate_scenario_sizing_mode_resolution_bounds():
-    s = dataclasses.replace(BASE_SCENARIO, optimize_capacity=True, sizing_resolution_h=48)
+    s = dataclasses.replace(
+        BASE_SCENARIO, optimize_capacity=True, sizing_resolution_h=48
+    )
     errors = validate_scenario(s)
     assert any("resolution" in e for e in errors)
 
@@ -180,7 +193,9 @@ def test_validate_scenario_chosen_day_must_be_available():
 def test_all_case_studies_are_individually_valid():
     for cs in CASE_STUDIES:
         scenario = load_case_study(cs)
-        assert validate_scenario(scenario) == [], f"case study {cs.id!r} failed validation"
+        assert validate_scenario(scenario) == [], (
+            f"case study {cs.id!r} failed validation"
+        )
 
 
 def test_case_studies_indexed_by_id():

@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import pandas as pd
 import pypsa
+from ppa.scenario import Scenario
 
 pypsa.options.general.allow_network_requests = False
 pypsa.options.params.statistics.drop_zero = True
@@ -9,8 +10,6 @@ pypsa.options.params.statistics.round = 2
 pypsa.options.params.optimize.log_to_console = False
 pypsa.options.params.optimize.include_objective_constant = False
 pypsa.options.api.new_components_api = True
-
-from ppa.scenario import Scenario
 
 
 def solve(

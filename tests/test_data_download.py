@@ -3,6 +3,7 @@
 No real network calls: HTTP is mocked and the on-disk parquet cache is
 exercised directly (via tmp_path), matching the project's caching contract.
 """
+
 from __future__ import annotations
 
 from unittest.mock import MagicMock
@@ -37,11 +38,15 @@ def test_parse_ninja_csv_strips_comments_and_clips_to_unit_interval():
 def test_download_pv_cf_uses_cache_when_present(tmp_path, monkeypatch):
     cache_dir = tmp_path / "ninja"
     cache_dir.mkdir()
-    cache_file = cache_dir / f"pv_{rn.DEFAULT_LAT:.2f}_{rn.DEFAULT_LON:.2f}_2022.parquet"
+    cache_file = (
+        cache_dir / f"pv_{rn.DEFAULT_LAT:.2f}_{rn.DEFAULT_LON:.2f}_2022.parquet"
+    )
     expected = pd.Series([0.1, 0.2, 0.3], name="cf")
     expected.to_frame().to_parquet(cache_file)
 
-    mock_get = MagicMock(side_effect=AssertionError("should not hit the network on cache hit"))
+    mock_get = MagicMock(
+        side_effect=AssertionError("should not hit the network on cache hit")
+    )
     monkeypatch.setattr(rn.requests, "get", mock_get)
 
     series = rn.download_pv_cf(2022, token="unused", cache_dir=cache_dir)
@@ -66,7 +71,9 @@ def test_download_pv_cf_fetches_and_caches_on_miss(tmp_path, monkeypatch):
     assert called_headers == {"Authorization": "Token secret-token"}
     assert (series == 0.55).all()
 
-    cache_file = cache_dir / f"pv_{rn.DEFAULT_LAT:.2f}_{rn.DEFAULT_LON:.2f}_2022.parquet"
+    cache_file = (
+        cache_dir / f"pv_{rn.DEFAULT_LAT:.2f}_{rn.DEFAULT_LON:.2f}_2022.parquet"
+    )
     assert cache_file.exists()
     cached = pd.read_parquet(cache_file)["cf"]
     pd.testing.assert_series_equal(cached, series, check_names=False, check_freq=False)
@@ -75,7 +82,9 @@ def test_download_pv_cf_fetches_and_caches_on_miss(tmp_path, monkeypatch):
 def test_download_wind_cf_raises_on_http_error(tmp_path, monkeypatch):
     cache_dir = tmp_path / "ninja"
     mock_response = MagicMock()
-    mock_response.raise_for_status.side_effect = rn.requests.exceptions.HTTPError("boom")
+    mock_response.raise_for_status.side_effect = rn.requests.exceptions.HTTPError(
+        "boom"
+    )
     monkeypatch.setattr(rn.requests, "get", MagicMock(return_value=mock_response))
 
     with pytest.raises(rn.requests.exceptions.HTTPError):
@@ -86,10 +95,15 @@ def test_download_all_years_skips_sleep_for_cached_years(tmp_path, monkeypatch):
     cache_dir = tmp_path / "ninja"
     cache_dir.mkdir()
     for prefix in ("pv", "wind"):
-        f = cache_dir / f"{prefix}_{rn.DEFAULT_LAT:.2f}_{rn.DEFAULT_LON:.2f}_2020.parquet"
+        f = (
+            cache_dir
+            / f"{prefix}_{rn.DEFAULT_LAT:.2f}_{rn.DEFAULT_LON:.2f}_2020.parquet"
+        )
         pd.Series([0.5], name="cf").to_frame().to_parquet(f)
 
-    monkeypatch.setattr(rn.requests, "get", MagicMock(side_effect=AssertionError("no network")))
+    monkeypatch.setattr(
+        rn.requests, "get", MagicMock(side_effect=AssertionError("no network"))
+    )
     sleep_mock = MagicMock()
     monkeypatch.setattr(rn.time, "sleep", sleep_mock)
 
@@ -161,7 +175,7 @@ def test_fetch_day_ahead_prices_downloads_and_caches_on_miss(tmp_path, monkeypat
 def test_escalate_prices_compounds_correctly():
     base = pd.Series([100.0, 200.0])
     escalated = ec.escalate_prices(base, from_year=2020, to_year=2022, rate=0.10)
-    expected_factor = 1.10 ** 2
+    expected_factor = 1.10**2
     pd.testing.assert_series_equal(escalated, base * expected_factor)
 
 
@@ -176,9 +190,11 @@ def test_get_prices_for_sim_year_shifts_and_escalates():
     base_prices = pd.Series(
         60.0, index=pd.date_range("2020-01-01", periods=8760, freq="h", tz="UTC")
     )
-    result = ec.get_prices_for_sim_year(2025, base_prices, base_year, escalation_rate=0.02)
+    result = ec.get_prices_for_sim_year(
+        2025, base_prices, base_year, escalation_rate=0.02
+    )
     assert result.index[0].year == 2025
-    assert result.iloc[0] == pytest.approx(60.0 * 1.02 ** 5)
+    assert result.iloc[0] == pytest.approx(60.0 * 1.02**5)
 
 
 def test_list_cached_years_and_is_cached(tmp_path):

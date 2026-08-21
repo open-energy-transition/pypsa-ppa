@@ -1,4 +1,5 @@
 """Case Setup: select a preset and customise all scenario parameters."""
+
 from __future__ import annotations
 
 import streamlit as st

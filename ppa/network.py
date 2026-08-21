@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import pandas as pd
 import pypsa
+from ppa.scenario import Scenario
 
 pypsa.options.general.allow_network_requests = False
 pypsa.options.params.statistics.drop_zero = True
@@ -10,10 +11,10 @@ pypsa.options.params.optimize.log_to_console = False
 pypsa.options.params.optimize.include_objective_constant = False
 pypsa.options.api.new_components_api = True
 
-from ppa.scenario import Scenario
 
-
-def build_network(ts: pd.DataFrame, scenario: Scenario, resolution_h: float = 1.0) -> pypsa.Network:
+def build_network(
+    ts: pd.DataFrame, scenario: Scenario, resolution_h: float = 1.0
+) -> pypsa.Network:
     """Build an unsolved PyPSA network from prepared timeseries and scenario.
 
     When `scenario.optimize_capacity` is True, wind/PV/BESS capacities become
@@ -39,7 +40,13 @@ def build_network(ts: pd.DataFrame, scenario: Scenario, resolution_h: float = 1.
     horizon_years = len(ts) * resolution_h / 8760.0
     wind_cc = s.wind_capex_per_kw * 1_000 * (s.crf + s.opex_rate) * horizon_years
     pv_cc = s.pv_capex_per_kw * 1_000 * (s.crf + s.opex_rate) * horizon_years
-    bess_cc = s.bess_capex_per_kwh * 1_000 * s.bess_max_hours * (s.crf + s.opex_rate) * horizon_years
+    bess_cc = (
+        s.bess_capex_per_kwh
+        * 1_000
+        * s.bess_max_hours
+        * (s.crf + s.opex_rate)
+        * horizon_years
+    )
     # Generous transport bound so links never constrain optimized builds
     build_cap_sum = s.max_build_wind_mw + s.max_build_pv_mw + s.max_build_bess_mw
 
@@ -60,11 +67,7 @@ def build_network(ts: pd.DataFrame, scenario: Scenario, resolution_h: float = 1.
         "Bus_SellToMarket",
         "Bus_PPAOfftake",
     ]:
-        n.add(
-            "Bus", 
-            bus_name, 
-            carrier="AC"
-        )
+        n.add("Bus", bus_name, carrier="AC")
 
     # ── Load ──────────────────────────────────────────────────────────────────
     n.add(
@@ -163,7 +166,9 @@ def build_network(ts: pd.DataFrame, scenario: Scenario, resolution_h: float = 1.
     wind_link_mw = build_cap_sum if sizing else s.onsw_mw
     pv_link_mw = build_cap_sum if sizing else s.pv_mw
     # The collection link carries both renewables and BESS discharge.
-    rebess_link_mw = build_cap_sum if sizing else (s.onsw_mw + s.pv_mw + s.effective_bess_mw)
+    rebess_link_mw = (
+        build_cap_sum if sizing else (s.onsw_mw + s.pv_mw + s.effective_bess_mw)
+    )
     sell_link_mw = build_cap_sum if sizing else s.maxsell_mw
 
     # Wind and PV feed the shared renewables/BESS bus rather than going straight to
@@ -171,14 +176,38 @@ def build_network(ts: pd.DataFrame, scenario: Scenario, resolution_h: float = 1.
     # unidirectional (p_min_pu defaults to 0), so nothing flows back from
     # Bus_IPPGeneration into Bus_REBESS and market purchases cannot reach the BESS.
     link_defs = [
-        ("OnshoreWind_to_REBESS",          "Bus_OnshoreWind",   "Bus_REBESS",        wind_link_mw,                   0.0),
-        ("PV_to_REBESS",                   "Bus_PV",            "Bus_REBESS",        pv_link_mw,                     0.0),
-        ("REBESS_to_IPPGeneration",        "Bus_REBESS",        "Bus_IPPGeneration", rebess_link_mw,                 0.0),
-        ("BuyFromMarket_to_IPPGeneration", "Bus_BuyFromMarket", "Bus_IPPGeneration", s.maxbuy_mw,                    0.0),
-        ("IPPGen_to_SellToMarket",         "Bus_IPPGeneration", "Bus_SellToMarket",  sell_link_mw,                   0.0),
+        ("OnshoreWind_to_REBESS", "Bus_OnshoreWind", "Bus_REBESS", wind_link_mw, 0.0),
+        ("PV_to_REBESS", "Bus_PV", "Bus_REBESS", pv_link_mw, 0.0),
+        (
+            "REBESS_to_IPPGeneration",
+            "Bus_REBESS",
+            "Bus_IPPGeneration",
+            rebess_link_mw,
+            0.0,
+        ),
+        (
+            "BuyFromMarket_to_IPPGeneration",
+            "Bus_BuyFromMarket",
+            "Bus_IPPGeneration",
+            s.maxbuy_mw,
+            0.0,
+        ),
+        (
+            "IPPGen_to_SellToMarket",
+            "Bus_IPPGeneration",
+            "Bus_SellToMarket",
+            sell_link_mw,
+            0.0,
+        ),
         # Delivery earns the PPA tariff but pays the combined transmission /
         # grid-use charge per MWh, whatever the source (RE, BESS or market buy).
-        ("IPPGen_to_PPAOfftake",           "Bus_IPPGeneration", "Bus_PPAOfftake",    s.ppaload_mw,                   s.transmission_cost_eur_mwh - s.ppa_price),
+        (
+            "IPPGen_to_PPAOfftake",
+            "Bus_IPPGeneration",
+            "Bus_PPAOfftake",
+            s.ppaload_mw,
+            s.transmission_cost_eur_mwh - s.ppa_price,
+        ),
     ]
 
     for name, bus0, bus1, p_nom, marginal_cost in link_defs:

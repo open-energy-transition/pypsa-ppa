@@ -3,6 +3,7 @@
 `st.session_state` works outside a running Streamlit server (backed by a plain
 dict, with a harmless warning), which is what makes these testable at all.
 """
+
 from __future__ import annotations
 
 import dataclasses
@@ -75,8 +76,14 @@ def test_get_effective_scenario_applies_sized_capacities():
     scenario = Scenario(optimize_capacity=True, include_bess=True)
     state.set_scenario(scenario)
     sized = SizedCapacities(
-        onsw_mw=123.0, pv_mw=45.0, bess_mw=10.0, bess_mwh=40.0,
-        status="ok", condition="optimal", sizing_years_used=1, horizon_clamped=False,
+        onsw_mw=123.0,
+        pv_mw=45.0,
+        bess_mw=10.0,
+        bess_mwh=40.0,
+        status="ok",
+        condition="optimal",
+        sizing_years_used=1,
+        horizon_clamped=False,
     )
     state.set_optimized_sizes(sized)
 

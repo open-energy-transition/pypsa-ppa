@@ -52,7 +52,11 @@ def test_ffe_profiles_repeat_seasonal_and_weekday_pattern(year_index):
     (month, weekday, hour) triplet must always yield the same normalized load."""
     series = get_load_series("cement_plant", year_index)
     keys = pd.DataFrame(
-        {"month": year_index.month, "dow": year_index.dayofweek, "hour": year_index.hour}
+        {
+            "month": year_index.month,
+            "dow": year_index.dayofweek,
+            "hour": year_index.hour,
+        }
     )
     df = pd.DataFrame({"value": series.values, **keys})
     # For any triplet appearing more than once, all occurrences must match.
@@ -61,13 +65,17 @@ def test_ffe_profiles_repeat_seasonal_and_weekday_pattern(year_index):
 
 
 def test_green_hydrogen_weekend_boost_never_exceeds_one():
-    idx = pd.date_range("2023-01-07", periods=7 * 24, freq="h")  # a full week incl. weekend
+    idx = pd.date_range(
+        "2023-01-07", periods=7 * 24, freq="h"
+    )  # a full week incl. weekend
     series = get_load_series("green_hydrogen", idx)
     assert (series <= 1.0 + 1e-9).all()
 
 
 def test_data_center_weekend_is_lower_than_weekday_at_same_hour():
-    idx = pd.date_range("2023-01-02", periods=14 * 24, freq="h")  # Mon..following Sun x2
+    idx = pd.date_range(
+        "2023-01-02", periods=14 * 24, freq="h"
+    )  # Mon..following Sun x2
     series = get_load_series("data_center", idx)
     df = pd.DataFrame({"value": series.values, "hour": idx.hour, "dow": idx.dayofweek})
     weekday_noon = df[(df.hour == 12) & (df.dow < 5)]["value"].iloc[0]

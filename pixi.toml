@@ -26,6 +26,7 @@ streamlit-folium = ">=0.27.2,<0.28"
 folium = ">=0.20.0,<0.21"
 highs = ">=1.15.1,<2"
 pytest = ">=9.1.1,<10"
+pre-commit = ">=4.6.2,<5"
 
 [pypi-dependencies]
 pypsatopo = ">=0.2"

@@ -5,7 +5,6 @@ import dataclasses
 import pytest
 
 from ppa.network import build_network
-from ppa.scenario import Scenario
 
 
 EXPECTED_BUSES = {
@@ -29,13 +28,17 @@ def test_build_network_dispatch_mode_has_expected_topology(tiny_ts, base_scenari
     assert "IPPGen_to_PPAOfftake" in n.links.static.index
 
 
-def test_build_network_dispatch_mode_fixes_capacities_from_scenario(tiny_ts, base_scenario):
+def test_build_network_dispatch_mode_fixes_capacities_from_scenario(
+    tiny_ts, base_scenario
+):
     n = build_network(tiny_ts, base_scenario)
     gens = n.generators.static
     assert gens.loc["Gen_OnshoreWind", "p_nom"] == pytest.approx(base_scenario.onsw_mw)
     assert gens.loc["Gen_PV", "p_nom"] == pytest.approx(base_scenario.pv_mw)
     assert not gens.loc["Gen_OnshoreWind", "p_nom_extendable"]
-    assert n.storage_units.static.loc["SU_BESS", "p_nom"] == pytest.approx(base_scenario.effective_bess_mw)
+    assert n.storage_units.static.loc["SU_BESS", "p_nom"] == pytest.approx(
+        base_scenario.effective_bess_mw
+    )
 
 
 def test_build_network_sizing_mode_makes_capacities_extendable(tiny_ts, base_scenario):
@@ -74,7 +77,9 @@ def test_build_network_no_bess_zeros_storage_capacity(tiny_ts, base_scenario):
     assert n.storage_units.static.loc["SU_BESS", "p_nom"] == 0.0
 
 
-def test_build_network_coarse_resolution_sets_snapshot_weightings(tiny_ts, base_scenario):
+def test_build_network_coarse_resolution_sets_snapshot_weightings(
+    tiny_ts, base_scenario
+):
     n = build_network(tiny_ts, base_scenario, resolution_h=3.0)
     assert (n.snapshot_weightings.objective == 3.0).all()
     assert (n.snapshot_weightings.stores == 3.0).all()

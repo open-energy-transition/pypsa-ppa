@@ -59,10 +59,12 @@ class Scenario:
     # Multi-year simulation
     simulation_years: int = 25
     first_sim_year: int = 2025
-    price_escalation_rate: float = 0.02  # annual escalation applied to base market prices
+    price_escalation_rate: float = (
+        0.02  # annual escalation applied to base market prices
+    )
 
     # Technology degradation (compound per year, applied from year 1 onward)
-    pv_degradation_rate: float = 0.005    # 0.5%/yr: industry standard for crystalline Si
+    pv_degradation_rate: float = 0.005  # 0.5%/yr: industry standard for crystalline Si
     wind_degradation_rate: float = 0.002  # 0.2%/yr
     bess_degradation_rate: float = 0.020  # 2.0%/yr usable capacity fade
 
@@ -84,9 +86,9 @@ class Scenario:
     transmission_cost_eur_mwh: float = 0.0
 
     # Financial: European 2024 benchmarks
-    wind_capex_per_kw: float = 1200.0   # €/kW, EU onshore wind
-    pv_capex_per_kw: float = 750.0      # €/kW, EU utility-scale PV
-    bess_capex_per_kwh: float = 380.0   # €/kWh, EU BESS
+    wind_capex_per_kw: float = 1200.0  # €/kW, EU onshore wind
+    pv_capex_per_kw: float = 750.0  # €/kW, EU utility-scale PV
+    bess_capex_per_kwh: float = 380.0  # €/kWh, EU BESS
     opex_rate: float = 0.02
     project_life_yrs: int = 25
     discount_rate: float = 0.08
@@ -140,7 +142,11 @@ class Scenario:
 
     @property
     def maxsell_mw(self) -> float:
-        return (self.onsw_mw + self.pv_mw + self.effective_bess_mw) if self.enable_market_sell else 0.0
+        return (
+            (self.onsw_mw + self.pv_mw + self.effective_bess_mw)
+            if self.enable_market_sell
+            else 0.0
+        )
 
     @property
     def crf(self) -> float:
@@ -304,7 +310,9 @@ def load_case_study(cs: CaseStudy) -> Scenario:
     return dataclasses.replace(BASE_SCENARIO, **cs.overrides)
 
 
-def validate_scenario(s: Scenario, available_days: list[str] | None = None) -> list[str]:
+def validate_scenario(
+    s: Scenario, available_days: list[str] | None = None
+) -> list[str]:
     errors: list[str] = []
     if s.optimize_capacity:
         # Fixed MW inputs are ignored; only the build caps matter.
@@ -330,9 +338,13 @@ def validate_scenario(s: Scenario, available_days: list[str] | None = None) -> l
     if not (0.0 < s.required_delivery_share <= 1.0):
         errors.append("Required delivery share must be between 0 and 1.")
     if not s.optimize_capacity and s.onsw_mw == 0 and s.pv_mw == 0:
-        errors.append("At least one generation asset (wind or solar) must have capacity > 0.")
+        errors.append(
+            "At least one generation asset (wind or solar) must have capacity > 0."
+        )
     if s.load_profile not in PROFILE_KEYS:
-        errors.append(f"Unknown load profile '{s.load_profile}'. Valid options: {PROFILE_KEYS}")
+        errors.append(
+            f"Unknown load profile '{s.load_profile}'. Valid options: {PROFILE_KEYS}"
+        )
     if s.transmission_cost_eur_mwh < 0:
         errors.append("Transmission cost must be ≥ 0 €/MWh.")
     if s.bidding_zone_override:
@@ -343,7 +355,9 @@ def validate_scenario(s: Scenario, available_days: list[str] | None = None) -> l
                 f"Unknown bidding zone '{s.bidding_zone_override}'. Valid options: {SUPPORTED_ZONES}"
             )
     if available_days and s.chosen_day not in available_days:
-        errors.append(f"chosen_day '{s.chosen_day}' is not present in the timeseries data.")
+        errors.append(
+            f"chosen_day '{s.chosen_day}' is not present in the timeseries data."
+        )
     return errors
 
 

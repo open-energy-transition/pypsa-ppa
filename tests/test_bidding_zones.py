@@ -1,16 +1,21 @@
 import pytest
 
-from ppa.data.bidding_zones import SUPPORTED_ZONES, ZONE_LABELS, bidding_zone_for, zone_label
+from ppa.data.bidding_zones import (
+    SUPPORTED_ZONES,
+    ZONE_LABELS,
+    bidding_zone_for,
+    zone_label,
+)
 
 
 @pytest.mark.parametrize(
     "lat,lon,expected_zone",
     [
-        (52.52, 13.40, "DE_LU"),   # Berlin
-        (48.85, 2.35, "FR"),       # Paris
-        (52.37, 4.90, "NL"),       # Amsterdam
+        (52.52, 13.40, "DE_LU"),  # Berlin
+        (48.85, 2.35, "FR"),  # Paris
+        (52.37, 4.90, "NL"),  # Amsterdam
         (41.90, 12.50, "IT_CSUD"),  # Rome
-        (59.33, 18.07, "SE_3"),    # Stockholm
+        (59.33, 18.07, "SE_3"),  # Stockholm
     ],
 )
 def test_bidding_zone_for_known_cities(lat, lon, expected_zone):

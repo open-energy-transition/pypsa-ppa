@@ -12,6 +12,7 @@ and weekday patterns are preserved under year-to-year calendar shifts.
 
 All other profiles remain synthetically generated.
 """
+
 from __future__ import annotations
 
 import json
@@ -42,8 +43,8 @@ _FFE_ID_TO_NAME = {
 
 # Maps our profile keys to FfE sector ids
 _PROFILE_TO_FFE_ID = {
-    "cement_plant": 4,   # Non-metallic Minerals (cement, glass, ceramics)
-    "steel_eaf": 1,      # Iron & steel industry
+    "cement_plant": 4,  # Non-metallic Minerals (cement, glass, ceramics)
+    "steel_eaf": 1,  # Iron & steel industry
 }
 
 
@@ -76,19 +77,19 @@ def _ffe_profile(sector_id: int, index: pd.DatetimeIndex) -> pd.Series:
     s = df[name]
 
     # Build lookup: average by (month, day-of-week, hour)
-    keys = pd.DataFrame({
-        "month": s.index.month,
-        "dow": s.index.dayofweek,
-        "hour": s.index.hour,
-    }, index=s.index)
+    keys = pd.DataFrame(
+        {
+            "month": s.index.month,
+            "dow": s.index.dayofweek,
+            "hour": s.index.hour,
+        },
+        index=s.index,
+    )
     avg = s.groupby([keys["month"], keys["dow"], keys["hour"]]).mean()
     avg.index.names = ["month", "dow", "hour"]
 
     # Look up each hour in the target index
-    values = np.array([
-        avg.loc[(t.month, t.dayofweek, t.hour)]
-        for t in index
-    ])
+    values = np.array([avg.loc[(t.month, t.dayofweek, t.hour)] for t in index])
 
     # Normalize to [0, 1] so max hour = 1.0
     values /= values.max()
@@ -164,6 +165,7 @@ PROFILE_KEYS: list[str] = list(PROFILE_INFO.keys())
 
 # ── Public API ─────────────────────────────────────────────────────────────────
 
+
 def get_load_series(profile_name: str, index: pd.DatetimeIndex) -> pd.Series:
     """Return normalized load profile (0–1) for *profile_name* over *index*."""
     fn = _REGISTRY.get(profile_name, _flat)
@@ -171,6 +173,7 @@ def get_load_series(profile_name: str, index: pd.DatetimeIndex) -> pd.Series:
 
 
 # ── Profile implementations ────────────────────────────────────────────────────
+
 
 def _flat(index: pd.DatetimeIndex) -> pd.Series:
     return pd.Series(np.ones(len(index)), index=index, dtype=float)
@@ -188,12 +191,34 @@ def _green_hydrogen(index: pd.DatetimeIndex) -> pd.Series:
     h = index.hour
     dow = index.dayofweek
 
-    _weekday = np.array([
-        0.90, 0.90, 0.92, 0.92, 0.90, 0.85,   # 00–05: cheap night
-        0.75, 0.65, 0.65, 0.80, 0.98, 1.00,   # 06–11: morning ramp + solar
-        1.00, 1.00, 1.00, 0.98, 0.90, 0.72,   # 12–17: peak solar → evening ramp
-        0.65, 0.65, 0.68, 0.75, 0.85, 0.90,   # 18–23: evening peak avoidance
-    ])
+    _weekday = np.array(
+        [
+            0.90,
+            0.90,
+            0.92,
+            0.92,
+            0.90,
+            0.85,  # 00–05: cheap night
+            0.75,
+            0.65,
+            0.65,
+            0.80,
+            0.98,
+            1.00,  # 06–11: morning ramp + solar
+            1.00,
+            1.00,
+            1.00,
+            0.98,
+            0.90,
+            0.72,  # 12–17: peak solar → evening ramp
+            0.65,
+            0.65,
+            0.68,
+            0.75,
+            0.85,
+            0.90,  # 18–23: evening peak avoidance
+        ]
+    )
 
     load = _weekday[h]
     weekend = (dow >= 5).astype(float)
@@ -206,15 +231,37 @@ def _data_center(index: pd.DatetimeIndex) -> pd.Series:
     h = index.hour
     dow = index.dayofweek
 
-    _weekday = np.array([
-        0.80, 0.78, 0.77, 0.77, 0.78, 0.80,   # 00–05: night minimum
-        0.84, 0.90, 0.96, 1.00, 1.00, 1.00,   # 06–11: morning ramp
-        1.00, 1.00, 1.00, 1.00, 0.98, 0.95,   # 12–17: full compute day
-        0.90, 0.88, 0.86, 0.84, 0.82, 0.80,   # 18–23: evening taper
-    ])
+    _weekday = np.array(
+        [
+            0.80,
+            0.78,
+            0.77,
+            0.77,
+            0.78,
+            0.80,  # 00–05: night minimum
+            0.84,
+            0.90,
+            0.96,
+            1.00,
+            1.00,
+            1.00,  # 06–11: morning ramp
+            1.00,
+            1.00,
+            1.00,
+            1.00,
+            0.98,
+            0.95,  # 12–17: full compute day
+            0.90,
+            0.88,
+            0.86,
+            0.84,
+            0.82,
+            0.80,  # 18–23: evening taper
+        ]
+    )
     _weekend = _weekday * 0.88
 
-    is_weekend = (dow >= 5)
+    is_weekend = dow >= 5
     load = np.where(is_weekend, _weekend[h], _weekday[h])
     return pd.Series(load, index=index, dtype=float)
 

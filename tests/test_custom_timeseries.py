@@ -1,7 +1,7 @@
 """Tests for the user-uploadable custom timeseries CSV template (validation logic)."""
+
 from __future__ import annotations
 
-import calendar
 
 import pandas as pd
 import pytest
@@ -17,7 +17,9 @@ from ppa.data.custom_timeseries import (
 )
 
 
-def _valid_year_df(year: int, price: float = 50.0, pv: float = 0.3, wind: float = 0.4) -> pd.DataFrame:
+def _valid_year_df(
+    year: int, price: float = 50.0, pv: float = 0.3, wind: float = 0.4
+) -> pd.DataFrame:
     n = _hours_in_year(year)
     idx = _year_index(year)
     return pd.DataFrame(
@@ -122,7 +124,9 @@ def test_parse_and_validate_multiple_years_all_valid():
 
 def test_parse_and_validate_reports_errors_for_all_bad_years_at_once():
     good_year, bad_year = TEMPLATE_YEARS[0], 1999
-    df = pd.concat([_valid_year_df(good_year), _valid_year_df(bad_year)], ignore_index=True)
+    df = pd.concat(
+        [_valid_year_df(good_year), _valid_year_df(bad_year)], ignore_index=True
+    )
     with pytest.raises(TemplateValidationError) as excinfo:
         parse_and_validate(template_to_csv_bytes(df))
     assert str(bad_year) in str(excinfo.value)

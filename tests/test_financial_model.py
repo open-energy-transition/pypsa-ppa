@@ -52,7 +52,10 @@ def test_run_project_finance_dscr_meets_or_exceeds_target(simple_energy, pf_inpu
         # DSCR sculpting targets debt service = CFADS/DSCR, so min DSCR should
         # sit at or above the more conservative (uncontracted) target, allowing
         # for the min() across contracted/uncontracted blending.
-        assert result.min_dscr >= min(pf_inputs.dscr_contracted, pf_inputs.dscr_uncontracted) - 0.05
+        assert (
+            result.min_dscr
+            >= min(pf_inputs.dscr_contracted, pf_inputs.dscr_uncontracted) - 0.05
+        )
 
 
 def test_run_project_finance_devex_is_equity_funded_only(simple_energy, pf_inputs):
@@ -68,23 +71,41 @@ def test_run_project_finance_devex_is_equity_funded_only(simple_energy, pf_input
 
 def test_run_project_finance_zero_capacity_gives_nan_or_zero_metrics():
     zero_energy = EnergyInputs(
-        onsw_mw=0.0, pv_mw=0.0, bess_mw=0.0, bess_mwh=0.0, load_mw=0.0,
-        ppa_gwh=0.0, excess_solar_gwh=0.0, excess_nonsolar_gwh=0.0, penalty_gwh=0.0,
-        total_solar_gwh=0.0, total_nonsolar_gwh=0.0, sell_solar_price=0.0, sell_nonsolar_price=0.0,
+        onsw_mw=0.0,
+        pv_mw=0.0,
+        bess_mw=0.0,
+        bess_mwh=0.0,
+        load_mw=0.0,
+        ppa_gwh=0.0,
+        excess_solar_gwh=0.0,
+        excess_nonsolar_gwh=0.0,
+        penalty_gwh=0.0,
+        total_solar_gwh=0.0,
+        total_nonsolar_gwh=0.0,
+        sell_solar_price=0.0,
+        sell_nonsolar_price=0.0,
     )
-    inputs = ProjectFinanceInputs(model_duration=10, operating_life=5, debt_tenor=5, ppa_tenor=5)
+    inputs = ProjectFinanceInputs(
+        model_duration=10, operating_life=5, debt_tenor=5, ppa_tenor=5
+    )
     result = run_project_finance(inputs, zero_energy)
     assert result.total_capex == pytest.approx(0.0)
     assert result.max_bs_check < 1e-6
 
 
 def test_run_project_finance_higher_ppa_tariff_improves_irr(simple_energy, pf_inputs):
-    low = run_project_finance(dataclasses.replace(pf_inputs, ppa_tariff=80.0), simple_energy)
-    high = run_project_finance(dataclasses.replace(pf_inputs, ppa_tariff=150.0), simple_energy)
+    low = run_project_finance(
+        dataclasses.replace(pf_inputs, ppa_tariff=80.0), simple_energy
+    )
+    high = run_project_finance(
+        dataclasses.replace(pf_inputs, ppa_tariff=150.0), simple_energy
+    )
     assert high.project_irr > low.project_irr
 
 
-def test_run_project_finance_skip_merchant_escalation_when_disabled(simple_energy, pf_inputs):
+def test_run_project_finance_skip_merchant_escalation_when_disabled(
+    simple_energy, pf_inputs
+):
     inputs = dataclasses.replace(pf_inputs, escalate_merchant_prices=False)
     result = run_project_finance(inputs, simple_energy)
     merchant_solar_prices = result.schedule["price_merchant_solar"]
@@ -97,8 +118,12 @@ def test_run_project_finance_skip_merchant_escalation_when_disabled(simple_energ
 
 def test_project_finance_inputs_from_scenario_carries_over_costs():
     scenario = Scenario(
-        wind_capex_per_kw=1500.0, pv_capex_per_kw=800.0, bess_capex_per_kwh=400.0,
-        ppa_price=110.0, pen_mult=1.8, discount_rate=0.07,
+        wind_capex_per_kw=1500.0,
+        pv_capex_per_kw=800.0,
+        bess_capex_per_kwh=400.0,
+        ppa_price=110.0,
+        pen_mult=1.8,
+        discount_rate=0.07,
     )
     pf = project_finance_inputs_from_scenario(scenario)
     assert pf.onsw_build_cost == pytest.approx(1.5)

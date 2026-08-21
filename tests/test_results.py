@@ -27,8 +27,11 @@ def test_extract_results_shares_are_between_zero_and_one(solved_result):
 def test_extract_results_revenue_breakdown_is_internally_consistent(solved_result):
     rev = solved_result.revenue
     expected_net = (
-        rev.ppa_revenue + rev.excess_revenue - rev.market_purchase_cost
-        - rev.penalty_cost - rev.transmission_cost
+        rev.ppa_revenue
+        + rev.excess_revenue
+        - rev.market_purchase_cost
+        - rev.penalty_cost
+        - rev.transmission_cost
     )
     assert rev.net_revenue == pytest.approx(expected_net, rel=1e-6)
 
@@ -44,7 +47,9 @@ def test_build_supply_mix_df_is_additive_to_total_generation(solved_result, tiny
     stacked_total = df[stack_cols].sum(axis=1)
 
     d = solved_result.dispatch
-    delivered_total = (d.wind_gen + d.pv_gen + d.bess_dispatch + d.market_buy - d.bess_store).values
+    delivered_total = (
+        d.wind_gen + d.pv_gen + d.bess_dispatch + d.market_buy - d.bess_store
+    ).values
     # Direct wind/PV (net of BESS charging) + BESS discharge + market buy should
     # reconstruct total supply net of battery charging, hour by hour.
     assert stacked_total.to_numpy() == pytest.approx(delivered_total, abs=1e-6)

@@ -4,6 +4,7 @@ Fixtures build small, deterministic timeseries (48 hours) so that PyPSA/HiGHS
 solves stay fast (well under a second each) while still exercising the real
 network-building and solving code paths.
 """
+
 from __future__ import annotations
 
 import dataclasses
@@ -91,7 +92,9 @@ def pf_inputs():
 
     # Shorter model horizon than the 40y default so the (already fast) numpy
     # pipeline stays trivially small in test output/debugging.
-    return ProjectFinanceInputs(model_duration=20, operating_life=15, debt_tenor=10, ppa_tenor=10)
+    return ProjectFinanceInputs(
+        model_duration=20, operating_life=15, debt_tenor=10, ppa_tenor=10
+    )
 
 
 def make_scenario(**overrides) -> Scenario:

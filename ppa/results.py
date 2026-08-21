@@ -2,9 +2,9 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
-import numpy as np
 import pandas as pd
 import pypsa
+from ppa.scenario import Scenario
 
 pypsa.options.general.allow_network_requests = False
 pypsa.options.params.statistics.drop_zero = True
@@ -12,8 +12,6 @@ pypsa.options.params.statistics.round = 2
 pypsa.options.params.optimize.log_to_console = False
 pypsa.options.params.optimize.include_objective_constant = False
 pypsa.options.api.new_components_api = True
-
-from ppa.scenario import Scenario
 
 
 @dataclass
@@ -113,7 +111,9 @@ def extract_results(
     total_load_mwh = float(ts["ppaload_mw"].sum())
     ppa_delivered_mwh = float(ppa_delivery.sum())
     market_buy_to_ppa_mwh = float(market_buy.sum())
-    renewable_and_storage_to_ppa_mwh = float((ppa_delivery - market_buy).clip(lower=0).sum())
+    renewable_and_storage_to_ppa_mwh = float(
+        (ppa_delivery - market_buy).clip(lower=0).sum()
+    )
     allowed_shortfall_mwh = float(allowed_shortfall.sum())
     penalty_mwh = float(penalty_gen.sum())
     sold_to_market_mwh = float(market_sell.sum())
@@ -123,7 +123,9 @@ def extract_results(
     bess_charge_mwh = float(bess_store.sum())
 
     fulfilled_share = ppa_delivered_mwh / total_load_mwh if total_load_mwh > 0 else 0.0
-    allowed_shortfall_share_actual = allowed_shortfall_mwh / total_load_mwh if total_load_mwh > 0 else 0.0
+    allowed_shortfall_share_actual = (
+        allowed_shortfall_mwh / total_load_mwh if total_load_mwh > 0 else 0.0
+    )
     buy_share_of_ppa_delivery = (
         market_buy_to_ppa_mwh / ppa_delivered_mwh if ppa_delivered_mwh > 0 else 0.0
     )
@@ -154,7 +156,11 @@ def extract_results(
     penalty_cost = penalty_mwh * s.penalty_price
     transmission_cost = ppa_delivered_mwh * s.transmission_cost_eur_mwh
     net_revenue = (
-        ppa_revenue + excess_revenue - market_purchase_cost - penalty_cost - transmission_cost
+        ppa_revenue
+        + excess_revenue
+        - market_purchase_cost
+        - penalty_cost
+        - transmission_cost
     )
 
     total_gen_mwh = wind_generation_mwh + pv_generation_mwh + bess_dispatch_mwh
@@ -182,7 +188,9 @@ def extract_results(
     )
 
 
-def build_supply_mix_df(dispatch: DispatchSeries, ts: pd.DataFrame | None = None) -> pd.DataFrame:
+def build_supply_mix_df(
+    dispatch: DispatchSeries, ts: pd.DataFrame | None = None
+) -> pd.DataFrame:
     # The BESS charges from the shared renewables bus, so charging energy is
     # attributed to wind and PV pro rata to their output in each snapshot; the
     # remainder is what each resource delivered directly. Keeps the stack additive.
@@ -214,7 +222,9 @@ def build_ops_day_df(dispatch: DispatchSeries, chosen_day: str) -> pd.DataFrame:
         {
             "PPA delivery (MW)": dispatch.ppa_delivery.loc[chosen_day].round(1),
             "Sell to market (MW)": dispatch.market_sell.loc[chosen_day].round(1),
-            "Allowed shortfall (MW)": dispatch.allowed_shortfall.loc[chosen_day].round(1),
+            "Allowed shortfall (MW)": dispatch.allowed_shortfall.loc[chosen_day].round(
+                1
+            ),
             "Penalty (MW)": dispatch.penalty_gen.loc[chosen_day].round(1),
             "BESS SoC (MWh)": dispatch.soc.loc[chosen_day].round(1),
         }

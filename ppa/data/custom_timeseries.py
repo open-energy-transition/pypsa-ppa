@@ -8,6 +8,7 @@ supported weather years so it can be edited in a spreadsheet and re-uploaded
 in one shot; any subset of years may be filled in, the rest keep using
 downloaded/cached data.
 """
+
 from __future__ import annotations
 
 import calendar
@@ -44,7 +45,9 @@ def _hours_in_year(year: int) -> int:
 
 
 def _year_index(year: int) -> pd.DatetimeIndex:
-    return pd.date_range(f"{year}-01-01", periods=_hours_in_year(year), freq="h", tz="UTC")
+    return pd.date_range(
+        f"{year}-01-01", periods=_hours_in_year(year), freq="h", tz="UTC"
+    )
 
 
 def build_template(
@@ -59,7 +62,10 @@ def build_template(
     user to fill in. Cache-only reads: never triggers a network download.
     """
     from ppa.data import renewables_ninja as rn
-    from ppa.data.entsoe_client import fetch_day_ahead_prices, list_cached_years as list_cached_price_years
+    from ppa.data.entsoe_client import (
+        fetch_day_ahead_prices,
+        list_cached_years as list_cached_price_years,
+    )
 
     years = years or TEMPLATE_YEARS
     pv_lat, pv_lon = pv_location
@@ -85,7 +91,9 @@ def build_template(
             else float("nan")
         )
         wind = (
-            rn.download_wind_cf(year, "", lat=wind_lat, lon=wind_lon).reindex(idx).to_numpy()
+            rn.download_wind_cf(year, "", lat=wind_lat, lon=wind_lon)
+            .reindex(idx)
+            .to_numpy()
             if year in cached_wind_years
             else float("nan")
         )
@@ -113,7 +121,9 @@ def _validate_year(year: int, group: pd.DataFrame) -> list[str]:
     errors: list[str] = []
 
     if year not in TEMPLATE_YEARS:
-        return [f"Year {year}: not a supported weather year (supported: {TEMPLATE_YEARS})."]
+        return [
+            f"Year {year}: not a supported weather year (supported: {TEMPLATE_YEARS})."
+        ]
 
     n_hours = _hours_in_year(year)
     expected_hours = set(range(n_hours))
@@ -158,7 +168,9 @@ def _validate_year(year: int, group: pd.DataFrame) -> list[str]:
             errors.append(f"Year {year}: {label} has missing or non-numeric values.")
         elif ((values < lo) | (values > hi)).any():
             bad = values[(values < lo) | (values > hi)].iloc[0]
-            errors.append(f"Year {year}: {label} must be between {lo} and {hi} (found {bad:.4g}).")
+            errors.append(
+                f"Year {year}: {label} must be between {lo} and {hi} (found {bad:.4g})."
+            )
 
     price_values = pd.to_numeric(group["price_eur_mwh"], errors="coerce")
     if price_values.isna().any() or not price_values.apply(lambda v: v == v).all():
@@ -190,7 +202,9 @@ def parse_and_validate(csv_bytes: bytes) -> dict[str, dict[int, pd.Series]]:
     try:
         df["year"] = df["year"].astype(int)
     except (ValueError, TypeError):
-        raise TemplateValidationError(["The 'year' column contains non-integer values."])
+        raise TemplateValidationError(
+            ["The 'year' column contains non-integer values."]
+        )
 
     errors: list[str] = []
     result: dict[str, dict[int, pd.Series]] = {"price": {}, "pv_cf": {}, "wind_cf": {}}
@@ -216,6 +230,8 @@ def parse_and_validate(csv_bytes: bytes) -> dict[str, dict[int, pd.Series]]:
     if errors:
         raise TemplateValidationError(errors)
     if not result["price"]:
-        raise TemplateValidationError(["No valid year rows found in the uploaded file."])
+        raise TemplateValidationError(
+            ["No valid year rows found in the uploaded file."]
+        )
 
     return result

@@ -4,7 +4,6 @@ import pandas as pd
 import pytest
 
 from ppa.data_loader import (
-    REQUIRED_COLUMNS,
     find_default_csv,
     get_available_days,
     load_timeseries,
@@ -13,7 +12,7 @@ from ppa.data_loader import (
 from ppa.scenario import Scenario
 
 
-def _write_csv(tmp_path, columns: dict) -> "Path":
+def _write_csv(tmp_path, columns: dict):
     df = pd.DataFrame(columns)
     path = tmp_path / "ts.csv"
     df.to_csv(path, index=False)
@@ -26,7 +25,9 @@ def test_load_timeseries_raises_on_missing_file(tmp_path):
 
 
 def test_load_timeseries_raises_on_missing_columns(tmp_path):
-    path = _write_csv(tmp_path, {"timestamp": ["2023-01-01 00:00:00"], "ts_PVGen": [0.1]})
+    path = _write_csv(
+        tmp_path, {"timestamp": ["2023-01-01 00:00:00"], "ts_PVGen": [0.1]}
+    )
     with pytest.raises(ValueError, match="Missing required columns"):
         load_timeseries(path)
 
@@ -60,7 +61,9 @@ def test_prepare_timeseries_maps_legacy_price_column():
 
 def test_prepare_timeseries_keeps_existing_mkt_price_column():
     idx = pd.date_range("2023-01-01", periods=24, freq="h")
-    ts = pd.DataFrame({"ts_MktPrice": [70.0] * 24, "ts_NSWPrice": [999.0] * 24}, index=idx)
+    ts = pd.DataFrame(
+        {"ts_MktPrice": [70.0] * 24, "ts_NSWPrice": [999.0] * 24}, index=idx
+    )
     scenario = Scenario(load_profile="flat", ppaload_mw=50.0)
 
     prepared = prepare_timeseries(ts, scenario)
