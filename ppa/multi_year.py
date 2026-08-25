@@ -22,7 +22,7 @@ import streamlit as st
 # Each parallel worker is its own process and pays this in full, so we budget one
 # worker per this much *available* RAM. Override via PPA_WORKER_MEM_MB for other
 # model sizes.
-_PER_WORKER_MEM_MB = int(os.environ.get("PPA_WORKER_MEM_MB", "1200"))
+_PER_WORKER_MEM_MB = int(os.environ.get("PPA_WORKER_MEM_MB", "1400"))
 
 
 def _available_memory_mb() -> float | None:
