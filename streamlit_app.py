@@ -12,6 +12,8 @@ from ui.tabs import (
 
 import traceback
 
+mailaddr = "markus.groissbock@openenergytransition.org"
+
 def custom_error_page(error: Exception):
     """Render a user-friendly error UI."""
     st.error(
@@ -26,6 +28,10 @@ def custom_error_page(error: Exception):
         
         Should the problem continue, please submit an inquiry to our support team.
         """
+    )
+    st.markdown(
+        f'<a href="mailto:{mailaddr}">For suggestions, questions, remarks or any hints send us a message!</a>',
+        unsafe_allow_html=True
     )
     
     if st.button("🔄 Refresh the page ..."):
@@ -55,7 +61,6 @@ def main_app():
         "or legal decisions. Provided as-is, with no warranty of accuracy or fitness for any purpose.",
         icon="🚧",
     )
-    mailaddr = "markus.groissbock@openenergytransition.org"
     st.markdown(
         f'<a href="mailto:{mailaddr}">For suggestions, questions, remarks or any hints send us a message!</a>',
         unsafe_allow_html=True
