@@ -55,9 +55,9 @@ def main_app():
         """
     )
     st.warning(
-        "**Proof of concept (PoC).** This is a demonstration tool for exploring PPA structures"
+        "**Proof of concept (PoC).** This is a demonstration tool for exploring PPA structures "
         "and portfolio economics, not a production planning system. Market data, cost assumptions "
-        "and results are illustrative and should not be used to make real investment, procurement"
+        "and results are illustrative and should not be used to make real investment, procurement "
         "or legal decisions. Provided as-is, with no warranty of accuracy or fitness for any purpose.",
         icon="🚧",
     )
