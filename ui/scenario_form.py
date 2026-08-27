@@ -94,7 +94,7 @@ def render_scenario_form(initial: Scenario) -> Scenario:
                 50.0,
                 key="sf_max_build_bess",
             )
-            _res_options = [1, 2, 3, 4, 6]
+            _res_options = [3, 4, 6] # [1, 2, 3, 4, 6]
             _res_idx = (
                 _res_options.index(int(initial.sizing_resolution_h))
                 if int(initial.sizing_resolution_h) in _res_options
