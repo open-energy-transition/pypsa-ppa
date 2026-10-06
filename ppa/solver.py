@@ -12,6 +12,27 @@ pypsa.options.params.optimize.include_objective_constant = False
 pypsa.options.api.new_components_api = True
 
 
+def matching_period_groups(
+    index: pd.DatetimeIndex, matching_period: str
+) -> list[tuple[str, pd.DatetimeIndex]]:
+    """Split snapshots into the calendar periods delivery is matched over.
+
+    Returns (constraint-name suffix, snapshots) per calendar month or year.
+    "hourly" yields no groups: each snapshot is its own period and the network
+    has no matching-balance generators to constrain.
+    """
+    if matching_period == "hourly":
+        return []
+    if matching_period == "monthly":
+        keys = index.year * 100 + index.month
+    elif matching_period == "annual":
+        keys = index.year
+    else:
+        raise ValueError(f"Unknown matching period '{matching_period}'")
+    keys = pd.Index(keys)
+    return [(f"_{k}", index[keys == k]) for k in keys.unique()]
+
+
 def solve(
     n: pypsa.Network,
     scenario: Scenario,
@@ -58,6 +79,18 @@ def solve(
                 buy_expr <= s.market_buy_share * delivery_expr,
                 name=f"BuyFromMarket_Limit{suffix}",
             )
+
+    # Constraint 3: monthly / annual matching. Energy drawn from the matching
+    # account equals energy banked within each period, so delivered volume
+    # nets against load per period and surplus can't be carried into the next
+    # one. Snapshot weightings are uniform within a run, so unweighted sums
+    # suffice (as for the caps above).
+    for suffix, snaps in matching_period_groups(ts.index, s.matching_period):
+        m.add_constraints(
+            gen_p.loc[snaps, "Gen_MatchingDraw"].sum()
+            == gen_p.loc[snaps, "Gen_MatchingBank"].sum(),
+            name=f"MatchingBalance{suffix}",
+        )
 
     # io_api="direct": hand the problem to HiGHS in memory instead of writing an
     # LP file and reading it back. Identical optimum, but ~265 MB less peak RSS
