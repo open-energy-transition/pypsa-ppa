@@ -66,8 +66,10 @@ def compute_counterfactuals(
 
     # --- PPA (offtaker view) ---
     # Pay ppa_price for each MWh delivered; cover any undelivered load at real-time spot.
+    # Under monthly/annual matching delivery can exceed load in an hour: the
+    # negative residual is that surplus, resold by the offtaker at spot.
     ppa_delivery = result.dispatch.ppa_delivery  # hourly MW delivered by IPP
-    undelivered = (load_mw - ppa_delivery).clip(lower=0.0)
+    undelivered = load_mw - ppa_delivery
     hourly_ppa_cost = (
         scenario.ppa_price * ppa_delivery * dt + spot_price * undelivered * dt
     )
