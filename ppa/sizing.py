@@ -16,13 +16,9 @@ explore technology extremes and stakeholder-oriented designs.
 
 from __future__ import annotations
 
-import contextlib
 import dataclasses
 import math
-import multiprocessing
-import sys
 import traceback
-import types
 from dataclasses import dataclass, field
 from typing import Callable, Sequence
 
@@ -33,6 +29,7 @@ from ppa.multi_year import _available_memory_mb, _PER_WORKER_MEM_MB
 from ppa.network import build_network
 from ppa.scenario import Scenario
 from ppa.solver import solve
+from ppa.subprocesses import main_module_hidden, spawn_context
 
 
 @dataclass
@@ -539,22 +536,6 @@ def _sizing_worker(
         conn.close()
 
 
-@contextlib.contextmanager
-def _main_module_hidden():
-    """Keep a spawned child from re-importing `__main__`.
-
-    Under Streamlit, `__main__` is the app script itself, so spawn would re-run
-    the whole app in the child. With a bare placeholder (no `__file__`/`__spec__`)
-    the child imports only what unpickling the target needs (`ppa.sizing`).
-    """
-    main = sys.modules.get("__main__")
-    sys.modules["__main__"] = types.ModuleType("__main__")
-    try:
-        yield
-    finally:
-        sys.modules["__main__"] = main
-
-
 def _recv_result(conn, on_progress: Callable[[str], None] | None):
     """Receive one message; progress lines are forwarded and yield (None, None)."""
     kind, payload = conn.recv()
@@ -587,11 +568,7 @@ def run_sizing_subprocess(
     `mga_slack`/`mga_objectives` are forwarded to `optimize_capacities`;
     `on_progress` receives the child's MGA progress lines.
     """
-    # spawn, not fork: linopy builds the model with polars, whose thread pool is
-    # not fork-safe. Once the app process has solved anything in-process (serial
-    # multi-year path, single-day reference run), a forked child deadlocks on
-    # its first polars query. A fresh interpreter costs ~3 s of imports.
-    mp_context = multiprocessing.get_context("spawn")
+    mp_context = spawn_context()  # not fork: see ppa.subprocesses
 
     parent_conn, child_conn = mp_context.Pipe(duplex=False)
     proc = mp_context.Process(
@@ -605,7 +582,7 @@ def run_sizing_subprocess(
         ),
         daemon=True,
     )
-    with _main_module_hidden():
+    with main_module_hidden():
         proc.start()
     child_conn.close()
 
