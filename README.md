@@ -110,6 +110,10 @@ Toggle "Co-optimize capacities & dispatch" in the form and the sliders for wind/
 
 Because a full hourly 25-year investment LP isn't practical, this runs at a coarser time resolution (3-hour blocks by default) over a capped horizon, then hands the resulting capacities to the normal hourly multi-year dispatch for the numbers you actually see. See [docs/MODEL.md](docs/MODEL.md) for exactly how that approximation works and how well it holds up against a full hourly solve.
 
+#### Near-optimal alternatives (MGA)
+
+With co-optimization on, the Optimization tab can also generate near-optimal alternatives (modelling to generate alternatives). After the least-cost sizing solve, the same LP is re-solved with a cost budget, by default +5% of the least-cost total, and a different objective each time. Those objectives are the min and max of each technology, plus stakeholder lenses: smallest RE fleet (landowners/permitting), max hourly RE matching (offtaker), lowest upfront capex (lenders) and least surplus energy (grid operator). The alternatives are compared side by side. Any one of them can then be simulated hourly and adopted as the active portfolio for all results tabs.
+
 ## The optimization model, briefly
 
 The energy-side model is a linear program: wind and solar dispatch against their capacity factors, a battery that can charge from either wind or solar but not from the market, representing a co-located renewables-plus-storage plant, a market-buy and market-sell option, and a penalty generator that makes the model always solvable even when the portfolio can't fully cover the contract, just expensive to rely on. The contract's shortfall allowance and any market-buy limit are enforced as caps relative to total load or delivery, computed per calendar year in multi-year sizing runs so the optimizer can't concentrate all its slack into one bad weather year.

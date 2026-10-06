@@ -121,6 +121,27 @@ Running a full hourly investment LP over 25 years just isn't practical, so `ppa/
 
 Once sizing picks capacities, they're written into a fixed-capacity scenario and handed to the same hourly multi-year dispatch used everywhere else. Nothing downstream needs to know a sizing step ever happened.
 
+## Near-optimal alternatives (MGA)
+
+The least-cost portfolio is rarely the only good one: many capacity mixes cost almost the same but differ a lot in what other stakeholders care about. `ppa/sizing.py::run_mga` explores that near-optimal space using the already-solved sizing LP:
+
+1. Keep the built linopy model, including the per-year shortfall and market-buy constraints, and add one **cost-budget constraint**: `objective ≤ obj* + slack · C*`.
+2. Swap in a new objective, re-solve, record the capacities, and repeat for each requested direction.
+
+**Why `C*` and not `(1 + slack) · obj*`.** The sizing objective is net of PPA delivery revenue, so it is usually negative, and multiplying it by `(1 + slack)` would *tighten* the budget. `C*` is the optimum's gross total cost: the objective plus PPA tariff revenue, i.e. capex, market buys, penalties, shortfall and transmission. Any alternative's cost of serving the PPA, counting lost PPA revenue as a cost, therefore stays within `slack × C*` of the least-cost total.
+
+Objectives (all linear in the existing variables):
+
+| Objective | Stakeholder | Minimizes (or maximizes) |
+|---|---|---|
+| Min / max wind, solar, BESS | Technology range | That technology's MW |
+| Smallest RE fleet | Landowners & permitting | Wind + solar MW |
+| Max hourly RE matching | Offtaker | Energy served by market buys, penalty and shortfall |
+| Lowest upfront capex | Lenders & equity | Σ capital_cost × capacity (same ranking as overnight capex) |
+| Least surplus energy | Grid operator | Curtailed (available − generated) plus market-dumped energy |
+
+An extreme that would be trivial is skipped with a note: the technology can't be built, its MW is already zero at the optimum for a min, or it's already at the build cap for a max. Each alternative costs one more sizing-LP solve, run in the same killable subprocess as the base sizing. Reported energy shares come from the coarse sizing LP. An alternative's NPV/IRR is only computed when it is simulated hourly ("Simulate & adopt"), which also makes it the active portfolio for every results tab.
+
 ## Multi-year dispatch and parallelism
 
 Outside of sizing mode, each simulated year is solved independently at full hourly resolution, with technology degradation applied by scaling down capacity year over year rather than by re-solving anything dynamic. Years run in parallel using separate processes, not threads: the solver stack isn't thread-safe, and threads only ever gave the appearance of parallelism anyway. The number of workers is automatically capped based on available memory, reading the container's actual memory limit where available, so the app degrades to running years serially rather than crashing on memory-constrained hosts like a small cloud instance. This is transparent to the user; the "parallel workers" control in the Optimization tab is a ceiling, not a guarantee.
