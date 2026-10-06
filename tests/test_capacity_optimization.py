@@ -11,6 +11,7 @@ from ppa.sizing import (
     clamp_sizing_years,
     coarsen_timeseries,
     optimize_capacities,
+    run_sizing_subprocess,
     weather_cycle_years,
     SizedCapacities,
 )
@@ -206,3 +207,29 @@ def test_optimize_capacities_no_bess_when_disabled(tiny_ts):
     )
     sized = optimize_capacities(tiny_ts, scenario)
     assert sized.bess_mw == pytest.approx(0.0, abs=1e-3)
+
+
+def test_run_sizing_subprocess_after_in_process_solve_does_not_hang(tiny_ts):
+    """Regression: a solve in this process starts polars' thread pool (linopy
+    model build), which deadlocked a *forked* sizing child. The heartbeat
+    deadline turns a hang into a failure instead of a stuck test run."""
+    import time
+
+    scenario = Scenario(
+        optimize_capacity=True,
+        max_build_wind_mw=500.0,
+        max_build_pv_mw=500.0,
+        max_build_bess_mw=200.0,
+        ppaload_mw=100.0,
+        sizing_resolution_h=1,
+        simulation_years=1,
+    )
+    optimize_capacities(tiny_ts, scenario)
+    deadline = time.monotonic() + 90
+
+    def _heartbeat() -> None:
+        if time.monotonic() > deadline:
+            raise TimeoutError("sizing subprocess hung")
+
+    sized = run_sizing_subprocess(tiny_ts, scenario, heartbeat=_heartbeat)
+    assert sized.status == "ok"

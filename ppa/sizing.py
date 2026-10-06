@@ -11,10 +11,13 @@ financials consume unchanged.
 
 from __future__ import annotations
 
+import contextlib
 import dataclasses
 import math
 import multiprocessing
+import sys
 import traceback
+import types
 from dataclasses import dataclass
 from typing import Callable
 
@@ -241,6 +244,22 @@ def _sizing_worker(conn, ts: pd.DataFrame, scenario_fields: dict) -> None:
         conn.close()
 
 
+@contextlib.contextmanager
+def _main_module_hidden():
+    """Keep a spawned child from re-importing `__main__`.
+
+    Under Streamlit, `__main__` is the app script itself, so spawn would re-run
+    the whole app in the child. With a bare placeholder (no `__file__`/`__spec__`)
+    the child imports only what unpickling the target needs (`ppa.sizing`).
+    """
+    main = sys.modules.get("__main__")
+    sys.modules["__main__"] = types.ModuleType("__main__")
+    try:
+        yield
+    finally:
+        sys.modules["__main__"] = main
+
+
 def run_sizing_subprocess(
     ts: pd.DataFrame,
     scenario: Scenario,
@@ -257,10 +276,11 @@ def run_sizing_subprocess(
     finally block. Killing the child also returns the LP's multi-GB memory to
     the OS immediately instead of leaving it in the app process.
     """
-    try:
-        mp_context = multiprocessing.get_context("fork")
-    except ValueError:  # pragma: no cover - Windows only
-        mp_context = multiprocessing.get_context("spawn")
+    # spawn, not fork: linopy builds the model with polars, whose thread pool is
+    # not fork-safe. Once the app process has solved anything in-process (serial
+    # multi-year path, single-day reference run), a forked child deadlocks on
+    # its first polars query. A fresh interpreter costs ~3 s of imports.
+    mp_context = multiprocessing.get_context("spawn")
 
     parent_conn, child_conn = mp_context.Pipe(duplex=False)
     proc = mp_context.Process(
@@ -268,7 +288,8 @@ def run_sizing_subprocess(
         args=(child_conn, ts, dataclasses.asdict(scenario)),
         daemon=True,
     )
-    proc.start()
+    with _main_module_hidden():
+        proc.start()
     child_conn.close()
 
     try:
