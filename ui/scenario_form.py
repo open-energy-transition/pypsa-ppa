@@ -7,11 +7,17 @@ import streamlit as st
 
 from ppa.data_loader import get_available_days
 from ppa.industrial_profiles import PROFILE_INFO, PROFILE_KEYS
-from ppa.scenario import Scenario
+from ppa.scenario import MATCHING_PERIODS, Scenario
 from ui import state
 
 max_cap_per_technology = 500
 max_bes_hours = 8
+
+_MATCHING_LABELS = {
+    "hourly": "Hourly (24/7)",
+    "monthly": "Monthly",
+    "annual": "Annual",
+}
 
 
 def render_scenario_form(initial: Scenario) -> Scenario:
@@ -204,6 +210,28 @@ def render_scenario_form(initial: Scenario) -> Scenario:
             value=float(initial.pen_mult),
             step=0.1,
             key="sf_pen_mult",
+        )
+
+        cols = st.columns(4)
+        _matching_idx = (
+            MATCHING_PERIODS.index(initial.matching_period)
+            if initial.matching_period in MATCHING_PERIODS
+            else 0
+        )
+        matching_period = cols[0].selectbox(
+            "Matching period",
+            options=list(MATCHING_PERIODS),
+            index=_matching_idx,
+            format_func=lambda p: _MATCHING_LABELS[p],
+            key="sf_matching_period",
+            help=(
+                "Window within which delivered energy is matched against the "
+                "offtaker load. Hourly (24/7): surplus in one hour cannot cover a "
+                "deficit in another. Monthly / annual: delivery is netted against "
+                "load per calendar month / year, so surplus hours offset deficit "
+                "hours in the same period. The required delivery share is always "
+                "assessed per year."
+            ),
         )
 
         # ── Load profile selector ─────────────────────────────────────────────
@@ -727,6 +755,7 @@ def render_scenario_form(initial: Scenario) -> Scenario:
         pen_mult=float(pen_mult),
         market_buy_share=float(market_buy_share),
         market_spread=float(market_spread),
+        matching_period=matching_period,
         wind_capex_per_kw=float(wind_capex_per_kw),
         pv_capex_per_kw=float(pv_capex_per_kw),
         bess_capex_per_kwh=float(bess_capex_per_kwh),
