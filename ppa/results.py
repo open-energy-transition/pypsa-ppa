@@ -45,6 +45,9 @@ class SummaryVolumes:
     allowed_shortfall_share_actual: float
     buy_share_of_ppa_delivery: float
     penalty_share_of_load: float
+    # Load covered by surplus delivered in other hours of the same matching
+    # period (0 under hourly matching).
+    netted_delivery_mwh: float = 0.0
 
 
 @dataclass
@@ -121,6 +124,13 @@ def extract_results(
     pv_generation_mwh = float(pv_gen.sum())
     bess_dispatch_mwh = float(bess_dispatch.sum())
     bess_charge_mwh = float(bess_store.sum())
+    # Load served from surplus delivered in other hours of the same matching
+    # period (the matching-balance generators only exist for monthly/annual).
+    netted_delivery_mwh = (
+        float(n.generators.dynamic.p["Gen_MatchingDraw"].sum())
+        if "Gen_MatchingDraw" in n.generators.static.index
+        else 0.0
+    )
 
     fulfilled_share = ppa_delivered_mwh / total_load_mwh if total_load_mwh > 0 else 0.0
     allowed_shortfall_share_actual = (
@@ -147,6 +157,7 @@ def extract_results(
         allowed_shortfall_share_actual=allowed_shortfall_share_actual,
         buy_share_of_ppa_delivery=buy_share_of_ppa_delivery,
         penalty_share_of_load=penalty_share_of_load,
+        netted_delivery_mwh=netted_delivery_mwh,
     )
 
     # ── Revenue ───────────────────────────────────────────────────────────────

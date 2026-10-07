@@ -81,6 +81,7 @@ def main_app():
             # "Excel Import",
         ],
         on_change="rerun",
+        key="main_tabs",
     )
 
     i = 0

@@ -62,6 +62,7 @@ _SCENARIO_FORM_KEYS = [
     "sf_ppa_price",
     "sf_required_delivery_share",
     "sf_pen_mult",
+    "sf_matching_period",
     "sf_market_buy_share",
     "sf_market_spread",
     "sf_wind_capex",

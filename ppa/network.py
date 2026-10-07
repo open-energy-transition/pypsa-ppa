@@ -170,6 +170,14 @@ def build_network(
         build_cap_sum if sizing else (s.onsw_mw + s.pv_mw + s.effective_bess_mw)
     )
     sell_link_mw = build_cap_sum if sizing else s.maxsell_mw
+    # Hourly matching caps delivery at the contracted load. With monthly/annual
+    # matching an hour may over-deliver (banked against deficits elsewhere in
+    # the period), so delivery is bounded only by what can physically reach the hub.
+    ppa_link_mw = (
+        s.ppaload_mw
+        if s.matching_period == "hourly"
+        else max(s.ppaload_mw, rebess_link_mw + s.maxbuy_mw)
+    )
 
     # Wind and PV feed the shared renewables/BESS bus rather than going straight to
     # Bus_IPPGeneration, so surplus from either can charge the battery. All links are
@@ -205,7 +213,7 @@ def build_network(
             "IPPGen_to_PPAOfftake",
             "Bus_IPPGeneration",
             "Bus_PPAOfftake",
-            s.ppaload_mw,
+            ppa_link_mw,
             s.transmission_cost_eur_mwh - s.ppa_price,
         ),
     ]
@@ -219,6 +227,33 @@ def build_network(
             p_nom=p_nom,
             efficiency=1.0,
             marginal_cost=marginal_cost,
+        )
+
+    # ── Matching balance (monthly / annual matching only) ─────────────────────
+    # A virtual account at the offtaker bus: over-delivery in one hour is
+    # banked (sink) and drawn (source) to cover a deficit in another hour.
+    # ppa.solver equates total bank and draw within every matching period, so
+    # delivered volume is netted against load per month / year, never across;
+    # order within the period is free (a deficit may precede its surplus).
+    # The tiny banking cost is a tie-breaker so the LP only shifts the volume
+    # it needs to, rather than churning energy through the account.
+    if s.matching_period != "hourly":
+        n.add(
+            "Generator",
+            "Gen_MatchingBank",
+            bus="Bus_PPAOfftake",
+            p_nom=ppa_link_mw,
+            p_max_pu=1.0,
+            sign=-1.0,
+            marginal_cost=0.001,
+        )
+        n.add(
+            "Generator",
+            "Gen_MatchingDraw",
+            bus="Bus_PPAOfftake",
+            p_nom=s.ppaload_mw,
+            p_max_pu=1.0,
+            marginal_cost=0.0,
         )
 
     n.consistency_check()
