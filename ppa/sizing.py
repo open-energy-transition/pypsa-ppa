@@ -354,46 +354,56 @@ class MGAResult:
         return [self.optimum, *self.alternatives]
 
 
-def _mga_expression(m, n, key: str):
-    """Linear expression for an MGA objective; always minimized (max = negated)."""
-    p_nom = {
-        "Generator": m.variables["Generator-p_nom"],
-        "StorageUnit": m.variables["StorageUnit-p_nom"],
-    }
-    gen_p = m.variables["Generator-p"]
-    sense, target = key.split("_", 1)
+def _per_snapshot(n, coeffs: dict[str, float]) -> pd.DataFrame:
+    """Snapshot × generator coefficient table for a `Generator-p` weight.
 
+    Covers every generator (0 where unlisted): PyPSA reindexes partial tables
+    with NaN, which would poison the objective.
+    """
+    table = pd.DataFrame(
+        0.0, index=n.snapshots, columns=n.generators.static.index
+    )
+    for name, coeff in coeffs.items():
+        table[name] = coeff
+    return table
+
+
+def _mga_weights(n, key: str) -> dict:
+    """PyPSA MGA weights (`{component: {attr: coefficients}}`) for an objective.
+
+    The objective to *minimize* is `n.optimize.build_linexpr_from_weights` of
+    these; max_* objectives are negated by the caller. Snapshot weightings are
+    uniform, so unweighted per-snapshot sums rank exactly like energy totals.
+    """
+    _, target = key.split("_", 1)
     if target in _TECH_ASSETS:
         component, name = _TECH_ASSETS[target]
-        expr = 1.0 * p_nom[component].loc[name]
-    elif key == "min_re_mw":
-        expr = p_nom["Generator"].loc[_RE_GENERATORS].sum()
-    elif key == "max_re_matching":
-        # Maximize own-RE matching == minimize energy served by anything else
-        return gen_p.loc[:, _NON_RE_SUPPLY].sum()
-    elif key == "min_capex":
+        return {component: {"p_nom": {name: 1.0}}}
+    if key == "min_re_mw":
+        return {"Generator": {"p_nom": dict.fromkeys(_RE_GENERATORS, 1.0)}}
+    if key == "max_re_matching":
+        # Own-RE matching = load − energy served by anything else; the load is
+        # fixed, so maximizing it == maximizing −(non-RE supply)
+        return {"Generator": {"p": _per_snapshot(n, dict.fromkeys(_NON_RE_SUPPLY, -1.0))}}
+    if key == "min_capex":
         # capital_cost is overnight capex × (crf + opex) × horizon for every
         # technology, so this ranks fleets exactly as overnight capex does
-        cc_gen = n.generators.static.capital_cost
-        cc_su = float(n.storage_units.static.capital_cost["SU_BESS"])
-        expr = (
-            p_nom["Generator"].loc["Gen_OnshoreWind"] * float(cc_gen["Gen_OnshoreWind"])
-            + p_nom["Generator"].loc["Gen_PV"] * float(cc_gen["Gen_PV"])
-            + p_nom["StorageUnit"].loc["SU_BESS"] * cc_su
-        )
-    elif key == "min_surplus":
-        # Curtailment (available − generated) plus energy dumped to market.
-        # Snapshot weightings are uniform, so unweighted sums rank identically.
+        return {
+            "Generator": {"p_nom": n.generators.static.capital_cost[_RE_GENERATORS]},
+            "StorageUnit": {"p_nom": n.storage_units.static.capital_cost[["SU_BESS"]]},
+        }
+    if key == "min_surplus":
+        # Curtailment (available − generated) plus energy dumped to market
         cf_sum = n.generators.dynamic.p_max_pu[_RE_GENERATORS].sum()
-        expr = (
-            p_nom["Generator"].loc["Gen_OnshoreWind"] * float(cf_sum["Gen_OnshoreWind"])
-            + p_nom["Generator"].loc["Gen_PV"] * float(cf_sum["Gen_PV"])
-            - gen_p.loc[:, _RE_GENERATORS].sum()
-            + gen_p.loc[:, "Gen_SellToMarket"].sum()
-        )
-    else:
-        raise ValueError(f"Unknown MGA objective: {key}")
-    return -expr if sense == "max" else expr
+        return {
+            "Generator": {
+                "p_nom": cf_sum,
+                "p": _per_snapshot(
+                    n, {**dict.fromkeys(_RE_GENERATORS, -1.0), "Gen_SellToMarket": 1.0}
+                ),
+            }
+        }
+    raise ValueError(f"Unknown MGA objective: {key}")
 
 
 def _lp_energy_metrics(n) -> dict[str, float]:
@@ -505,7 +515,8 @@ def run_mga(
         obj = MGA_OBJECTIVES[key]
         if progress is not None:
             progress(f"Near-optimal alternative {i}/{len(todo)}: {obj.label}")
-        m.objective = _mga_expression(m, n, key)
+        expr = n.optimize.build_linexpr_from_weights(_mga_weights(n, key))
+        m.objective = -expr if key.startswith("max_") else expr
         status, condition = n.optimize.solve_model(solver_name="highs", io_api="direct")
         if status != "ok":
             result.notes.append(f"{obj.label}: solve failed ({status} / {condition}).")

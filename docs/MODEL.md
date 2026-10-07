@@ -132,7 +132,7 @@ The least-cost portfolio is rarely the only good one: many capacity mixes cost a
 
 MGA is configured per scenario (`mga_enabled`, `mga_slack`, `mga_objectives`, where `None` means all objectives), in Case Definition under the capacity optimization settings.
 
-Objectives (all linear in the existing variables):
+Objectives (PyPSA MGA weights, built with `n.optimize.build_linexpr_from_weights`):
 
 | Objective | Stakeholder | Minimizes (or maximizes) |
 |---|---|---|
@@ -141,6 +141,12 @@ Objectives (all linear in the existing variables):
 | Max hourly RE matching | Offtaker | Energy served by market buys, penalty and shortfall |
 | Lowest upfront capex | Lenders & equity | Σ capital_cost × capacity (same ranking as overnight capex) |
 | Least surplus energy | Grid operator | Curtailed (available − generated) plus market-dumped energy |
+
+**Why not `n.optimize.optimize_mga`.** PyPSA's built-in MGA is used only for its objective builder, for two reasons:
+- Its budget is `(1 + slack) · (capex + opex)`. Here that total is negative because of the PPA revenue, so the budget would *tighten*.
+- It rebuilds the model for each alternative, which drops the custom per-year shortfall and market-buy constraints and costs a rebuild every time.
+
+`run_mga` keeps the built model and its own budget instead.
 
 An extreme that would be trivial is skipped with a note: the technology can't be built, its MW is already zero at the optimum for a min, or it's already at the build cap for a max. Each alternative costs one more sizing-LP solve, run in the same killable subprocess as the base sizing. Reported energy shares come from the coarse sizing LP. An alternative's NPV/IRR is only computed when it is simulated hourly ("Simulate & adopt"), which also makes it the active portfolio for every results tab.
 
