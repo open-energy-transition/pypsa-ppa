@@ -325,3 +325,20 @@ def test_run_sizing_subprocess_after_in_process_solve_does_not_hang(tiny_ts):
 
     sized = run_sizing_subprocess(tiny_ts, _mga_scenario(), heartbeat=_heartbeat)
     assert sized.status == "ok"
+
+
+def test_mga_settings_follow_the_scenario():
+    from ppa.sizing import mga_settings
+
+    assert mga_settings(_mga_scenario()) is None  # MGA off by default
+    assert mga_settings(_mga_scenario(optimize_capacity=False, mga_enabled=True)) is None
+
+    slack, objectives = mga_settings(_mga_scenario(mga_enabled=True, mga_slack=0.1))
+    assert slack == 0.1
+    assert objectives == tuple(MGA_OBJECTIVES)  # None = all
+
+    _, objectives = mga_settings(
+        _mga_scenario(mga_enabled=True, mga_objectives=("min_capex", "retired_key"))
+    )
+    assert objectives == ("min_capex",)  # unknown keys are dropped
+    assert mga_settings(_mga_scenario(mga_enabled=True, mga_objectives=())) is None

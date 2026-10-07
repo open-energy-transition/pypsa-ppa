@@ -304,6 +304,18 @@ MGA_OBJECTIVES: dict[str, MGAObjective] = {
 TECH_RANGE_OBJECTIVES = ("min_wind", "max_wind", "min_pv", "max_pv", "min_bess", "max_bess")
 STAKEHOLDER_OBJECTIVES = ("min_re_mw", "max_re_matching", "min_capex", "min_surplus")
 
+
+def mga_settings(scenario: Scenario) -> tuple[float, tuple[str, ...]] | None:
+    """(slack, objective keys) when the scenario requests MGA alternatives, else None."""
+    if not (scenario.optimize_capacity and scenario.mga_enabled):
+        return None
+    objectives = (
+        tuple(MGA_OBJECTIVES)
+        if scenario.mga_objectives is None
+        else tuple(k for k in scenario.mga_objectives if k in MGA_OBJECTIVES)
+    )
+    return (scenario.mga_slack, objectives) if objectives else None
+
 # Tech suffix of a min_/max_ objective key -> (component, name) it targets
 _TECH_ASSETS = {
     "wind": ("Generator", "Gen_OnshoreWind"),

@@ -58,6 +58,10 @@ def _render_scenario_summary(s) -> None:
                     f"BESS **{s.max_build_bess_mw:.0f} MW**"
                 )
                 st.markdown(f"- Sizing LP resolution: **{s.sizing_resolution_h}h**")
+                if s.mga_enabled:
+                    st.markdown(
+                        f"- Near-optimal alternatives: **on** (+{s.mga_slack:.0%} cost slack)"
+                    )
                 if s.include_bess:
                     st.markdown(
                         f"- BESS duration: **{s.bess_max_hours:.1f} h** (fixed)"
@@ -573,49 +577,26 @@ def _render_yearly_table(fin) -> None:
 _TECH_COLORS = {"Wind": "#388E3C", "Solar": "#F57C00", "BESS": "#1565C0"}
 
 
-def _render_mga_controls(s) -> dict | None:
-    """Opt-in MGA settings (co-optimization only); returns run settings or None."""
+def _render_mga_status(s) -> dict | None:
+    """One-line MGA status (configured in Case Definition); returns run settings."""
     if not s.optimize_capacity:
         return None
-    from ppa.sizing import MGA_OBJECTIVES, STAKEHOLDER_OBJECTIVES, TECH_RANGE_OBJECTIVES
+    from ppa.sizing import mga_settings
 
-    enabled = st.checkbox(
-        "Generate near-optimal alternatives (modelling to generate alternatives)",
-        key="opt_mga_enabled",
-        help=(
-            "After the least-cost sizing LP, re-solve it with a cost budget of "
-            "+slack over the optimum and different objectives, to find capacity "
-            "mixes of similar total cost that suit other stakeholders. Each "
-            "alternative is one extra sizing-LP solve."
-        ),
-    )
-    if not enabled:
+    settings = mga_settings(s)
+    if settings is None:
+        st.caption(
+            "Near-optimal alternatives (MGA): **off**. Enable them in **Case "
+            "Definition** under the capacity optimization settings."
+        )
         return None
-
-    cols = st.columns([1, 3])
-    slack_pct = cols[0].slider(
-        "Cost slack (%)",
-        min_value=1,
-        max_value=20,
-        value=5,
-        key="opt_mga_slack",
-        help="Alternatives may cost at most this much more than the least-cost optimum.",
-    )
-    objectives = cols[1].multiselect(
-        "Alternatives to explore",
-        options=[*TECH_RANGE_OBJECTIVES, *STAKEHOLDER_OBJECTIVES],
-        default=[*TECH_RANGE_OBJECTIVES, *STAKEHOLDER_OBJECTIVES],
-        format_func=lambda k: f"{MGA_OBJECTIVES[k].label} ({MGA_OBJECTIVES[k].stakeholder})",
-        key="opt_mga_objectives",
-    )
+    slack, objectives = settings
     st.caption(
-        f"Up to {len(objectives)} extra sizing-LP solve(s), each about as long as the "
-        "least-cost sizing solve. Extremes that are trivially at zero or at the build "
-        "cap are skipped."
+        f"Near-optimal alternatives (MGA): **on**, up to {len(objectives)} "
+        f"alternative(s) within **+{slack:.0%}** of least cost "
+        "(configured in **Case Definition**)."
     )
-    if not objectives:
-        return None
-    return {"slack": slack_pct / 100.0, "objectives": objectives}
+    return {"slack": slack, "objectives": list(objectives)}
 
 
 def _active_alternative():
@@ -859,7 +840,7 @@ def render() -> None:
                 n_done = len(state.get_multi_year_results())
                 st.success(f"Last run: {n_done} year(s) solved.")
 
-        mga = _render_mga_controls(s)
+        mga = _render_mga_status(s)
 
     if model_run and data_ready:
         try:

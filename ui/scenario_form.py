@@ -14,6 +14,59 @@ max_cap_per_technology = 500
 max_bes_hours = 8
 
 
+def _render_mga_settings(initial: Scenario) -> tuple[bool, float, tuple[str, ...] | None]:
+    """Near-optimal alternatives (MGA) settings, shown under capacity optimization."""
+    from ppa.sizing import MGA_OBJECTIVES, STAKEHOLDER_OBJECTIVES, TECH_RANGE_OBJECTIVES
+
+    with st.expander("Near-optimal alternatives (MGA)", expanded=True):
+        enabled = st.toggle(
+            "Generate near-optimal alternatives (modelling to generate alternatives)",
+            value=initial.mga_enabled,
+            key="sf_mga_enabled",
+            help=(
+                "After the least-cost sizing LP, re-solve it with a cost budget of "
+                "+slack over the optimum and different objectives, to find capacity "
+                "mixes of similar total cost that suit other stakeholders. Each "
+                "alternative is one extra sizing-LP solve."
+            ),
+        )
+        if not enabled:
+            return False, initial.mga_slack, initial.mga_objectives
+
+        all_keys = [*TECH_RANGE_OBJECTIVES, *STAKEHOLDER_OBJECTIVES]
+        cols = st.columns([1, 3])
+        slack_pct = cols[0].slider(
+            "Cost slack (%)",
+            min_value=1,
+            max_value=20,
+            value=int(round(initial.mga_slack * 100)),
+            key="sf_mga_slack",
+            help="Alternatives may cost at most this much more than the least-cost optimum.",
+        )
+        objectives = cols[1].multiselect(
+            "Alternatives to explore",
+            options=all_keys,
+            default=[
+                k
+                for k in (initial.mga_objectives or all_keys)
+                if k in MGA_OBJECTIVES
+            ],
+            format_func=lambda k: f"{MGA_OBJECTIVES[k].label} ({MGA_OBJECTIVES[k].stakeholder})",
+            key="sf_mga_objectives",
+        )
+        if objectives:
+            st.caption(
+                f"Up to {len(objectives)} extra sizing-LP solve(s), each about as long "
+                "as the least-cost sizing solve. Extremes that are trivially at zero "
+                "or at the build cap are skipped."
+            )
+        else:
+            st.warning("Select at least one alternative, or no alternatives are generated.")
+        # None = all (keeps scenarios compact and picks up future objectives)
+        selected = None if set(objectives) == set(all_keys) else tuple(objectives)
+        return True, slack_pct / 100.0, selected
+
+
 def render_scenario_form(initial: Scenario) -> Scenario:
     """Render all scenario controls and return a new Scenario from widget values."""
     st.subheader("Capacity sizing approach")
@@ -121,6 +174,7 @@ def render_scenario_form(initial: Scenario) -> Scenario:
                 key="sf_bess_mwh",
                 help="Only the MWh/MW ratio (duration) is used by the optimizer.",
             )
+        mga_enabled, mga_slack, mga_objectives = _render_mga_settings(initial)
         onsw_mw = initial.onsw_mw
         pv_mw = initial.pv_mw
         bess_mw = initial.bess_mw
@@ -129,6 +183,9 @@ def render_scenario_form(initial: Scenario) -> Scenario:
         max_build_pv_mw = initial.max_build_pv_mw
         max_build_bess_mw = initial.max_build_bess_mw
         sizing_resolution_h = initial.sizing_resolution_h
+        mga_enabled = initial.mga_enabled
+        mga_slack = initial.mga_slack
+        mga_objectives = initial.mga_objectives
 
         with st.expander("Portfolio assets", expanded=True):
             cols = st.columns(4)
@@ -707,6 +764,9 @@ def render_scenario_form(initial: Scenario) -> Scenario:
         max_build_pv_mw=float(max_build_pv_mw),
         max_build_bess_mw=float(max_build_bess_mw),
         sizing_resolution_h=int(sizing_resolution_h),
+        mga_enabled=bool(mga_enabled),
+        mga_slack=float(mga_slack),
+        mga_objectives=mga_objectives,
         include_bess=include_bess,
         enable_market_buy=enable_market_buy,
         enable_market_sell=enable_market_sell,

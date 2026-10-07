@@ -57,6 +57,7 @@ def render() -> None:
                 st.session_state.pop(state.MULTI_YEAR_RESULTS_KEY, None)
                 st.session_state.pop(state.MULTI_YEAR_FINANCIAL_KEY, None)
                 st.session_state.pop(state.OPTIMIZED_SIZES_KEY, None)
+                state.clear_mga_result()
                 st.rerun()
 
     # ── Customise parameters ──────────────────────────────────────────────────
@@ -79,6 +80,7 @@ def render() -> None:
                 st.session_state.pop(state.MULTI_YEAR_RESULTS_KEY, None)
                 st.session_state.pop(state.MULTI_YEAR_FINANCIAL_KEY, None)
                 st.session_state.pop(state.OPTIMIZED_SIZES_KEY, None)
+                state.clear_mga_result()
                 st.success("Scenario updated. Head to Optimization to run.")
         with cols[1]:
             if st.button("Reset to base defaults", type="secondary", width="stretch"):
@@ -88,4 +90,5 @@ def render() -> None:
                 st.session_state.pop(state.MULTI_YEAR_RESULTS_KEY, None)
                 st.session_state.pop(state.MULTI_YEAR_FINANCIAL_KEY, None)
                 st.session_state.pop(state.OPTIMIZED_SIZES_KEY, None)
+                state.clear_mga_result()
                 st.rerun()

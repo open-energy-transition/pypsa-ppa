@@ -53,3 +53,39 @@ def test_mga_panel_renders_table_charts_and_simulate_controls():
     at.selectbox(key="opt_mga_choice").set_value("max_wind").run()
     assert not at.button(key="opt_mga_simulate").disabled
     assert not at.warning  # scenario unchanged → not stale
+
+
+def _scenario_form_app():
+    import streamlit as st
+
+    from ppa.scenario import Scenario
+    from ui.scenario_form import render_scenario_form
+
+    st.session_state["form_result"] = render_scenario_form(Scenario())
+
+
+def _form_result(at):
+    return at.session_state["form_result"]
+
+
+def test_mga_settings_live_in_case_definition_only_when_optimizing():
+    at = AppTest.from_function(_scenario_form_app, default_timeout=60).run()
+    assert not at.exception
+    assert "Near-optimal alternatives (MGA)" not in [e.label for e in at.expander]
+
+    at.radio(key="sf_sizing_mode").set_value("Optimize asset capacities").run()
+    labels = [e.label for e in at.expander]
+    assert labels.index("Near-optimal alternatives (MGA)") == (
+        labels.index("Capacity optimization settings") + 1
+    )
+    assert _form_result(at).mga_enabled is False
+
+    at.toggle(key="sf_mga_enabled").set_value(True).run()
+    at.slider(key="sf_mga_slack").set_value(10).run()
+    result = _form_result(at)
+    assert result.mga_enabled is True
+    assert result.mga_slack == 0.1
+    assert result.mga_objectives is None  # all selected
+
+    at.multiselect(key="sf_mga_objectives").set_value(["min_capex", "max_wind"]).run()
+    assert _form_result(at).mga_objectives == ("min_capex", "max_wind")

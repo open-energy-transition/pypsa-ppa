@@ -112,7 +112,7 @@ Because a full hourly 25-year investment LP isn't practical, this runs at a coar
 
 #### Near-optimal alternatives (MGA)
 
-With co-optimization on, the Optimization tab can also generate near-optimal alternatives (modelling to generate alternatives). After the least-cost sizing solve, the same LP is re-solved with a cost budget, by default +5% of the least-cost total, and a different objective each time. Those objectives are the min and max of each technology, plus stakeholder lenses: smallest RE fleet (landowners/permitting), max hourly RE matching (offtaker), lowest upfront capex (lenders) and least surplus energy (grid operator). The alternatives are compared side by side. Any one of them can then be simulated hourly and adopted as the active portfolio for all results tabs.
+With co-optimization on, the run can also generate near-optimal alternatives (modelling to generate alternatives). Switch them on in Case Definition, under the capacity optimization settings, where you also set the cost slack and which alternatives to explore. After the least-cost sizing solve, the same LP is re-solved with a cost budget, by default +5% of the least-cost total, and a different objective each time. Those objectives are the min and max of each technology, plus stakeholder lenses: smallest RE fleet (landowners/permitting), max hourly RE matching (offtaker), lowest upfront capex (lenders) and least surplus energy (grid operator). The alternatives are compared side by side in the Optimization tab. Any one of them can then be simulated hourly and adopted as the active portfolio for all results tabs.
 
 ## The optimization model, briefly
 

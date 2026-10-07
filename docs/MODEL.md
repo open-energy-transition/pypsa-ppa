@@ -130,6 +130,8 @@ The least-cost portfolio is rarely the only good one: many capacity mixes cost a
 
 **Why `C*` and not `(1 + slack) · obj*`.** The sizing objective is net of PPA delivery revenue, so it is usually negative, and multiplying it by `(1 + slack)` would *tighten* the budget. `C*` is the optimum's gross total cost: the objective plus PPA tariff revenue, i.e. capex, market buys, penalties, shortfall and transmission. Any alternative's cost of serving the PPA, counting lost PPA revenue as a cost, therefore stays within `slack × C*` of the least-cost total.
 
+MGA is configured per scenario (`mga_enabled`, `mga_slack`, `mga_objectives`, where `None` means all objectives), in Case Definition under the capacity optimization settings.
+
 Objectives (all linear in the existing variables):
 
 | Objective | Stakeholder | Minimizes (or maximizes) |
