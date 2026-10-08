@@ -171,7 +171,7 @@ Objectives (PyPSA MGA weights, built with `n.optimize.build_linexpr_from_weights
 |---|---|---|
 | Min / max wind, solar, BESS | Technology range | That technology's MW |
 | Smallest RE fleet | Landowners & permitting | Wind + solar MW |
-| Max hourly RE matching | Offtaker | Energy served by market buys, penalty and shortfall |
+| Max own-RE coverage | Offtaker | Energy served by market buys, penalty and shortfall (hourly coverage under hourly matching, netted per period otherwise) |
 | Lowest upfront capex | Lenders & equity | Σ capital_cost × capacity (same ranking as overnight capex) |
 | Least surplus energy | Grid operator | Curtailed (available − generated) plus market-dumped energy |
 

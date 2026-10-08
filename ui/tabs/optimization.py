@@ -656,7 +656,7 @@ def _render_mga(s, max_workers: int, data_ready: bool) -> None:
                     "Cost vs least-cost (%)": round(a.cost_increase * 100, 2),
                     "Total cost (€M/yr)": round(a.total_cost_eur_per_yr / 1e6, 2),
                     "Upfront capex (€M)": round(a.capex_eur / 1e6, 1),
-                    "Own-RE hourly matching (%)": round(a.re_matching_share * 100, 1),
+                    "Own-RE coverage (%)": round(a.re_matching_share * 100, 1),
                     "Market buy (% of load)": round(a.market_buy_share * 100, 1),
                     "Surplus (% of RE available)": round(a.surplus_share * 100, 1),
                     "NPV (€M)": round(k["npv"] / 1e6, 1) if k else None,

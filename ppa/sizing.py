@@ -282,10 +282,13 @@ MGA_OBJECTIVES: dict[str, MGAObjective] = {
         ),
         MGAObjective(
             "max_re_matching",
-            "Max hourly RE matching",
-            "Offtaker (24/7 green claims)",
-            "Serve the most PPA load hour-by-hour from own wind/solar/BESS: least "
-            "market buying, penalty and shortfall.",
+            # Key kept for saved scenarios; under hourly matching own-RE
+            # coverage *is* hourly matching, so one label fits every mode
+            "Max own-RE coverage",
+            "Offtaker (green claims)",
+            "Serve the most PPA load from own wind/solar/BESS (hour by hour under "
+            "hourly matching, netted per month/year otherwise): least market "
+            "buying, penalty and shortfall.",
         ),
         MGAObjective(
             "min_capex",
@@ -382,7 +385,7 @@ def _mga_weights(n, key: str) -> dict:
     if key == "min_re_mw":
         return {"Generator": {"p_nom": dict.fromkeys(_RE_GENERATORS, 1.0)}}
     if key == "max_re_matching":
-        # Own-RE matching = load − energy served by anything else; the load is
+        # Own-RE coverage = load − energy served by anything else; the load is
         # fixed, so maximizing it == maximizing −(non-RE supply)
         return {"Generator": {"p": _per_snapshot(n, dict.fromkeys(_NON_RE_SUPPLY, -1.0))}}
     if key == "min_capex":
