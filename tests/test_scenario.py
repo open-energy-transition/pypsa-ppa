@@ -209,3 +209,10 @@ def test_load_case_study_applies_overrides_on_top_of_base():
     assert scenario.onsw_mw == cs.overrides["onsw_mw"]
     # Unrelated field should still come from BASE_SCENARIO
     assert scenario.bidding_zone_override == BASE_SCENARIO.bidding_zone_override
+
+
+def test_validate_scenario_flags_bad_mga_slack_only_when_mga_enabled():
+    s = dataclasses.replace(BASE_SCENARIO, optimize_capacity=True, mga_slack=0.0)
+    assert validate_scenario(s) == []
+    errors = validate_scenario(dataclasses.replace(s, mga_enabled=True))
+    assert any("Near-optimal cost slack" in e for e in errors)

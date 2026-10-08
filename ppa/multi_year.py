@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import dataclasses
-import multiprocessing
 import os
 from concurrent.futures import ProcessPoolExecutor, as_completed
 from typing import Callable
@@ -15,6 +14,7 @@ from ppa.network import build_network
 from ppa.results import OptimizationResult, extract_results
 from ppa.scenario import Scenario
 from ppa.solver import solve
+from ppa.subprocesses import main_module_hidden, spawn_context
 
 import streamlit as st
 
@@ -230,26 +230,22 @@ def run_multi_year(
     # independent; the scenario crosses as a plain dict (see _solve_one_year) and
     # the DataFrame/OptimizationResult pickle cleanly.
     #
-    # "fork" specifically: spawn/forkserver re-import the __main__ module, which
-    # blows up under Streamlit (it runs the app script as __main__, so each worker
-    # would re-execute the whole app). fork inherits the interpreter as-is and
-    # still isolates each solve in its own process/heap. Windows has no fork, so
-    # fall back to spawn there (requires a `if __name__ == "__main__"` guard).
-    try:
-        mp_context = multiprocessing.get_context("fork")
-    except ValueError:  # pragma: no cover - Windows only
-        mp_context = multiprocessing.get_context("spawn")
-    with ProcessPoolExecutor(max_workers=workers, mp_context=mp_context) as executor:
-        futures = {
-            executor.submit(
-                _solve_one_year,
-                idx,
-                first_sim_year + idx,
-                timeseries_by_idx[idx],
-                dataclasses.asdict(scenario_by_idx[idx]),
-            ): idx
-            for idx in range(n_years)
-        }
+    # spawn, not fork, with __main__ hidden while workers start: see
+    # ppa.subprocesses (polars deadlocks forked workers once this process has
+    # solved anything in-process; spawn would otherwise re-run the Streamlit app).
+    with ProcessPoolExecutor(max_workers=workers, mp_context=spawn_context()) as executor:
+        # Spawn-context pools launch their workers synchronously inside submit()
+        with main_module_hidden():
+            futures = {
+                executor.submit(
+                    _solve_one_year,
+                    idx,
+                    first_sim_year + idx,
+                    timeseries_by_idx[idx],
+                    dataclasses.asdict(scenario_by_idx[idx]),
+                ): idx
+                for idx in range(n_years)
+            }
 
         for future in as_completed(futures):
             year_idx, result = future.result()  # propagates exceptions

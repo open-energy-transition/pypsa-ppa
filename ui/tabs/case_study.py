@@ -59,6 +59,7 @@ def render() -> None:
                 st.session_state.pop(state.MULTI_YEAR_RESULTS_KEY, None)
                 st.session_state.pop(state.MULTI_YEAR_FINANCIAL_KEY, None)
                 st.session_state.pop(state.OPTIMIZED_SIZES_KEY, None)
+                state.clear_mga_result()
                 st.rerun()
 
     # ── Customise parameters ──────────────────────────────────────────────────
@@ -81,6 +82,7 @@ def render() -> None:
                 st.session_state.pop(state.MULTI_YEAR_RESULTS_KEY, None)
                 st.session_state.pop(state.MULTI_YEAR_FINANCIAL_KEY, None)
                 st.session_state.pop(state.OPTIMIZED_SIZES_KEY, None)
+                state.clear_mga_result()
                 # Rerun so the form re-seeds from the applied scenario (its
                 # widget keys were just cleared); confirm on the next run.
                 st.session_state[_APPLIED_FLAG_KEY] = True
@@ -95,4 +97,5 @@ def render() -> None:
                 st.session_state.pop(state.MULTI_YEAR_RESULTS_KEY, None)
                 st.session_state.pop(state.MULTI_YEAR_FINANCIAL_KEY, None)
                 st.session_state.pop(state.OPTIMIZED_SIZES_KEY, None)
+                state.clear_mga_result()
                 st.rerun()

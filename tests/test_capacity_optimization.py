@@ -7,10 +7,12 @@ import pytest
 
 from ppa.scenario import Scenario
 from ppa.sizing import (
+    MGA_OBJECTIVES,
     apply_sizing,
     clamp_sizing_years,
     coarsen_timeseries,
     optimize_capacities,
+    run_sizing_subprocess,
     weather_cycle_years,
     SizedCapacities,
 )
@@ -206,3 +208,158 @@ def test_optimize_capacities_no_bess_when_disabled(tiny_ts):
     )
     sized = optimize_capacities(tiny_ts, scenario)
     assert sized.bess_mw == pytest.approx(0.0, abs=1e-3)
+
+
+# ── Modelling to generate alternatives (MGA) ─────────────────────────────────
+
+
+def _mga_scenario(**overrides) -> Scenario:
+    fields = dict(
+        optimize_capacity=True,
+        max_build_wind_mw=500.0,
+        max_build_pv_mw=500.0,
+        max_build_bess_mw=200.0,
+        ppaload_mw=100.0,
+        sizing_resolution_h=1,
+        simulation_years=1,
+    )
+    fields.update(overrides)
+    return Scenario(**fields)
+
+
+def test_optimize_capacities_without_mga_has_no_alternatives(tiny_ts):
+    sized = optimize_capacities(tiny_ts, _mga_scenario())
+    assert sized.mga is None
+
+
+def test_mga_alternatives_stay_within_cost_budget_and_bracket_the_optimum(tiny_ts):
+    slack = 0.05
+    sized = optimize_capacities(
+        tiny_ts,
+        _mga_scenario(),
+        mga_slack=slack,
+        mga_objectives=list(MGA_OBJECTIVES),
+    )
+    result = sized.mga
+    assert result is not None
+    assert result.slack == slack
+    assert result.optimum.key == "optimum"
+    assert result.optimum.cost_increase == pytest.approx(0.0, abs=1e-9)
+    # The base least-cost capacities are untouched by the MGA re-solves
+    assert result.optimum.sized.onsw_mw == pytest.approx(sized.onsw_mw)
+    assert result.alternatives
+
+    by_key = {a.key: a for a in result.alternatives}
+    for alt in result.alternatives:
+        assert alt.sized.status == "ok"
+        # Never cheaper than the optimum (beyond solver tolerance), never over budget
+        assert -1e-6 <= alt.cost_increase <= slack + 1e-6
+
+    if "min_wind" in by_key:
+        assert by_key["min_wind"].sized.onsw_mw <= sized.onsw_mw + 1e-3
+    if "max_wind" in by_key:
+        assert by_key["max_wind"].sized.onsw_mw >= sized.onsw_mw - 1e-3
+    assert by_key["max_re_matching"].re_matching_share >= result.optimum.re_matching_share - 1e-6
+    assert by_key["min_capex"].capex_eur <= result.optimum.capex_eur + 1.0
+    assert by_key["min_re_mw"].sized.onsw_mw + by_key["min_re_mw"].sized.pv_mw <= (
+        sized.onsw_mw + sized.pv_mw + 1e-3
+    )
+
+
+def test_mga_skips_extremes_of_unbuildable_technologies(tiny_ts):
+    sized = optimize_capacities(
+        tiny_ts,
+        _mga_scenario(include_bess=False, max_build_bess_mw=0.0),
+        mga_slack=0.05,
+        mga_objectives=["min_bess", "max_bess", "min_wind"],
+    )
+    keys = {a.key for a in sized.mga.alternatives}
+    assert "min_bess" not in keys and "max_bess" not in keys
+    assert any("not buildable" in note for note in sized.mga.notes)
+
+
+def test_mga_unknown_objective_raises(tiny_ts):
+    with pytest.raises(ValueError, match="Unknown MGA objective"):
+        optimize_capacities(
+            tiny_ts, _mga_scenario(), mga_slack=0.05, mga_objectives=["max_vibes"]
+        )
+
+
+def test_run_sizing_subprocess_streams_mga_progress_and_returns_alternatives(tiny_ts):
+    messages: list[str] = []
+    sized = run_sizing_subprocess(
+        tiny_ts,
+        _mga_scenario(),
+        mga_slack=0.05,
+        mga_objectives=["min_capex", "max_re_matching"],
+        on_progress=messages.append,
+    )
+    assert sized.status == "ok"
+    assert [a.key for a in sized.mga.alternatives] == ["min_capex", "max_re_matching"]
+    assert len(messages) == 2
+    assert "1/2" in messages[0]
+
+
+def test_apply_sizing_accepts_an_mga_alternative(tiny_ts):
+    sized = optimize_capacities(
+        tiny_ts, _mga_scenario(), mga_slack=0.05, mga_objectives=["min_capex"]
+    )
+    alt = sized.mga.alternatives[0]
+    scenario = apply_sizing(_mga_scenario(), alt.sized)
+    assert scenario.optimize_capacity is False
+    assert scenario.onsw_mw == pytest.approx(round(alt.sized.onsw_mw, 1))
+
+
+def test_run_sizing_subprocess_after_in_process_solve_does_not_hang(tiny_ts):
+    """Regression: a solve in this process starts polars' thread pool (linopy
+    model build), which deadlocked a *forked* sizing child. The heartbeat
+    deadline turns a hang into a failure instead of a stuck test run."""
+    import time
+
+    optimize_capacities(tiny_ts, _mga_scenario())
+    deadline = time.monotonic() + 90
+
+    def _heartbeat() -> None:
+        if time.monotonic() > deadline:
+            raise TimeoutError("sizing subprocess hung")
+
+    sized = run_sizing_subprocess(tiny_ts, _mga_scenario(), heartbeat=_heartbeat)
+    assert sized.status == "ok"
+
+
+def test_mga_settings_follow_the_scenario():
+    from ppa.sizing import mga_settings
+
+    assert mga_settings(_mga_scenario()) is None  # MGA off by default
+    assert mga_settings(_mga_scenario(optimize_capacity=False, mga_enabled=True)) is None
+
+    slack, objectives = mga_settings(_mga_scenario(mga_enabled=True, mga_slack=0.1))
+    assert slack == 0.1
+    assert objectives == tuple(MGA_OBJECTIVES)  # None = all
+
+    _, objectives = mga_settings(
+        _mga_scenario(mga_enabled=True, mga_objectives=("min_capex", "retired_key"))
+    )
+    assert objectives == ("min_capex",)  # unknown keys are dropped
+    assert mga_settings(_mga_scenario(mga_enabled=True, mga_objectives=())) is None
+
+
+@pytest.mark.parametrize("matching_period", ["monthly", "annual"])
+def test_mga_respects_period_matching_constraints(tiny_ts, matching_period):
+    """MGA re-solves the built model, so the matching-balance constraints
+    (and the bank/draw generators they act on) carry over to every alternative."""
+    sized = optimize_capacities(
+        tiny_ts,
+        _mga_scenario(matching_period=matching_period),
+        mga_slack=0.05,
+        mga_objectives=["max_re_matching", "min_surplus", "min_capex"],
+    )
+    result = sized.mga
+    assert {a.key for a in result.alternatives} == {
+        "max_re_matching",
+        "min_surplus",
+        "min_capex",
+    }
+    for alt in result.alternatives:
+        assert alt.sized.status == "ok"
+        assert -1e-6 <= alt.cost_increase <= 0.05 + 1e-6

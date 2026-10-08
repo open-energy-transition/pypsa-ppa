@@ -144,3 +144,28 @@ def test_custom_timeseries_accessors_and_clear():
     state.clear_custom_timeseries()
     assert not state.has_custom_timeseries()
     assert state.get_custom_timeseries() is None
+
+
+def test_mga_result_accessors_reset_kpis_and_active_on_new_result():
+    from types import SimpleNamespace
+
+    assert not state.has_mga_result()
+    scenario = Scenario(optimize_capacity=True)
+    state.set_mga_result("first", scenario)
+    assert state.has_mga_result()
+    assert state.get_mga_scenario() == scenario
+    assert state.get_mga_active() == "optimum"
+    assert state.get_mga_kpis() == {}
+
+    state.record_mga_kpis("min_capex", SimpleNamespace(npv=1.0, irr=0.1, lcoe=50.0))
+    state.set_mga_active("min_capex")
+    assert state.get_mga_kpis() == {"min_capex": {"npv": 1.0, "irr": 0.1, "lcoe": 50.0}}
+
+    # A fresh MGA run invalidates KPIs of the previous alternatives
+    state.set_mga_result("second", scenario)
+    assert state.get_mga_kpis() == {}
+    assert state.get_mga_active() == "optimum"
+
+    state.clear_mga_result()
+    assert not state.has_mga_result()
+    assert state.get_mga_active() is None

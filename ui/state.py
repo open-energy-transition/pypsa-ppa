@@ -22,6 +22,10 @@ MULTI_YEAR_FINANCIAL_KEY = "multi_year_financial"
 PROJECT_FINANCE_KEY = "project_finance_result"
 OPTIMIZED_SIZES_KEY = "optimized_sizes"
 CUSTOM_TIMESERIES_KEY = "custom_timeseries"
+MGA_RESULT_KEY = "mga_result"
+MGA_SCENARIO_KEY = "mga_scenario"
+MGA_KPIS_KEY = "mga_kpis"
+MGA_ACTIVE_KEY = "mga_active"
 
 
 def get_scenario() -> "Scenario | None":
@@ -221,6 +225,54 @@ def set_optimized_sizes(sized: "object") -> None:
 
 def has_optimized_sizes() -> bool:
     return OPTIMIZED_SIZES_KEY in st.session_state
+
+
+def get_mga_result() -> "object | None":
+    return st.session_state.get(MGA_RESULT_KEY)
+
+
+def set_mga_result(result: "object", scenario: "Scenario") -> None:
+    """Store near-optimal alternatives with the user scenario they were sized for.
+
+    Resets the per-alternative KPI cache and marks the least-cost optimum as the
+    active (simulated) portfolio.
+    """
+    st.session_state[MGA_RESULT_KEY] = result
+    st.session_state[MGA_SCENARIO_KEY] = scenario
+    st.session_state[MGA_KPIS_KEY] = {}
+    st.session_state[MGA_ACTIVE_KEY] = "optimum"
+
+
+def has_mga_result() -> bool:
+    return st.session_state.get(MGA_RESULT_KEY) is not None
+
+
+def clear_mga_result() -> None:
+    for key in (MGA_RESULT_KEY, MGA_SCENARIO_KEY, MGA_KPIS_KEY, MGA_ACTIVE_KEY):
+        st.session_state.pop(key, None)
+
+
+def get_mga_scenario() -> "Scenario | None":
+    return st.session_state.get(MGA_SCENARIO_KEY)
+
+
+def get_mga_kpis() -> dict:
+    """Financial KPIs of alternatives already simulated hourly, keyed by alternative."""
+    return st.session_state.get(MGA_KPIS_KEY, {})
+
+
+def record_mga_kpis(key: str, fin: "MultiYearFinancialResult") -> None:
+    kpis = dict(get_mga_kpis())
+    kpis[key] = {"npv": fin.npv, "irr": fin.irr, "lcoe": fin.lcoe}
+    st.session_state[MGA_KPIS_KEY] = kpis
+
+
+def get_mga_active() -> str | None:
+    return st.session_state.get(MGA_ACTIVE_KEY)
+
+
+def set_mga_active(key: str) -> None:
+    st.session_state[MGA_ACTIVE_KEY] = key
 
 
 def get_custom_timeseries() -> "dict[str, dict[int, pd.Series]] | None":

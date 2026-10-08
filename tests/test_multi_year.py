@@ -105,3 +105,63 @@ def test_run_multi_year_serial_two_years_returns_one_result_per_year(
     assert all(r.solver_status == "ok" for r in results)
     assert len(progress_calls) == 2
     assert progress_calls[-1][0] == 2  # final callback reports both years done
+
+
+_SERIAL_THEN_PARALLEL_SCRIPT = """
+import numpy as np, pandas as pd
+import ppa.multi_year as my
+from ppa.scenario import Scenario
+
+idx = pd.date_range("2023-01-01", periods=48, freq="h", name="snapshot")
+h = np.arange(48)
+ts = pd.DataFrame(
+    {
+        "ts_PVGen": np.clip(np.sin((h % 24 - 6) / 12 * np.pi), 0, 1),
+        "ts_WindGen": 0.5 + 0.3 * np.sin(h / 7),
+        "ts_MktPrice": 50 + 25 * np.sin((h % 24 - 8) / 12 * np.pi),
+        "ppaload_mw": np.full(48, 100.0),
+    },
+    index=idx,
+)
+my.build_year_timeseries = lambda **kwargs: ts
+scenario = Scenario(onsw_mw=120.0, pv_mw=100.0, ppaload_mw=100.0, simulation_years=2)
+kwargs = dict(
+    pv_cf_by_year={2023: ts["ts_PVGen"]},
+    wind_cf_by_year={2023: ts["ts_WindGen"]},
+    prices_by_year={2023: ts["ts_MktPrice"]},
+)
+my.run_multi_year(scenario, max_workers=1, **kwargs)  # in-process solves
+my._safe_worker_count = lambda requested, n_years: 2  # force the worker pool
+results = my.run_multi_year(scenario, max_workers=2, **kwargs)
+assert [r.solver_status for r in results] == ["ok", "ok"]
+print("PARALLEL_OK")
+"""
+
+
+def test_run_multi_year_parallel_after_in_process_solves_does_not_hang():
+    """Regression: in-process solves start polars' thread pool (linopy model
+    build), which deadlocked *forked* pool workers on their first solve. Runs in
+    its own interpreter so a hang becomes a timeout failure, not a stuck suite."""
+    import os
+    import signal
+    import subprocess
+    import sys
+    from pathlib import Path
+
+    proc = subprocess.Popen(
+        [sys.executable, "-c", _SERIAL_THEN_PARALLEL_SCRIPT],
+        cwd=Path(__file__).parent.parent,
+        env={**os.environ, "PYTHONPATH": str(Path(__file__).parent.parent)},
+        stdout=subprocess.PIPE,
+        stderr=subprocess.STDOUT,
+        text=True,
+        start_new_session=True,  # own process group: a timeout kills the workers too
+    )
+    try:
+        out, _ = proc.communicate(timeout=180)
+    except subprocess.TimeoutExpired:
+        os.killpg(proc.pid, signal.SIGKILL)
+        proc.communicate()
+        pytest.fail("parallel run_multi_year hung after in-process solves")
+    assert proc.returncode == 0, out
+    assert "PARALLEL_OK" in out

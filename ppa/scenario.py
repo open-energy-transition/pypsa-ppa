@@ -39,6 +39,12 @@ class Scenario:
     # Time resolution (hours) of the sizing LP only. The subsequent dispatch
     # simulation and financials always run hourly on the sized portfolio.
     sizing_resolution_h: int = 3
+    # Near-optimal alternatives (MGA) generated from the sizing LP, within
+    # `mga_slack` of the least-cost total cost. Objective keys are those of
+    # ppa.sizing.MGA_OBJECTIVES; None = all of them.
+    mga_enabled: bool = False
+    mga_slack: float = 0.05
+    mga_objectives: tuple[str, ...] | None = None
 
     # Portfolio sizing
     onsw_mw: float = 250.0
@@ -333,6 +339,8 @@ def validate_scenario(
             errors.append("At least one of wind/solar max build must be > 0 MW.")
         if int(s.sizing_resolution_h) < 1 or int(s.sizing_resolution_h) > 24:
             errors.append("Sizing LP resolution must be between 1 and 24 hours.")
+        if s.mga_enabled and not 0 < s.mga_slack <= 1:
+            errors.append("Near-optimal cost slack must be between 0% and 100%.")
     else:
         if s.onsw_mw < 0:
             errors.append("Onshore wind capacity must be ≥ 0 MW.")

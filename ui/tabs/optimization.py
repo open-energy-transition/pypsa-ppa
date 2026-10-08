@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import dataclasses
+
 import pandas as pd
 import plotly.graph_objects as go
 import streamlit as st
@@ -56,6 +58,10 @@ def _render_scenario_summary(s) -> None:
                     f"BESS **{s.max_build_bess_mw:.0f} MW**"
                 )
                 st.markdown(f"- Sizing LP resolution: **{s.sizing_resolution_h}h**")
+                if s.mga_enabled:
+                    st.markdown(
+                        f"- Near-optimal alternatives: **on** (+{s.mga_slack:.0%} cost slack)"
+                    )
                 if s.include_bess:
                     st.markdown(
                         f"- BESS duration: **{s.bess_max_hours:.1f} h** (fixed)"
@@ -201,14 +207,13 @@ def _render_data_status(s) -> tuple[bool, bool]:
 # ── Simulation runner ────────────────────────────────────────────────
 
 
-def _run_simulation(scenario, max_workers: int) -> None:
+def _load_simulation_inputs(scenario) -> tuple[dict, dict, dict]:
+    """Cached/custom CF and price series by year: (pv, wind, prices)."""
     from ppa.data import renewables_ninja as rn
     from ppa.data.entsoe_client import (
         fetch_day_ahead_prices,
         list_cached_years as list_cached_price_years,
     )
-    from ppa.multi_year import run_multi_year
-    from ppa.financials import run_multi_year_financial_analysis
 
     pv_lat, pv_lon = scenario.pv_location
     wind_lat, wind_lon = scenario.wind_location
@@ -241,6 +246,17 @@ def _run_simulation(scenario, max_workers: int) -> None:
         raise RuntimeError(
             f"No ENTSO-E prices cached for zone {zone}. Go to **Get Data** tab first."
         )
+    return pv_by_year, wind_by_year, prices_by_year
+
+
+def _run_simulation(scenario, max_workers: int, mga: dict | None = None) -> None:
+    """Size (if co-optimizing), then simulate hourly and run financials.
+
+    `mga` = {"slack": float, "objectives": [keys]} also generates near-optimal
+    alternatives from the same sizing LP.
+    """
+    pv_by_year, wind_by_year, prices_by_year = _load_simulation_inputs(scenario)
+    user_scenario = scenario
 
     progress_bar = st.progress(0, text="Starting optimization ...")
     status_text = st.empty()
@@ -279,18 +295,35 @@ def _run_simulation(scenario, max_workers: int) -> None:
         )
 
         _t0 = time.monotonic()
+        stage = {"text": "Solving the sizing LP"}
 
         def _sizing_heartbeat() -> None:
             status_text.text(
-                f"Solving the sizing LP in a background process... "
+                f"{stage['text']} in a background process... "
                 f"{time.monotonic() - _t0:.0f}s elapsed. Press Stop to cancel."
             )
 
-        sized = run_sizing_subprocess(sizing_ts, scenario, heartbeat=_sizing_heartbeat)
+        def _on_mga_progress(text: str) -> None:
+            stage["text"] = text
+            progress_bar.progress(0.0, text=text)
+
+        sized = run_sizing_subprocess(
+            sizing_ts,
+            scenario,
+            heartbeat=_sizing_heartbeat,
+            mga_slack=mga["slack"] if mga else None,
+            mga_objectives=mga["objectives"] if mga else (),
+            on_progress=_on_mga_progress,
+        )
         if sized.status != "ok":
             raise RuntimeError(
                 f"Capacity sizing LP failed: {sized.status} / {sized.condition}"
             )
+        if sized.mga is not None:
+            state.set_mga_result(sized.mga, user_scenario)
+            sized.mga = None  # the alternatives live under their own state key
+        else:
+            state.clear_mga_result()
         # Keep the sized scenario local to this run: the user's scenario keeps
         # optimize_capacity=True so re-runs re-size; the optimized fleet is
         # surfaced via state.set_optimized_sizes.
@@ -302,6 +335,26 @@ def _run_simulation(scenario, max_workers: int) -> None:
             f"{sized.bess_mwh:.0f} MWh (sized over {sized.sizing_years_used} year(s) "
             f"at {sized.resolution_h}h resolution): running hourly dispatch..."
         )
+    else:
+        state.clear_mga_result()
+
+    fin = _run_hourly(
+        scenario,
+        (pv_by_year, wind_by_year, prices_by_year),
+        max_workers,
+        progress_bar,
+        status_text,
+    )
+    if state.has_mga_result():
+        state.record_mga_kpis("optimum", fin)
+
+
+def _run_hourly(scenario, inputs, max_workers: int, progress_bar, status_text):
+    """Hourly multi-year dispatch + financials for a fixed-capacity scenario."""
+    from ppa.financials import run_multi_year_financial_analysis
+    from ppa.multi_year import run_multi_year
+
+    pv_by_year, wind_by_year, prices_by_year = inputs
 
     def _on_progress(done: int, total: int, sim_year: int) -> None:
         progress_bar.progress(done / total, text=f"Year {sim_year} ({done}/{total})")
@@ -325,6 +378,30 @@ def _run_simulation(scenario, max_workers: int) -> None:
 
     progress_bar.progress(1.0, text="Optimization complete!")
     status_text.success(f"Completed {scenario.simulation_years} year(s) successfully.")
+    return fin
+
+
+def _simulate_alternative(user_scenario, alt, max_workers: int) -> None:
+    """Adopt a near-optimal alternative: hourly sim + financials with its fleet.
+
+    The alternative becomes the active portfolio for every results tab (via
+    `state.set_optimized_sizes`), exactly like the least-cost optimum after a run.
+    """
+    from ppa.sizing import apply_sizing
+
+    inputs = _load_simulation_inputs(user_scenario)
+    progress_bar = st.progress(0, text=f"Simulating '{alt.label}' hourly...")
+    status_text = st.empty()
+    fin = _run_hourly(
+        apply_sizing(user_scenario, alt.sized),
+        inputs,
+        max_workers,
+        progress_bar,
+        status_text,
+    )
+    state.set_optimized_sizes(alt.sized)
+    state.set_mga_active(alt.key)
+    state.record_mga_kpis(alt.key, fin)
 
 
 # ── multi-year results display ────────────────────────────────────────────────
@@ -495,6 +572,227 @@ def _render_yearly_table(fin) -> None:
     )
 
 
+# ── near-optimal alternatives (MGA) ───────────────────────────────────────────
+
+# Same technology colors as the dispatch charts (ui/charts.py)
+_TECH_COLORS = {"Wind": "#388E3C", "Solar": "#F57C00", "BESS": "#1565C0"}
+
+
+def _render_mga_status(s) -> dict | None:
+    """One-line MGA status (configured in Case Definition); returns run settings."""
+    if not s.optimize_capacity:
+        return None
+    from ppa.sizing import mga_settings
+
+    settings = mga_settings(s)
+    if settings is None:
+        st.caption(
+            "Near-optimal alternatives (MGA): **off**. Enable them in **Case "
+            "Definition** under the capacity optimization settings."
+        )
+        return None
+    slack, objectives = settings
+    st.caption(
+        f"Near-optimal alternatives (MGA): **on**, up to {len(objectives)} "
+        f"alternative(s) within **+{slack:.0%}** of least cost "
+        "(configured in **Case Definition**)."
+    )
+    return {"slack": slack, "objectives": list(objectives)}
+
+
+def _active_alternative():
+    """The MGA alternative currently simulated in the results tabs, if any."""
+    result = state.get_mga_result()
+    if result is None:
+        return None
+    active = state.get_mga_active()
+    return next((a for a in result.all if a.key == active), None)
+
+
+def _render_mga(s, max_workers: int, data_ready: bool) -> None:
+    result = state.get_mga_result()
+    kpis = state.get_mga_kpis()
+    active_key = state.get_mga_active()
+    # Compare field dicts: dataclass == is False across Streamlit class reloads
+    mga_scenario = state.get_mga_scenario()
+    stale = mga_scenario is None or dataclasses.asdict(mga_scenario) != dataclasses.asdict(s)
+
+    with st.expander("Near-optimal alternatives (MGA)", expanded=True):
+        st.caption(
+            f"Capacity mixes whose total cost of serving the PPA is within "
+            f"**+{result.slack:.0%}** of the least-cost optimum (lost PPA revenue counts "
+            "as cost). Capacities and energy shares come from the coarse sizing LP; "
+            "**Simulate & adopt** runs the full hourly simulation and financials for an "
+            "alternative and makes it the active portfolio in all results tabs."
+        )
+        if stale:
+            st.warning(
+                "The scenario has changed since these alternatives were generated. "
+                "Re-run the optimization to refresh them."
+            )
+
+        opt = result.optimum.sized
+        rows = []
+        for a in result.all:
+            k = kpis.get(a.key)
+            near_opt = a.key != "optimum" and all(
+                abs(x - y) < 1.0
+                for x, y in [
+                    (a.sized.onsw_mw, opt.onsw_mw),
+                    (a.sized.pv_mw, opt.pv_mw),
+                    (a.sized.bess_mw, opt.bess_mw),
+                ]
+            )
+            rows.append(
+                {
+                    "Alternative": ("▶ " if a.key == active_key else "")
+                    + a.label
+                    + (" (≈ optimum)" if near_opt else ""),
+                    "Stakeholder": a.stakeholder,
+                    "Wind (MW)": round(a.sized.onsw_mw, 1),
+                    "Solar (MW)": round(a.sized.pv_mw, 1),
+                    "BESS (MW)": round(a.sized.bess_mw, 1),
+                    "BESS (MWh)": round(a.sized.bess_mwh, 1),
+                    "Cost vs least-cost (%)": round(a.cost_increase * 100, 2),
+                    "Total cost (€M/yr)": round(a.total_cost_eur_per_yr / 1e6, 2),
+                    "Upfront capex (€M)": round(a.capex_eur / 1e6, 1),
+                    "Own-RE coverage (%)": round(a.re_matching_share * 100, 1),
+                    "Market buy (% of load)": round(a.market_buy_share * 100, 1),
+                    "Surplus (% of RE available)": round(a.surplus_share * 100, 1),
+                    "NPV (€M)": round(k["npv"] / 1e6, 1) if k else None,
+                    "IRR (%)": round(k["irr"] * 100, 1) if k and k["irr"] == k["irr"] else None,
+                }
+            )
+
+        tab_table, tab_caps, tab_ranges = st.tabs(
+            ["| Comparison table", "| Capacities", "| Near-optimal ranges"]
+        )
+        with tab_table:
+            st.dataframe(
+                pd.DataFrame(rows).set_index("Alternative"),
+                width="stretch",
+                height="content",
+            )
+            st.caption(
+                "▶ marks the portfolio currently simulated. NPV/IRR appear once an "
+                "alternative has been simulated hourly."
+            )
+        with tab_caps:
+            _render_mga_capacity_chart(result)
+        with tab_ranges:
+            _render_mga_range_chart(result)
+
+        for note in result.notes:
+            st.caption(f"ℹ️ {note}")
+
+        cols = st.columns([3, 1], vertical_alignment="bottom")
+        choice = cols[0].selectbox(
+            "Alternative to simulate",
+            options=[a.key for a in result.all],
+            index=0,
+            format_func=lambda key: next(
+                f"{a.label} ({a.stakeholder}, +{a.cost_increase:.1%})"
+                for a in result.all
+                if a.key == key
+            ),
+            key="opt_mga_choice",
+        )
+        simulate = cols[1].button(
+            "▶ Simulate & adopt",
+            width="stretch",
+            key="opt_mga_simulate",
+            disabled=stale or not data_ready or choice == active_key,
+        )
+
+    if simulate:
+        alt = next(a for a in result.all if a.key == choice)
+        try:
+            _simulate_alternative(s, alt, max_workers)
+        except Exception as exc:
+            st.error(f"Simulating alternative failed: {exc}")
+        else:
+            st.rerun()
+
+
+def _render_mga_capacity_chart(result) -> None:
+    alts = result.all
+    labels = [a.label for a in alts][::-1]  # optimum on top
+    fig = go.Figure()
+    # Horizontal groups stack traces bottom-up: add BESS first so wind sits on
+    # top of each group, matching the (reversed) legend order
+    for tech, attr in [("BESS", "bess_mw"), ("Solar", "pv_mw"), ("Wind", "onsw_mw")]:
+        fig.add_trace(
+            go.Bar(
+                y=labels,
+                x=[round(getattr(a.sized, attr), 1) for a in alts][::-1],
+                name=tech,
+                orientation="h",
+                marker_color=_TECH_COLORS[tech],
+                hovertemplate=f"%{{y}}<br>{tech}: %{{x:.0f}} MW<extra></extra>",
+            )
+        )
+    fig.update_layout(
+        barmode="group",
+        bargap=0.25,
+        bargroupgap=0.05,
+        title=f"Installed capacity by alternative (all within +{result.slack:.0%} of least cost)",
+        xaxis_title="MW",
+        height=max(380, 70 * len(alts)),
+        yaxis=dict(automargin=True),
+        legend=dict(
+            orientation="h", yanchor="bottom", y=1.02, x=0, traceorder="reversed"
+        ),
+        margin=dict(t=90),
+    )
+    st.plotly_chart(fig, width="stretch")
+
+
+def _render_mga_range_chart(result) -> None:
+    """Per-technology min–max across all alternatives, with the optimum marked."""
+    alts = result.all
+    techs = [("Wind", "onsw_mw"), ("Solar", "pv_mw"), ("BESS", "bess_mw")]
+    fig = go.Figure()
+    for tech, attr in techs:
+        values = [getattr(a.sized, attr) for a in alts]
+        lo, hi = min(values), max(values)
+        fig.add_trace(
+            go.Bar(
+                y=[tech],
+                x=[max(hi - lo, 0.5)],  # keep a sliver visible when the range is ~0
+                base=[lo],
+                orientation="h",
+                marker_color=_TECH_COLORS[tech],
+                opacity=0.35,
+                width=0.5,
+                showlegend=False,
+                hovertemplate=f"{tech}: {lo:.0f}–{hi:.0f} MW near-optimal range<extra></extra>",
+            )
+        )
+    fig.add_trace(
+        go.Scatter(
+            y=[t for t, _ in techs],
+            x=[getattr(result.optimum.sized, attr) for _, attr in techs],
+            mode="markers",
+            name="Least-cost optimum",
+            marker=dict(symbol="diamond", size=12, color="#333333"),
+            hovertemplate="%{y} at least cost: %{x:.0f} MW<extra></extra>",
+        )
+    )
+    fig.update_layout(
+        title=f"Capacity ranges within +{result.slack:.0%} of least cost",
+        xaxis_title="MW",
+        yaxis=dict(autorange="reversed"),
+        height=320,
+        legend=dict(orientation="h", yanchor="bottom", y=1.02, x=0),
+        margin=dict(t=90),
+    )
+    st.plotly_chart(fig, width="stretch")
+    st.caption(
+        "Wide ranges mean the technology is flexible at near-optimal cost; narrow "
+        "ranges mark capacity that any affordable portfolio needs."
+    )
+
+
 # ── main render ───────────────────────────────────────────────────────────────
 
 
@@ -543,9 +841,11 @@ def render() -> None:
                 n_done = len(state.get_multi_year_results())
                 st.success(f"Last run: {n_done} year(s) solved.")
 
+        mga = _render_mga_status(s)
+
     if model_run and data_ready:
         try:
-            _run_simulation(s, int(max_workers))
+            _run_simulation(s, int(max_workers), mga=mga)
         except Exception as exc:
             st.error(f"Optimization failed: {exc}")
         else:
@@ -555,13 +855,24 @@ def render() -> None:
         # st.markdown("---")
         if s.optimize_capacity and state.has_optimized_sizes():
             sized = state.get_optimized_sizes()
+            active = _active_alternative()
+            if active is not None and active.key != "optimum":
+                headline = (
+                    f"⚡ **Near-optimal alternative adopted: {active.label}** "
+                    f"(+{active.cost_increase:.1%} vs least cost)"
+                )
+            else:
+                headline = "⚡ **Optimized portfolio**"
             st.info(
-                f"⚡ **Optimized portfolio**: Wind **{sized.onsw_mw:.0f} MW** · "
+                f"{headline}: Wind **{sized.onsw_mw:.0f} MW** · "
                 f"Solar **{sized.pv_mw:.0f} MW** · BESS **{sized.bess_mw:.0f} MW / "
                 f"{sized.bess_mwh:.0f} MWh** (sized over {sized.sizing_years_used} year(s) "
                 f"at {getattr(sized, 'resolution_h', 1)}h resolution; dispatch & financials run hourly)"
             )
         _render_results(state.get_multi_year_financial(), s.simulation_years)
+
+    if state.has_mga_result():
+        _render_mga(s, int(max_workers), data_ready)
 
     # ── Single-day reference optimization (European reference month) ──────────
     # st.markdown("---")
@@ -628,6 +939,8 @@ def render() -> None:
                                     )
                                 s = apply_sizing(s, sized)
                                 state.set_optimized_sizes(sized)
+                                # Alternatives belong to the multi-year sizing LP
+                                state.clear_mga_result()
                                 st.info(
                                     f"Optimized portfolio: Wind {sized.onsw_mw:.0f} MW · "
                                     f"Solar {sized.pv_mw:.0f} MW · BESS {sized.bess_mw:.0f} MW / "
