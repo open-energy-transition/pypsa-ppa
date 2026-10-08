@@ -342,3 +342,24 @@ def test_mga_settings_follow_the_scenario():
     )
     assert objectives == ("min_capex",)  # unknown keys are dropped
     assert mga_settings(_mga_scenario(mga_enabled=True, mga_objectives=())) is None
+
+
+@pytest.mark.parametrize("matching_period", ["monthly", "annual"])
+def test_mga_respects_period_matching_constraints(tiny_ts, matching_period):
+    """MGA re-solves the built model, so the matching-balance constraints
+    (and the bank/draw generators they act on) carry over to every alternative."""
+    sized = optimize_capacities(
+        tiny_ts,
+        _mga_scenario(matching_period=matching_period),
+        mga_slack=0.05,
+        mga_objectives=["max_re_matching", "min_surplus", "min_capex"],
+    )
+    result = sized.mga
+    assert {a.key for a in result.alternatives} == {
+        "max_re_matching",
+        "min_surplus",
+        "min_capex",
+    }
+    for alt in result.alternatives:
+        assert alt.sized.status == "ok"
+        assert -1e-6 <= alt.cost_increase <= 0.05 + 1e-6
