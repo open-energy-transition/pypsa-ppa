@@ -9,6 +9,10 @@ import pandas as pd
 
 from ppa.industrial_profiles import PROFILE_KEYS
 
+# Temporal granularity at which PPA delivery is matched against the offtaker's
+# load. Ordered from strictest to loosest.
+MATCHING_PERIODS: tuple[str, ...] = ("hourly", "monthly", "annual")
+
 
 @dataclass
 class Scenario:
@@ -58,6 +62,13 @@ class Scenario:
     required_delivery_share: float = 0.75
     market_buy_share: float = 0.05
     market_spread: float = 0.10
+    # Window within which delivered energy is matched against the offtaker load
+    # (one of MATCHING_PERIODS). "hourly" (24/7-style): delivery in each hour
+    # counts only against that hour's load. "monthly" / "annual": delivery is
+    # netted against load per calendar month / year, so surplus in one hour can
+    # cover a deficit in another hour of the same period. The delivery
+    # obligation (required_delivery_share) is always assessed per year.
+    matching_period: str = "hourly"
 
     # Operational (single-day mode)
     chosen_day: str = "2023-03-15"
@@ -353,6 +364,10 @@ def validate_scenario(
         errors.append(
             f"Unknown load profile '{s.load_profile}'. Valid options: {PROFILE_KEYS}"
         )
+    if s.matching_period not in MATCHING_PERIODS:
+        errors.append(
+            f"Unknown matching period '{s.matching_period}'. Valid options: {list(MATCHING_PERIODS)}"
+        )
     if s.transmission_cost_eur_mwh < 0:
         errors.append("Transmission cost must be ≥ 0 €/MWh.")
     if s.bidding_zone_override:
@@ -408,6 +423,7 @@ def scenario_from_excel(path: str | Path) -> Scenario:
         required_delivery_share=_float("required_delivery_share", 0.75),
         market_buy_share=_float("market_buy_share", 0.05),
         market_spread=_float("market_spread", 0.10),
+        matching_period=str(params.get("matching_period", "hourly")).strip().lower(),
         transmission_cost_eur_mwh=_float("transmission_cost_eur_mwh", 0.0),
         chosen_day=str(params.get("chosen_day", "2023-03-15")).strip(),
         wind_capex_per_kw=_float("wind_capex_per_kw", 1800.0),

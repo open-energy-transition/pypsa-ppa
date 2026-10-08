@@ -8,6 +8,8 @@ from ppa.scenario import CASE_STUDIES, BASE_SCENARIO, load_case_study
 from ui import state
 from ui.scenario_form import render_scenario_form
 
+_APPLIED_FLAG_KEY = "_case_setup_applied"
+
 
 def _render_case_study_card(cs, is_active: bool) -> bool:
     border_color = "#1565C0" if is_active else "#E0E0E0"
@@ -81,6 +83,11 @@ def render() -> None:
                 st.session_state.pop(state.MULTI_YEAR_FINANCIAL_KEY, None)
                 st.session_state.pop(state.OPTIMIZED_SIZES_KEY, None)
                 state.clear_mga_result()
+                # Rerun so the form re-seeds from the applied scenario (its
+                # widget keys were just cleared); confirm on the next run.
+                st.session_state[_APPLIED_FLAG_KEY] = True
+                st.rerun()
+            if st.session_state.pop(_APPLIED_FLAG_KEY, False):
                 st.success("Scenario updated. Head to Optimization to run.")
         with cols[1]:
             if st.button("Reset to base defaults", type="secondary", width="stretch"):

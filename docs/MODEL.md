@@ -20,7 +20,7 @@ Seven buses, all on a single "AC" carrier:
 | `Bus_IPPGeneration` | nothing directly; it's a hub where all generation converges before being sold or delivered |
 | `Bus_BuyFromMarket` | `Gen_BuyFromMarket`, the market-purchase source |
 | `Bus_SellToMarket` | `Gen_SellToMarket`, a sink for merchant sales |
-| `Bus_PPAOfftake` | `Load_PPAOfftake` (the contracted demand), plus `Gen_Penalty` and `Gen_AllowedShortfall` |
+| `Bus_PPAOfftake` | `Load_PPAOfftake` (the contracted demand), plus `Gen_Penalty` and `Gen_AllowedShortfall`; with monthly/annual matching also `Gen_MatchingBank` and `Gen_MatchingDraw` |
 
 Six one-directional links move power between them:
 
@@ -32,6 +32,8 @@ Six one-directional links move power between them:
 | `BuyFromMarket_to_IPPGeneration` | Market buy → hub | 0 |
 | `IPPGen_to_SellToMarket` | Hub → market sale | 0 |
 | `IPPGen_to_PPAOfftake` | Hub → offtaker | `transmission_cost_eur_mwh − ppa_price` |
+
+The offtaker link is capped at `ppaload_mw` under hourly matching. Under monthly or annual matching it's capped at everything that can physically reach the hub (renewables + battery + market buy), because a single hour may over-deliver against later or earlier deficits (see [Matching period](#matching-period)).
 
 Wind and PV both feed `Bus_REBESS`, where the battery sits, so **the battery can charge from either wind or PV generation**, whatever is available on that bus in a given hour. Because these are PyPSA links, flow only goes one way (bus0 to bus1), and `Bus_REBESS` has exactly one outgoing link toward the hub. Nothing flows back into it from `Bus_IPPGeneration`, so market purchases still have no path to charge the battery, only the renewables fleet can.
 
@@ -49,6 +51,7 @@ The last link is where the PPA revenue actually shows up: its marginal cost is `
 | Market sell | `0 ≤ p(t) ≤ capacity` | MW |
 | Penalty generator | `0 ≤ p(t) ≤ ppaload_mw` | MW |
 | Allowed-shortfall generator | `0 ≤ p(t) ≤ ppaload_mw` | MW |
+| Matching bank / draw (monthly/annual matching only) | `0 ≤ p(t) ≤` delivery cap / `ppaload_mw` | MW |
 | Battery charge / discharge | `0 ≤ p(t) ≤ capacity` | MW |
 | Battery state of charge | `0 ≤ soc(t) ≤ capacity × duration_hours` | MWh |
 | Battery power capacity (sizing mode only) | `0 ≤ capacity ≤ max_build_bess_mw` | MW |
@@ -73,6 +76,7 @@ The capex term only exists in sizing mode, for the three extendable components. 
 - Penalty generator: `ppa_price × penalty_multiple` if penalties are enabled, otherwise just `ppa_price`
 - Allowed-shortfall generator: 0.001 (effectively free, but a hair more expensive than genuine delivery so the solver doesn't use it needlessly)
 - Battery: 0
+- Matching bank: 0.001 (a tie-breaker so only the volume that's actually needed gets shifted between hours); matching draw: 0
 - `IPPGen_to_PPAOfftake` link: `transmission_cost − ppa_price`, as above
 
 Annualized capex, sizing mode only:
@@ -109,7 +113,36 @@ In multi-year sizing runs this is enforced per calendar year rather than once ov
 
 Same per-year grouping in multi-year sizing runs, same reasoning.
 
+**Matching balance (monthly / annual matching only).** Over-delivery in one hour is absorbed by `Gen_MatchingBank` and handed back by `Gen_MatchingDraw` in a deficit hour of the same period:
+
+```
+Σ_{t ∈ period} matching_draw(t)  =  Σ_{t ∈ period} matching_bank(t)      for every calendar month (monthly) or year (annual)
+```
+
+See [Matching period](#matching-period) below.
+
 **Build limits (sizing mode).** Each extendable technology has a hard cap on installed capacity, set directly on the component rather than as a separate constraint: wind ≤ `max_build_wind_mw`, PV ≤ `max_build_pv_mw`, battery ≤ `max_build_bess_mw`.
+
+## Matching period
+
+`Scenario.matching_period` (Case Setup → PPA contract terms) sets the window within which delivered energy is matched against the offtaker's load:
+
+| Setting | Meaning | Typical contract |
+|---|---|---|
+| `hourly` (default) | Delivery in each hour only counts against that hour's load. Surplus in one hour can't cover a deficit in another; it can only be sold, stored or curtailed. | 24/7 / time-matched PPAs, EnergyTag granular certificates, EU RFNBO rules from 2030 |
+| `monthly` | Delivery is netted against load within each calendar month. | EU RFNBO temporal correlation until end-2029 |
+| `annual` | Delivery is netted against load within each calendar year. | Classic volumetric (annual-matched) PPAs |
+
+Hourly matching is the original model formulation. Monthly and annual matching add a virtual matching account at the offtaker bus: a pair of generators (`Gen_MatchingBank` absorbs over-delivery, `Gen_MatchingDraw` serves load from banked energy) whose totals must be equal within each period. Order within the period is free, so a deficit can be covered by a surplus later in the month or year, but nothing carries over into the next period. As a result, delivered + shortfall + penalty equals the load summed over each period, not in each hour, and total delivery can never exceed the period's contracted volume.
+
+What doesn't change with the matching period:
+
+- the **required delivery share**, shortfall cap and market-buy cap are still assessed per year (per calendar year in multi-year sizing runs);
+- the PPA tariff, penalty and transmission charge still apply per delivered or penalised MWh.
+
+The feasible set only grows from hourly to monthly to annual, so a looser window can never lower the IPP's optimized result. In practice looser matching cuts penalties and takes away most of the battery's contract-firming role. It also lets the IPP deliver its volume in cheap hours and sell expensive ones at spot, which moves shape risk onto the offtaker. The counterfactual comparison reflects this: an over-delivered hour shows up as surplus the offtaker resells at spot.
+
+`SummaryVolumes.netted_delivery_mwh` reports how much load was served from energy delivered in other hours of the same period (always 0 under hourly matching).
 
 ## Sizing mode: how it stays fast
 

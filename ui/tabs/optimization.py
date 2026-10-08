@@ -83,6 +83,7 @@ def _render_scenario_summary(s) -> None:
             st.markdown(f"- Offtake: **{s.ppaload_mw:.0f} MW** flat")
             st.markdown(f"- Tariff: **€{s.ppa_price:.0f}/MWh**")
             st.markdown(f"- Required delivery: **{s.required_delivery_share:.0%}**")
+            st.markdown(f"- Matching: **{s.matching_period}**")
             if s.enable_penalty:
                 st.markdown(
                     f"- Penalty: **{s.pen_mult:.1f}×** = €{s.penalty_price:.0f}/MWh"

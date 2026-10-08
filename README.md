@@ -87,7 +87,7 @@ The tabs run roughly in the order you'd use them:
 Every run is driven by a `Scenario` (`ppa/scenario.py`), which covers, broadly:
 
 - **Portfolio**: wind/solar/battery capacity, or, in sizing mode, per-technology build ceilings and let the optimizer choose
-- **Contract terms**: offtake volume, load shape, PPA tariff, required delivery share, shortfall allowance, penalty multiple
+- **Contract terms**: offtake volume, load shape, PPA tariff, required delivery share, shortfall allowance, penalty multiple, matching period (hourly / monthly / annual)
 - **Market interaction**: whether market buying/selling is allowed, and how much
 - **Locations**: offtaker, PV and wind sites can each sit at a different lat/lon; the offtaker's location determines the price zone
 - **Simulation**: number of years, first simulation year, price escalation, technology degradation
