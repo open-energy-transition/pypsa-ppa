@@ -223,6 +223,10 @@ Worth knowing before you rely on this for anything beyond exploration:
 - Cached weather and price data currently spans 2018-2024; multi-year simulations beyond that cycle through the cached years.
 - Great Britain isn't supported as a bidding zone, since ENTSO-E doesn't publish GB day-ahead prices post-Brexit.
 
+## Related work
+
+[pypsa-ppa-nem](https://github.com/matthewsmithwork786/pypsa-ppa-nem/tree/main/ppa) is a fork of this project adapted for the Australian National Electricity Market (NEM). It's mirrored here as the [`nem`](https://github.com/open-energy-transition/pypsa-ppa/tree/nem) branch.
+
 ## License
 
 MIT, see [LICENSE](LICENSE). This is a proof-of-concept research tool; use the results accordingly.
