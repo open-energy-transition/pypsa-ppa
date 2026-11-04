@@ -5,14 +5,18 @@ import numpy as np
 import pandas as pd
 import pytest
 
+from ppa.multi_year import _degraded_scenario
 from ppa.scenario import Scenario
 from ppa.sizing import (
     MGA_OBJECTIVES,
     apply_sizing,
+    build_sizing_timeseries,
     clamp_sizing_years,
+    degradation_factor,
     coarsen_timeseries,
     optimize_capacities,
     run_sizing_subprocess,
+    sizing_start_year_idx,
     weather_cycle_years,
     SizedCapacities,
 )
@@ -44,6 +48,78 @@ def test_weather_cycle_years_clamps_minimum_to_one():
         requested_years=0, n_weather_years=5, n_price_years=5
     )
     assert years == 1
+
+
+# ── sizing horizon = last N simulation years ────────────────────────────────
+
+
+def test_sizing_start_year_idx_takes_the_last_years():
+    assert sizing_start_year_idx(simulation_years=25, n_sizing_years=10) == 15
+    assert sizing_start_year_idx(simulation_years=25, n_sizing_years=25) == 0
+    assert sizing_start_year_idx(simulation_years=1, n_sizing_years=1) == 0
+    # Never negative, even if more sizing years than simulation years are passed
+    assert sizing_start_year_idx(simulation_years=3, n_sizing_years=5) == 0
+
+
+def test_degradation_factor_matches_simulation_convention():
+    scenario = Scenario(pv_mw=100.0, onsw_mw=100.0, bess_mwh=100.0)
+    for idx in (0, 7, 24):
+        degraded = _degraded_scenario(scenario, idx)
+        assert degraded.pv_mw == pytest.approx(
+            100.0 * degradation_factor(scenario.pv_degradation_rate, idx)
+        )
+        assert degraded.onsw_mw == pytest.approx(
+            100.0 * degradation_factor(scenario.wind_degradation_rate, idx)
+        )
+        assert degraded.bess_mwh == pytest.approx(
+            100.0 * degradation_factor(scenario.bess_degradation_rate, idx)
+        )
+
+
+def _flat_year_inputs(year: int):
+    idx = pd.date_range(f"{year}-01-01", periods=8760, freq="h", tz="UTC")
+    return (
+        {year: pd.Series(0.2, index=idx)},
+        {year: pd.Series(0.4, index=idx)},
+        {year: pd.Series(50.0, index=idx)},
+    )
+
+
+def test_build_sizing_timeseries_covers_last_years_with_aged_capacity():
+    scenario = Scenario(
+        simulation_years=10,
+        first_sim_year=2025,
+        pv_degradation_rate=0.01,
+        wind_degradation_rate=0.02,
+        price_escalation_rate=0.0,
+    )
+    pv, wind, prices = _flat_year_inputs(2023)
+    ts = build_sizing_timeseries(scenario, pv, wind, prices, n_sizing_years=3)
+
+    # Last three simulation years: 2032, 2033, 2034 (indices 7, 8, 9)
+    assert sorted(ts.index.year.unique()) == [2032, 2033, 2034]
+    for year, idx in zip((2032, 2033, 2034), (7, 8, 9)):
+        block = ts[ts.index.year == year]
+        assert block["ts_PVGen"].iloc[0] == pytest.approx(0.2 * 0.99 ** (idx + 0.5))
+        assert block["ts_WindGen"].iloc[0] == pytest.approx(0.4 * 0.98 ** (idx + 0.5))
+
+
+def test_optimize_capacities_records_first_sized_year(tiny_ts):
+    scenario = Scenario(
+        optimize_capacity=True,
+        max_build_wind_mw=500.0,
+        max_build_pv_mw=500.0,
+        max_build_bess_mw=200.0,
+        bess_degradation_rate=0.05,
+        ppaload_mw=100.0,
+        sizing_resolution_h=1,
+        simulation_years=20,
+    )
+    sized = optimize_capacities(tiny_ts, scenario, first_year_idx=19)
+    assert sized.status == "ok"
+    assert sized.first_year_idx == 19
+    # Reported BESS energy stays nameplate (undegraded) at the fixed duration
+    assert sized.bess_mwh == pytest.approx(sized.bess_mw * scenario.bess_max_hours)
 
 
 # ── clamp_sizing_years ───────────────────────────────────────────────────────

@@ -106,6 +106,7 @@ def _degraded_scenario(scenario: Scenario, year_idx: int) -> Scenario:
     pv_factor = (1.0 - scenario.pv_degradation_rate) ** (year_idx + 0.5)
     wind_factor = (1.0 - scenario.wind_degradation_rate) ** (year_idx + 0.5)
     bess_factor = (1.0 - scenario.bess_degradation_rate) ** (year_idx + 0.5)
+    # Keep in sync with ppa.sizing.degradation_factor (the sizing LP's factors)
 
     return dataclasses.replace(
         scenario,

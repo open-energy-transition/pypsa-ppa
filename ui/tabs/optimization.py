@@ -45,6 +45,14 @@ def _get_timeseries(scenario):
 # ── scenario summary ──────────────────────────────────────────────────────────
 
 
+def _sized_years_label(sized, first_sim_year: int) -> str:
+    """Human-readable sizing horizon, e.g. "10 year(s), 2040–2049"."""
+    first = first_sim_year + getattr(sized, "first_year_idx", 0)
+    last = first + sized.sizing_years_used - 1
+    span = f"{first}" if last == first else f"{first}–{last}"
+    return f"{sized.sizing_years_used} year(s), {span}"
+
+
 def _render_scenario_summary(s) -> None:
     with st.expander("Scenario summary", expanded=False):
         cols = st.columns(4)
@@ -270,6 +278,7 @@ def _run_simulation(scenario, max_workers: int, mga: dict | None = None) -> None
             build_sizing_timeseries,
             clamp_sizing_years,
             run_sizing_subprocess,
+            sizing_start_year_idx,
             weather_cycle_years,
         )
 
@@ -283,10 +292,16 @@ def _run_simulation(scenario, max_workers: int, mga: dict | None = None) -> None
         )
         if notice:
             st.warning(notice)
+        first_sizing_idx = sizing_start_year_idx(
+            scenario.simulation_years, n_sizing_years
+        )
         progress_bar.progress(
             0.0,
             text=(
                 f"Sizing portfolio (co-optimizing capacities, {n_sizing_years}-year LP "
+                f"over the last simulation years "
+                f"{scenario.first_sim_year + first_sizing_idx}–"
+                f"{scenario.first_sim_year + first_sizing_idx + n_sizing_years - 1} "
                 f"at {scenario.sizing_resolution_h}h resolution)..."
             ),
         )
@@ -314,6 +329,7 @@ def _run_simulation(scenario, max_workers: int, mga: dict | None = None) -> None
             mga_slack=mga["slack"] if mga else None,
             mga_objectives=mga["objectives"] if mga else (),
             on_progress=_on_mga_progress,
+            first_year_idx=first_sizing_idx,
         )
         if sized.status != "ok":
             raise RuntimeError(
@@ -332,7 +348,8 @@ def _run_simulation(scenario, max_workers: int, mga: dict | None = None) -> None
         status_text.success(
             f"Optimized portfolio: Wind {sized.onsw_mw:.0f} MW · "
             f"Solar {sized.pv_mw:.0f} MW · BESS {sized.bess_mw:.0f} MW / "
-            f"{sized.bess_mwh:.0f} MWh (sized over {sized.sizing_years_used} year(s) "
+            f"{sized.bess_mwh:.0f} MWh (sized over "
+            f"{_sized_years_label(sized, scenario.first_sim_year)} "
             f"at {sized.resolution_h}h resolution): running hourly dispatch..."
         )
     else:
@@ -866,7 +883,8 @@ def render() -> None:
             st.info(
                 f"{headline}: Wind **{sized.onsw_mw:.0f} MW** · "
                 f"Solar **{sized.pv_mw:.0f} MW** · BESS **{sized.bess_mw:.0f} MW / "
-                f"{sized.bess_mwh:.0f} MWh** (sized over {sized.sizing_years_used} year(s) "
+                f"{sized.bess_mwh:.0f} MWh** (sized over "
+                f"{_sized_years_label(sized, s.first_sim_year)} "
                 f"at {getattr(sized, 'resolution_h', 1)}h resolution; dispatch & financials run hourly)"
             )
         _render_results(state.get_multi_year_financial(), s.simulation_years)

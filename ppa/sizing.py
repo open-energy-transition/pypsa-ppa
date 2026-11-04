@@ -43,6 +43,10 @@ class SizedCapacities:
     sizing_years_used: int
     horizon_clamped: bool
     resolution_h: int = 1
+    # 0-based simulation-year index of the first sized year. When the sizing
+    # horizon is shorter than the simulation, the LP covers the *last*
+    # `sizing_years_used` years (see `sizing_start_year_idx`).
+    first_year_idx: int = 0
     # Near-optimal alternatives, set when the sizing LP ran with MGA enabled
     mga: "MGAResult | None" = None
 
@@ -73,6 +77,28 @@ def weather_cycle_years(
         f"{requested_years} year(s) hourly with the sized capacities."
     )
     return cycle, note
+
+
+def sizing_start_year_idx(simulation_years: int, n_sizing_years: int) -> int:
+    """0-based index of the first simulation year covered by the sizing LP.
+
+    A sizing horizon shorter than the simulation covers the *last*
+    `n_sizing_years` years rather than the first: by then wind/PV output and
+    BESS usable energy have degraded the most, so capacities sized there still
+    serve the PPA at end of life instead of being sized on near-new assets and
+    falling short in later years.
+    """
+    return max(0, int(simulation_years) - max(1, int(n_sizing_years)))
+
+
+def degradation_factor(rate: float, year_idx: int) -> float:
+    """Compound degradation factor for 0-based simulation year `year_idx`.
+
+    Mid-year convention (`year_idx + 0.5`), identical to
+    `ppa.multi_year._degraded_scenario`, so the sizing LP sees the same
+    effective capacities as the hourly simulation of that year.
+    """
+    return (1.0 - rate) ** (year_idx + 0.5)
 
 
 def clamp_sizing_years(
@@ -116,17 +142,20 @@ def build_sizing_timeseries(
 ) -> pd.DataFrame:
     """Concatenate per-year timeseries into one sizing-LP horizon.
 
-    Reuses `build_year_timeseries` per simulation year, so weather-year cycling
-    and price escalation match the per-year simulation exactly. Wind/PV
-    degradation is baked into the CF columns per year (mirrors
-    `ppa.multi_year._degraded_scenario`, which scales p_nom instead: equivalent
-    for the LP since p_nom × p_max_pu bounds output either way).
+    The horizon is the *last* `n_sizing_years` simulation years
+    (`sizing_start_year_idx`), so the capacities are sized against aged,
+    degraded assets. Reuses `build_year_timeseries` per simulation year, so
+    weather-year cycling and price escalation match the per-year simulation
+    exactly. Wind/PV degradation is baked into the CF columns per year (same
+    factors as `ppa.multi_year._degraded_scenario`, which scales p_nom instead:
+    equivalent for the LP since p_nom × p_max_pu bounds output either way).
     """
     available_weather_years = sorted(pv_cf_by_year.keys())
     available_price_years = sorted(prices_by_year.keys())
+    start_idx = sizing_start_year_idx(scenario.simulation_years, n_sizing_years)
 
     frames: list[pd.DataFrame] = []
-    for idx in range(n_sizing_years):
+    for idx in range(start_idx, start_idx + n_sizing_years):
         sim_year = scenario.first_sim_year + idx
         weather_year = pick_weather_year(idx, available_weather_years)
         price_year = pick_weather_year(idx, available_price_years)
@@ -143,9 +172,11 @@ def build_sizing_timeseries(
             load_profile=scenario.load_profile,
         )
         # Bake technology degradation into the capacity factors for this year
-        ts["ts_PVGen"] = ts["ts_PVGen"] * (1.0 - scenario.pv_degradation_rate) ** idx
-        ts["ts_WindGen"] = (
-            ts["ts_WindGen"] * (1.0 - scenario.wind_degradation_rate) ** idx
+        ts["ts_PVGen"] = ts["ts_PVGen"] * degradation_factor(
+            scenario.pv_degradation_rate, idx
+        )
+        ts["ts_WindGen"] = ts["ts_WindGen"] * degradation_factor(
+            scenario.wind_degradation_rate, idx
         )
         frames.append(ts)
 
@@ -175,6 +206,7 @@ def optimize_capacities(
     mga_slack: float | None = None,
     mga_objectives: Sequence[str] = (),
     progress: Callable[[str], None] | None = None,
+    first_year_idx: int = 0,
 ) -> SizedCapacities:
     """Solve the investment LP at coarse resolution and extract optimal capacities.
 
@@ -185,7 +217,11 @@ def optimize_capacities(
 
     BESS energy capacity fade cannot be time-varied on a StorageUnit, so the
     horizon-average degradation factor is applied to the fixed duration: a
-    slight de-rating that approximates multi-year usable-capacity fade.
+    de-rating that approximates multi-year usable-capacity fade.
+    `first_year_idx` is the 0-based simulation year of the first year in `ts`
+    (`sizing_start_year_idx` when `ts` comes from `build_sizing_timeseries`),
+    so the BESS fade matches the years whose wind/PV degradation is baked in.
+    Pass 0 (default) for a timeseries without baked-in degradation.
 
     With `mga_slack` and `mga_objectives` set, the solved model is re-used for
     near-optimal alternatives (`run_mga`), returned on `SizedCapacities.mga`.
@@ -194,8 +230,13 @@ def optimize_capacities(
     resolution_h = max(1, int(scenario.sizing_resolution_h))
     ts = coarsen_timeseries(ts, resolution_h)
     n_years = max(1, round(len(ts) * resolution_h / 8760))
+    first_year_idx = max(0, int(first_year_idx))
     avg_bess_factor = (
-        sum((1.0 - scenario.bess_degradation_rate) ** i for i in range(n_years)) / n_years
+        sum(
+            degradation_factor(scenario.bess_degradation_rate, i)
+            for i in range(first_year_idx, first_year_idx + n_years)
+        )
+        / n_years
     )
 
     sizing_scn = dataclasses.replace(
@@ -217,6 +258,7 @@ def optimize_capacities(
     status, condition = solve(n, sizing_scn, ts)
 
     sized = _extract_sized(n, scenario, status, condition, n_years, resolution_h)
+    sized.first_year_idx = first_year_idx
     if status == "ok" and mga_slack is not None and mga_objectives:
         sized.mga = run_mga(
             n, sizing_scn, scenario, sized, mga_slack, mga_objectives, progress
@@ -528,6 +570,7 @@ def run_mga(
             n, scenario, status, condition, optimum.sizing_years_used, optimum.resolution_h
         )
         sized.horizon_clamped = optimum.horizon_clamped
+        sized.first_year_idx = optimum.first_year_idx
         result.alternatives.append(
             _alternative(key, obj.label, obj.stakeholder, sized, float(base_expr.solution.sum()))
         )
@@ -540,6 +583,7 @@ def _sizing_worker(
     scenario_fields: dict,
     mga_slack: float | None = None,
     mga_objectives: Sequence[str] = (),
+    first_year_idx: int = 0,
 ) -> None:
     """Child-process entry point: solve the sizing LP and send the result back.
 
@@ -554,6 +598,7 @@ def _sizing_worker(
             mga_slack=mga_slack,
             mga_objectives=mga_objectives,
             progress=lambda text: conn.send(("progress", text)),
+            first_year_idx=first_year_idx,
         )
         conn.send(("ok", sized))
     except BaseException:
@@ -580,6 +625,7 @@ def run_sizing_subprocess(
     mga_slack: float | None = None,
     mga_objectives: Sequence[str] = (),
     on_progress: Callable[[str], None] | None = None,
+    first_year_idx: int = 0,
 ) -> SizedCapacities:
     """Run `optimize_capacities` in a killable child process.
 
@@ -591,7 +637,7 @@ def run_sizing_subprocess(
     finally block. Killing the child also returns the LP's multi-GB memory to
     the OS immediately instead of leaving it in the app process.
 
-    `mga_slack`/`mga_objectives` are forwarded to `optimize_capacities`;
+    `mga_slack`/`mga_objectives`/`first_year_idx` are forwarded to `optimize_capacities`;
     `on_progress` receives the child's MGA progress lines.
     """
     mp_context = spawn_context()  # not fork: see ppa.subprocesses
@@ -605,6 +651,7 @@ def run_sizing_subprocess(
             dataclasses.asdict(scenario),
             mga_slack,
             tuple(mga_objectives),
+            first_year_idx,
         ),
         daemon=True,
     )
